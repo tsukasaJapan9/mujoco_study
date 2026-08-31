@@ -1,0 +1,703 @@
+<title>MuJoCo Sim2Real 12ステップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5;
+    --surface:#FFFFFF;
+    --surface-2:#E9EFED;
+    --ink:#111A1B;
+    --ink-2:#37464A;
+    --muted:#697876;
+    --rule:#D6DFDC;
+    --rule-strong:#B9C7C3;
+    --sim:#0D6C61;
+    --sim-soft:#D6E9E5;
+    --real:#A9530F;
+    --real-soft:#F5E4D2;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214;
+      --surface:#141B1D;
+      --surface-2:#1A2325;
+      --ink:#E7EEEC;
+      --ink-2:#B6C4C1;
+      --muted:#879694;
+      --rule:#283437;
+      --rule-strong:#3A494C;
+      --sim:#4FC6B5;
+      --sim-soft:#0F312D;
+      --real:#E0A163;
+      --real-soft:#33230F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214;
+    --surface:#141B1D;
+    --surface-2:#1A2325;
+    --ink:#E7EEEC;
+    --ink-2:#B6C4C1;
+    --muted:#879694;
+    --rule:#283437;
+    --rule-strong:#3A494C;
+    --sim:#4FC6B5;
+    --sim-soft:#0F312D;
+    --real:#E0A163;
+    --real-soft:#33230F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--f-body);
+    font-size:15px;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1060px; margin:0 auto; padding:0 24px 96px; }
+  .prose { max-width:66ch; }
+
+  h1,h2,h3 { font-family:var(--f-display); text-wrap:balance; line-height:1.35; margin:0; }
+  p { margin:0; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, summary:focus-visible { outline:2px solid var(--sim); outline-offset:3px; border-radius:3px; }
+
+  .eyebrow {
+    font-family:var(--f-mono); font-size:11px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+  }
+
+  /* ---------- header ---------- */
+  header.top {
+    border-bottom:1px solid var(--rule);
+    padding:64px 0 40px;
+    display:flex; flex-direction:column; gap:20px;
+  }
+  header.top h1 { font-size:clamp(30px,5vw,46px); font-weight:700; letter-spacing:-.01em; }
+  header.top .lede { font-size:17px; color:var(--ink-2); max-width:58ch; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    font-family:var(--f-mono); font-size:11.5px;
+    border:1px solid var(--rule-strong); border-radius:2px;
+    padding:4px 9px; color:var(--ink-2); background:var(--surface);
+  }
+
+  section { padding-top:56px; display:flex; flex-direction:column; gap:20px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  /* ---------- principle cards ---------- */
+  .cards { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+  .card {
+    background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+    padding:20px; display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow);
+  }
+  .card h3 { font-size:16px; font-weight:700; }
+  .card p { color:var(--ink-2); font-size:14px; }
+
+  /* ---------- tables ---------- */
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:520px; }
+  th, td { text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th {
+    font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+    border-bottom:1px solid var(--rule-strong); white-space:nowrap;
+  }
+  tbody tr:last-child td { border-bottom:none; }
+  td strong { font-weight:500; font-family:var(--f-display); }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* ---------- phase bar ---------- */
+  .phasebar { display:flex; gap:4px; width:100%; }
+  .phasebar > div {
+    border-radius:3px; padding:12px 14px; color:var(--surface);
+    display:flex; flex-direction:column; gap:2px; min-width:0;
+  }
+  .phasebar .pname { font-family:var(--f-display); font-weight:700; font-size:14px; white-space:nowrap; }
+  .phasebar .pmeta { font-family:var(--f-mono); font-size:11px; opacity:.85; white-space:nowrap; }
+  .pa { background:var(--sim); flex:30; }
+  .pb { background:var(--sim); opacity:.82; flex:40; }
+  .pc { background:var(--sim); opacity:.64; flex:24; }
+  .pd { background:var(--real); flex:42; }
+  .legend { display:flex; flex-wrap:wrap; gap:18px; font-size:13px; color:var(--muted); }
+  .legend span { display:flex; align-items:center; gap:7px; }
+  .dot { width:10px; height:10px; border-radius:2px; flex:none; }
+
+  /* ---------- steps ---------- */
+  .phase-group { display:flex; flex-direction:column; gap:14px; padding-top:32px; }
+  .phase-head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+    border-top:2px solid var(--accent-line,var(--sim)); padding-top:12px; }
+  .phase-head h3 { font-size:18px; font-weight:700; }
+  .phase-head .ph-tag {
+    font-family:var(--f-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--accent-line,var(--sim)); font-weight:600;
+  }
+  .phase-head .ph-hours { font-family:var(--f-mono); font-size:12px; color:var(--muted); margin-left:auto; }
+  .steps { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  .step {
+    background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--accent-line,var(--sim));
+    border-radius:3px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;
+  }
+  .step-top { display:flex; align-items:baseline; gap:10px; }
+  .step-n {
+    font-family:var(--f-mono); font-weight:600; font-size:12px;
+    color:var(--accent-line,var(--sim)); font-variant-numeric:tabular-nums; flex:none;
+  }
+  .step h4 { font-family:var(--f-display); font-size:16px; font-weight:700; margin:0; flex:1; }
+  .step .hrs { font-family:var(--f-mono); font-size:11px; color:var(--muted); flex:none; }
+  .step .aim { font-size:14px; color:var(--ink-2); }
+  .kv { display:flex; flex-direction:column; gap:5px; }
+  .kv .k {
+    font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); font-weight:600;
+  }
+  .kv ul { margin:0; padding-left:18px; font-size:13.5px; color:var(--ink-2); }
+  .kv ul li { margin:2px 0; }
+  code, .mono {
+    font-family:var(--f-mono); font-size:.9em;
+    background:var(--surface-2); padding:1px 5px; border-radius:3px;
+  }
+  .deliver {
+    font-family:var(--f-mono); font-size:12.5px; color:var(--ink);
+    background:var(--surface-2); border-radius:3px; padding:7px 10px;
+  }
+
+  /* ---------- diagram ---------- */
+  .figure { display:flex; flex-direction:column; gap:10px; }
+  .figwrap {
+    overflow-x:auto; background:var(--surface);
+    border:1px solid var(--rule); border-radius:4px; padding:22px 20px;
+  }
+  .figwrap svg { display:block; min-width:660px; width:100%; height:auto; }
+  figcaption { font-size:13px; color:var(--muted); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border:1px solid var(--rule); border-left:3px solid var(--real);
+    background:var(--surface); border-radius:3px; padding:16px 20px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+
+  ol.rules { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8px; font-size:14.5px; color:var(--ink-2); }
+  ol.rules strong { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  ul.links { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; font-size:14px; }
+
+  footer { margin-top:72px; padding-top:24px; border-top:1px solid var(--rule);
+    font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+
+  @media (max-width:640px) {
+    .phasebar { flex-direction:column; }
+    .phasebar > div { flex:none !important; }
+    header.top { padding-top:44px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Curriculum · 2026-08-31</div>
+    <h1>振り子ひとつを、実機まで育てる</h1>
+    <p class="lede">
+      MuJoCo・強化学習・Sim2Real を、題材を分散させずに学ぶ 12 ステップ。
+      1 自由度の振り子から始め、同じ題材に物理モデリング・古典制御・PPO・ドメインランダマイゼーションを
+      順に積み上げて、最後に自作ハードウェアへ載せる。
+    </p>
+    <div class="meta">
+      <span class="chip">週 10h × 約 3.5〜4 ヶ月</span>
+      <span class="chip">前提: Python / NumPy</span>
+      <span class="chip">MuJoCo 3.x + Gymnasium + SB3</span>
+      <span class="chip">Ubuntu 22.04 / RTX 4050 6GB</span>
+    </div>
+  </header>
+
+  <!-- ===================== 方針 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">設計方針</div>
+      <h2>なぜこの順番なのか</h2>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <h3>題材は 1 つだけ</h3>
+        <p>教材を渡り歩くと「動かしたことはあるが分かっていない」状態になる。振り子を 12 ステップ通して育てることで、
+           各技術が<em>何を解決したのか</em>が差分として見える。</p>
+      </div>
+      <div class="card">
+        <h3>RL の前に古典制御</h3>
+        <p>PD 制御で先に立たせておく。これが RL の性能ベースラインになり、さらに実機で
+           「方策だけが壊れたのか、ハードが悪いのか」を切り分ける物差しになる。</p>
+      </div>
+      <div class="card">
+        <h3>失敗を意図的に起こす</h3>
+        <p>発散させる。報酬をハックさせる。ドメインランダマイゼーション無しで壊す。
+           各ステップに「壊す課題」を置き、成功例だけを見て終わらせない。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 全体像 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">全体像</div>
+      <h2>4 フェーズ / 12 ステップ</h2>
+    </div>
+    <div class="phasebar">
+      <div class="pa"><span class="pname">A. MuJoCo</span><span class="pmeta">Step 1–4 · 30h</span></div>
+      <div class="pb"><span class="pname">B. RL 基礎</span><span class="pmeta">Step 5–8 · 40h</span></div>
+      <div class="pc"><span class="pname">C. 実践</span><span class="pmeta">Step 9–10 · 24h</span></div>
+      <div class="pd"><span class="pname">D. Sim2Real</span><span class="pmeta">Step 11–12 · 42h+</span></div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--sim)"></i>シミュレーション内で完結する期間</span>
+      <span><i class="dot" style="background:var(--real)"></i>実機・現実世界が関わる期間</span>
+      <span>バーの幅 = 想定学習時間</span>
+    </div>
+  </section>
+
+  <!-- ===================== ステップ ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">ステップ詳細</div>
+      <h2>各ステップの中身</h2>
+      <p class="prose" style="color:var(--ink-2);font-size:14px">
+        各ステップには完了条件チェックリストがある。<strong>埋まるまで次に進まない</strong>ことが、
+        この講座の唯一の必須ルール。
+      </p>
+    </div>
+
+    <!-- Phase A -->
+    <div class="phase-group">
+      <div class="phase-head">
+        <span class="ph-tag">Phase A</span>
+        <h3>MuJoCo を手足にする</h3>
+        <span class="ph-hours">30h / 約 3 週間</span>
+      </div>
+      <div class="steps">
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">01</span><h4>環境構築と最初のシミュレーション</h4><span class="hrs">4h</span></div>
+          <p class="aim">物理エンジンが「何を定数として持ち、何を状態として更新しているか」を掴む。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li><code>MjModel</code>（設計図・不変）と <code>MjData</code>（状態・毎ステップ更新）の分離</li>
+              <li><code>mj_step()</code> が 1 回で行う 6 つの計算</li>
+              <li><code>nq</code> と <code>nv</code> が一致しない場合（free joint）</li>
+              <li>viewer の <code>launch_passive</code> と実時間同期</li>
+            </ul>
+          </div>
+          <div class="deliver">→ sim/hello_mujoco.py, sim/view_pendulum.py</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">02</span><h4>MJCF モデリング入門</h4><span class="hrs">8h</span></div>
+          <p class="aim">シミュレータに与えるモデルを自分の手で書く。Sim2Real で最初に効くのはここ。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>body ツリーと親相対座標、<code>pos</code> / <code>quat</code></li>
+              <li>joint の種類: hinge / slide / ball / free</li>
+              <li>慣性の自動計算と <code>&lt;inertial&gt;</code> による明示指定</li>
+              <li>SI 単位系（m, kg, s, N·m）の徹底</li>
+            </ul>
+          </div>
+          <div class="deliver">→ models/pendulum.xml, models/cartpole.xml</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">03</span><h4>物理の中身とアクチュエータ</h4><span class="hrs">10h</span></div>
+          <p class="aim">シミュレーションが壊れる原因・実機と合わない原因を、エンジン側から理解する。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>timestep と積分器（Euler / implicitfast / RK4）、発散の境界</li>
+              <li>接触モデル <code>solref</code> / <code>solimp</code> / 摩擦</li>
+              <li>アクチュエータ motor / position / velocity と<strong>実機モータ制御方式の対応</strong></li>
+              <li><code>gear</code>, <code>ctrlrange</code>, <code>forcerange</code>、センサ定義</li>
+            </ul>
+          </div>
+          <div class="deliver">→ sim/step_experiments.py</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">04</span><h4>古典制御でウォームアップ</h4><span class="hrs">8h</span></div>
+          <p class="aim">RL 抜きで振り子を立たせ、後の比較基準と Sim2Real の物差しを作る。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>PD 制御とゲイン調整の感覚、トルク飽和の影響</li>
+              <li><strong>制御周期と物理周期の分離</strong>（実機は制御 50–500Hz / 物理 500–2000Hz）</li>
+              <li>エネルギー整形によるスイングアップ → 上端で PD にスイッチ</li>
+            </ul>
+          </div>
+          <div class="deliver">→ control/pd_balance.py, control/swingup.py</div>
+        </article>
+
+      </div>
+    </div>
+
+    <!-- Phase B -->
+    <div class="phase-group">
+      <div class="phase-head">
+        <span class="ph-tag">Phase B</span>
+        <h3>強化学習の基礎</h3>
+        <span class="ph-hours">40h / 約 4 週間</span>
+      </div>
+      <div class="steps">
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">05</span><h4>MDP と強化学習の言葉</h4><span class="hrs">8h</span></div>
+          <p class="aim">論文と実装を読むための語彙を揃える。ニューラルネット無しで RL の心臓部に触れる。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>MDP、収益、割引率 γ、V / Q / アドバンテージ A の関係</li>
+              <li>ベルマン方程式が「何を言っているだけ」なのか</li>
+              <li>探索と活用、on-policy と off-policy（データの使い回しの差）</li>
+              <li>方策勾配定理の直感</li>
+            </ul>
+          </div>
+          <div class="deliver">→ toy/gridworld_q.py（表形式 Q 学習）</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">06</span><h4>自作環境の Gymnasium 化</h4><span class="hrs">10h</span></div>
+          <p class="aim">自分の MuJoCo モデルを RL ライブラリに繋ぐ。自作ロボット RL の分岐点。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li><code>reset</code> / <code>step</code> / observation_space / action_space</li>
+              <li><strong>terminated と truncated の違い</strong>（混同すると学習が静かに壊れる）</li>
+              <li>角度の周期性と sin/cos 表現、行動スケーリング、frame skip</li>
+              <li><code>check_env</code> による自己診断</li>
+            </ul>
+          </div>
+          <div class="deliver">→ envs/pendulum_env.py</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">07</span><h4>SB3 で学習を回す・実験管理</h4><span class="hrs">10h</span></div>
+          <p class="aim">「学習が回る」を再現可能にする。ログを読む癖をここでつける。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>PPO と SAC の使い分け、主要ハイパーパラメータの意味</li>
+              <li><code>VecNormalize</code> による観測・報酬の正規化（効果が大きい）</li>
+              <li>TensorBoard: ep_rew_mean / explained_variance / entropy / approx_kl</li>
+              <li><strong>1 シードの結果を信じない</strong>評価プロトコル</li>
+            </ul>
+          </div>
+          <div class="deliver">→ train/train_ppo.py, train/eval.py</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">08</span><h4>PPO を自分で実装する</h4><span class="hrs">12h</span></div>
+          <p class="aim">ブラックボックスを消す。Sim2Real でのカスタマイズにはここの理解が必須。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>Actor-Critic、対角ガウス方策と log_std</li>
+              <li>GAE と λ、クリップ目的関数がなぜ必要か</li>
+              <li>論文に書かれない実装詳細（アドバンテージ正規化・直交初期化・勾配クリップ・LR アニーリング）</li>
+            </ul>
+          </div>
+          <div class="deliver">→ algos/ppo_min.py（単一ファイル 300 行）</div>
+        </article>
+
+      </div>
+    </div>
+
+    <!-- Phase C -->
+    <div class="phase-group">
+      <div class="phase-head">
+        <span class="ph-tag">Phase C</span>
+        <h3>実践的な RL エンジニアリング</h3>
+        <span class="ph-hours">24h / 約 3 週間</span>
+      </div>
+      <div class="steps">
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">09</span><h4>報酬・観測・行動空間の設計</h4><span class="hrs">12h</span></div>
+          <p class="aim">学習失敗の 8 割は設計ミス。原因を切り分ける力をつける。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>sparse / dense、シェーピング、指数型報酬 <code>exp(-k·e²)</code> が扱いやすい理由</li>
+              <li><strong>報酬ハッキング</strong>を意図的に発生させて観察する</li>
+              <li>トルク直接指令 vs 目標位置＋PD（実機では後者が圧倒的に安定）</li>
+              <li>action rate ペナルティ（実機のガタつきと発熱を抑える）</li>
+            </ul>
+          </div>
+          <div class="deliver">→ 報酬項の ablation 実験と比較レポート</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">10</span><h4>高速化と大規模化</h4><span class="hrs">12h</span></div>
+          <p class="aim">歩行など重い課題に手が届く状態にする。GPU が初めて効いてくる。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>CPU 並列（SubprocVecEnv）の限界</li>
+              <li><strong>MuJoCo MJX</strong>: JAX 実装で GPU 上に数千環境を並列展開</li>
+              <li>MuJoCo Playground の既製ロボット環境（四足・アーム・二足）</li>
+              <li>JAX の jit / vmap / 関数純粋性を最小限</li>
+            </ul>
+          </div>
+          <div class="deliver">→ MJX 版環境と学習スクリプト</div>
+        </article>
+
+      </div>
+    </div>
+
+    <!-- Phase D -->
+    <div class="phase-group" style="--accent-line:var(--real)">
+      <div class="phase-head">
+        <span class="ph-tag">Phase D</span>
+        <h3>Sim2Real</h3>
+        <span class="ph-hours">42h+ / 約 4 週間〜</span>
+      </div>
+      <div class="steps">
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">11</span><h4>ギャップの理論と対策</h4><span class="hrs">12h</span></div>
+          <p class="aim">「シミュでは完璧、実機で転ぶ」の原因を分類し、対策を打てるようにする。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>ドメインランダマイゼーション: 何を、どの範囲で振るか（振りすぎると保守的すぎる方策になる）</li>
+              <li>システム同定: 実機ログからシミュのパラメータを最適化</li>
+              <li>アクチュエータネット（ANYmal の手法）</li>
+              <li>非対称 Actor-Critic、観測履歴 / Teacher-Student 蒸留</li>
+            </ul>
+          </div>
+          <div class="deliver">→ DR 付き環境・遅延モデル・同定スクリプト</div>
+        </article>
+
+        <article class="step">
+          <div class="step-top"><span class="step-n">12</span><h4>実機を作って載せる</h4><span class="hrs">30h+</span></div>
+          <p class="aim">自作ハードで RL 方策を動かす。ここまでの全部を使う。</p>
+          <div class="kv"><span class="k">学ぶこと</span>
+            <ul>
+              <li>CAD → MJCF 化（質量・慣性を実測と CAD から取る）</li>
+              <li>マイコンとの通信、制御ループの実時間性</li>
+              <li>方策のデプロイ（TorchScript / ONNX / C への埋め込み）</li>
+              <li><strong>安全機構</strong>: トルクリミット・角度リミット・非常停止・ウォッチドッグ</li>
+            </ul>
+          </div>
+          <div class="deliver">→ 実機 + デプロイ済み方策 + 同定ループ</div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Sim2Real ループ図 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Phase D の背骨</div>
+      <h2>Sim2Real は片道ではなく閉ループ</h2>
+      <p class="prose" style="color:var(--ink-2);font-size:14px">
+        「シミュで学習して実機に載せる」は 1 回では成功しない。実機ログでシミュを直し、
+        直したシミュで学習し直す。この反復が Sim2Real の実体であり、Step 12 で回す輪。
+      </p>
+    </div>
+    <figure class="figure">
+      <div class="figwrap">
+        <svg viewBox="0 0 900 300" role="img" aria-label="シミュレータ、学習、方策、実機デプロイ、実機ログ、システム同定を経てシミュレータに戻る閉ループ図">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-family="IBM Plex Sans JP, sans-serif" font-size="13">
+
+            <!-- sim side -->
+            <g color="var(--sim)">
+              <rect x="14" y="58" width="150" height="62" rx="4" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.5"/>
+              <text x="89" y="83" text-anchor="middle" fill="var(--ink)" font-weight="500">シミュレータ</text>
+              <text x="89" y="103" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">MJCF + 物理パラメータ</text>
+
+              <rect x="196" y="58" width="150" height="62" rx="4" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.5"/>
+              <text x="271" y="83" text-anchor="middle" fill="var(--ink)" font-weight="500">強化学習</text>
+              <text x="271" y="103" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">PPO / SAC + DR</text>
+
+              <rect x="378" y="58" width="150" height="62" rx="4" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.5"/>
+              <text x="453" y="83" text-anchor="middle" fill="var(--ink)" font-weight="500">方策 π(a|s)</text>
+              <text x="453" y="103" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">MLP · 小さいほど良い</text>
+
+              <path d="M168 89 H192" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+              <path d="M350 89 H374" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+            </g>
+
+            <!-- real side -->
+            <g color="var(--real)">
+              <rect x="560" y="58" width="150" height="62" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.5"/>
+              <text x="635" y="83" text-anchor="middle" fill="var(--ink)" font-weight="500">実機デプロイ</text>
+              <text x="635" y="103" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">推論 → モータ指令</text>
+
+              <rect x="742" y="58" width="144" height="62" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.5"/>
+              <text x="814" y="83" text-anchor="middle" fill="var(--ink)" font-weight="500">実機ログ</text>
+              <text x="814" y="103" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">状態・指令・時刻</text>
+
+              <path d="M714 89 H738" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+            </g>
+
+            <!-- the gap -->
+            <g>
+              <line x1="544" y1="26" x2="544" y2="164" stroke="var(--rule-strong)" stroke-width="1.5" stroke-dasharray="5 5"/>
+              <text x="544" y="18" text-anchor="middle" fill="var(--muted)" font-size="11"
+                    font-family="IBM Plex Mono, monospace" letter-spacing="1">REALITY GAP</text>
+              <g color="var(--real)">
+                <path d="M530 89 H556" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+              </g>
+            </g>
+
+            <!-- return path -->
+            <g color="var(--real)">
+              <path d="M814 124 V186 H460" stroke="currentColor" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+              <rect x="286" y="160" width="172" height="52" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.5"/>
+              <text x="372" y="181" text-anchor="middle" fill="var(--ink)" font-weight="500">システム同定</text>
+              <text x="372" y="199" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="IBM Plex Mono, monospace">パラメータを実測に合わせる</text>
+              <path d="M286 186 H89 V126" stroke="currentColor" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+            </g>
+
+            <!-- gap sources -->
+            <g fill="var(--muted)" font-size="11.5">
+              <text x="14" y="248" fill="var(--ink)" font-weight="500" font-size="12.5">ギャップの発生源</text>
+              <text x="14" y="270">アクチュエータ応答 · 制御遅延 · 質量/慣性誤差 · 摩擦とバックラッシュ · 接触の弾性 · センサノイズとドリフト · 未モデル化の力</text>
+              <text x="14" y="290" fill="var(--sim)">対策 — シミュ側: ドメインランダマイゼーション / 遅延の注入 / アクチュエータネット　　実機側: システム同定 / フィルタ / 安全リミット</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <figcaption>左半分はシミュレーション内で完結する。右半分に渡った瞬間に現実の物理が入り込み、そのズレを同定して左へ戻す。</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== ギャップ表 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">分類</div>
+      <h2>ギャップの発生源と対策</h2>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>分類</th><th>具体例</th><th>主な対策</th></tr></thead>
+        <tbody>
+          <tr><td><strong>アクチュエータ</strong></td><td>サーボの応答遅れ、トルク上限、バックラッシュ、減速比の損失</td><td>実測による同定、アクチュエータネット、トルクリミットの再現</td></tr>
+          <tr><td><strong>遅延</strong></td><td>センサ読取 → 推論 → 指令送出のレイテンシ（実機で 5–30ms）</td><td>シミュに人工遅延を入れる、観測履歴を方策に与える</td></tr>
+          <tr><td><strong>物理パラメータ</strong></td><td>質量・慣性・重心位置・摩擦係数の誤差</td><td>ドメインランダマイゼーション、システム同定</td></tr>
+          <tr><td><strong>接触</strong></td><td>地面の弾性、滑り、足裏やグリッパの形状</td><td>接触パラメータのランダム化、形状の作り込み</td></tr>
+          <tr><td><strong>観測</strong></td><td>センサノイズ、バイアス、ドリフト、量子化</td><td>ノイズ注入、フィルタ、非対称 Actor-Critic</td></tr>
+          <tr><td><strong>未モデル化</strong></td><td>ケーブル張力、部材のたわみ、発熱によるトルク低下</td><td>頑健化（DR）、オンライン適応、そもそも設計で避ける</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== 実機候補 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">Step 12 の選択肢</div>
+      <h2>最初の自作ハードウェア候補</h2>
+      <p class="prose" style="color:var(--ink-2);font-size:14px">
+        選定基準は「安い・壊れない・ギャップの原因が特定できる」。<strong>1 → 2 の順を推奨</strong>。
+        四足やアームは、この 2 つを通した後で十分に間に合う。
+      </p>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>候補</th><th>構成</th><th>部品費</th><th>この題材で学べること</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. 回転型倒立振子</strong><br><span style="color:var(--muted);font-size:12.5px">Furuta pendulum</span></td>
+              <td>モータ 1 + エンコーダ 2 + マイコン</td><td class="num">1〜2 万円</td>
+              <td>最小構成。ギャップが摩擦とバックラッシュに集約され、原因分析が容易</td></tr>
+          <tr><td><strong>2. 2 輪バランスロボット</strong></td>
+              <td>モータ 2 + IMU + マイコン</td><td class="num">1〜2 万円</td>
+              <td>IMU ノイズ・姿勢推定・制御遅延。転んでも安全</td></tr>
+          <tr><td><strong>3. リアクションホイール振子</strong></td>
+              <td>BLDC + FOC ドライバ + IMU</td><td class="num">2〜3 万円</td>
+              <td>トルク制御が素直。アクチュエータモデル学習に最適</td></tr>
+          <tr><td><strong>4. 小型ロボットアーム</strong><br><span style="color:var(--muted);font-size:12.5px">3〜5 自由度</span></td>
+              <td>シリアルバスサーボ 5 + 3D プリント部材</td><td class="num">3〜5 万円</td>
+              <td>接触・把持・多自由度の協調。次の段階</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="k">Step 12 に入る前の絶対条件</span>
+      <p>実機で最初に走らせるのは RL 方策ではなく <strong>PD 制御</strong>。配線・通信・制御周期・安全機構が
+         正しいことを、方策の良し悪しと切り離して確認しておく。ここを飛ばすと、実機で失敗したときに
+         原因がハードなのか方策なのか永久に分からなくなる。</p>
+    </div>
+  </section>
+
+  <!-- ===================== スタック ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">技術スタック</div>
+      <h2>使うもの、あえて使わないもの</h2>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>役割</th><th>採用</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>物理シミュレータ</td><td><strong>MuJoCo 3.x</strong></td><td>接触・関節の数値安定性が高く、ロボット RL の事実上の標準</td></tr>
+          <tr><td>モデル記述</td><td><strong>MJCF (XML)</strong></td><td>MuJoCo ネイティブ。URDF より表現力が高い</td></tr>
+          <tr><td>環境 API</td><td><strong>Gymnasium</strong></td><td>RL ライブラリが前提とする共通規格</td></tr>
+          <tr><td>RL アルゴリズム</td><td><strong>Stable-Baselines3</strong></td><td>信頼できる実装を基準として持つため。中身は Step 8 で自作する</td></tr>
+          <tr><td>学習フレームワーク</td><td><strong>PyTorch</strong></td><td>SB3 の中身であり、自作 PPO でも使う</td></tr>
+          <tr><td>実験管理</td><td><strong>TensorBoard</strong></td><td>RL はログが読めないとデバッグ不能</td></tr>
+          <tr><td>高速化（後半）</td><td><strong>MuJoCo MJX / Playground</strong></td><td>GPU 上で数千環境を並列実行</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="k">先に知っておくべき事実</span>
+      <p>SB3 + MuJoCo の標準的な学習（小さな MLP 方策）では <strong>GPU はほとんど効かない</strong>。
+         ボトルネックは物理シミュレーションであり CPU 側にある。GPU が本当に効くのは Step 10 の MJX 以降。
+         「GPU があるのに速くならない」で悩む必要はない。それが正常。</p>
+    </div>
+  </section>
+
+  <!-- ===================== ルール ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">共通ルール</div>
+      <h2>全ステップに適用する 5 つの約束</h2>
+    </div>
+    <ol class="rules">
+      <li><strong>完了条件が埋まるまで次に進まない。</strong>飛ばした穴は Phase D で必ず塞がれる。</li>
+      <li><strong>数値は必ず理論値・実測値と比較する。</strong>「動いた気がする」を潰す。</li>
+      <li><strong>失敗を 1 回は意図的に起こす。</strong>発散させ、報酬をハックさせ、DR 無しで壊す。</li>
+      <li><strong>コードは自分で書く。</strong>提示されるのは骨格だけ。写経ではなく、埋めながら理解する。</li>
+      <li><strong>分からない用語はその場で聞く。</strong>用語の霧を残すと Sim2Real で確実に詰まる。</li>
+    </ol>
+  </section>
+
+  <!-- ===================== 参考 ===================== -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">参考資料</div>
+      <h2>常に開いておくもの</h2>
+    </div>
+    <ul class="links">
+      <li><a href="https://mujoco.readthedocs.io/en/stable/XMLreference.html">MJCF XML リファレンス</a> — モデリング中の辞書。ブックマーク必須</li>
+      <li><a href="https://mujoco.readthedocs.io/">MuJoCo ドキュメント</a> — Computation の章は Step 3 で読む</li>
+      <li><a href="https://spinningup.openai.com/">Spinning Up in Deep RL</a> — 理論の入口として最良</li>
+      <li><a href="https://gymnasium.farama.org/">Gymnasium</a> / <a href="https://stable-baselines3.readthedocs.io/">Stable-Baselines3</a></li>
+      <li><a href="https://github.com/google-deepmind/mujoco_playground">MuJoCo Playground</a> — Step 10 で使う既製環境集</li>
+      <li>Hwangbo et al. 2019, <em>Learning agile and dynamic motor skills for legged robots</em> — アクチュエータネットの原典</li>
+      <li>Zhao et al. 2020, <em>Sim-to-Real Transfer in Deep RL for Robotics: a Survey</em></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>詳細教材は <span class="mono">docs/00_roadmap.md</span> / <span class="mono">docs/stepNN_*.md</span></span>
+    <span>次にやること: Step 1 — 環境構築</span>
+  </footer>
+
+</div>

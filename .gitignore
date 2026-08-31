@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+runs/
+logs/
+models_out/
+*.zip
+*.mp4

@@ -9,3 +9,15 @@ dependencies = [
     "mujoco>=3.12.0",
     "pyqt6>=6.11.0",
 ]
+
+[tool.ruff]
+indent-width = 2
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+# mujoco は C 拡張 (pybind11) で型スタブを同梱していないため、
+# mujoco.MjModel などが「存在しない属性」と誤検出される。その分だけ黙らせる。
+reportAttributeAccessIssue = "none"
+reportMissingTypeStubs = "none"

@@ -229,18 +229,119 @@ data = mujoco.MjData(model)</pre></div>
        この書き方を最初から癖にしておくこと。</p>
   </div>
 
-  <h3>コマンドラインからモデル名を受け取る</h3>
-  <p>モデルを作るたびにスクリプトを書き換えるのは面倒なので、引数で渡せるようにしておく。
-     これ 1 つで <code>models/</code> の中のどれでも即座に確認できる。</p>
-  <div class="code"><pre>import argparse
+  <h3>モデルを表示するだけの汎用ビューア</h3>
+  <p>モデルを作るたびにスクリプトを書き換えるのは面倒なので、
+     <strong>ファイル名を引数で受け取る汎用ビューア</strong>を 1 本用意しておく。
+     Step 12 まで使い回すことになる、この講座で最も出番の多いツール。</p>
 
-parser = argparse.ArgumentParser()
-parser.add_argument("model", help="models/ 以下のファイル名 (例: pendulum.xml)")
-args = parser.parse_args()
+  <div class="callout tip">
+    <span class="k">重要: 既定は「物理を進めない」</span>
+    <p>書いたばかりのモデルを確認したいとき、<strong>物理を進めてはいけない</strong>。
+       重力で一瞬にして崩れ落ち、何がどう繋がっているのか観察できないから。<br>
+       <code>mj_forward</code> だけを呼んで初期姿勢のまま静止表示するのが、
+       モデルを点検する正しいやり方。動かしたいときだけ <code>--sim</code> を付ける。</p>
+  </div>
 
-model = mujoco.MjModel.from_xml_path(str(ROOT / "models" / args.model))</pre></div>
-  <div class="code"><pre class="sh">uv run python sim/view_model.py pendulum.xml</pre></div>
-</section>
+  <div class="code"><pre><span class="cmt"># sim/view_model.py — models/ 以下の MJCF を読み込んで表示する</span>
+import argparse
+import time
+from pathlib import Path
+
+import mujoco
+import mujoco.viewer
+
+ROOT = Path(__file__).resolve().parent.parent
+MODELS = ROOT / "models"
+
+<span class="cmt"># mjtJoint の並び順（0=free, 1=ball, 2=slide, 3=hinge）</span>
+JOINT_TYPES = ("free", "ball", "slide", "hinge")
+
+
+def load(name):
+    path = MODELS / name
+    if not path.exists():
+        available = [p.name for p in sorted(MODELS.glob("*.xml"))]
+        raise SystemExit(f"モデルが見つかりません: {path}\n利用可能: {available}")
+    try:
+        return mujoco.MjModel.from_xml_path(str(path))
+    except Exception as e:
+        <span class="cmt"># MJCF のコンパイルエラーはここに来る。行番号が出るのでそのまま読む</span>
+        raise SystemExit(f"MJCF の読み込みに失敗しました:\n{e}")
+
+
+def summary(model):
+    """モデルの構造を表示する。書いた MJCF が意図どおりか確認するために毎回見る。"""
+    print(f"nq={model.nq}  nv={model.nv}  nu={model.nu}  "
+          f"nbody={model.nbody}  njnt={model.njnt}  nsensordata={model.nsensordata}")
+
+    for j in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
+        jtype = JOINT_TYPES[model.jnt_type[j]]
+        print(f"  joint[{j}] {name:&lt;12} {jtype:&lt;6} "
+              f"qposadr={model.jnt_qposadr[j]} dofadr={model.jnt_dofadr[j]}")
+
+    for a in range(model.nu):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a)
+        print(f"  actuator[{a}] {name:&lt;12} ctrlrange={model.actuator_ctrlrange[a]}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="MJCF を読み込んで表示する")
+    parser.add_argument("model", help="models/ 以下のファイル名 (例: cartpole.xml)")
+    parser.add_argument("--sim", action="store_true", help="物理を進める（既定は静止表示）")
+    parser.add_argument("--speed", type=float, default=1.0, help="再生速度の倍率")
+    args = parser.parse_args()
+
+    model = load(args.model)
+    data = mujoco.MjData(model)
+    summary(model)
+
+    mujoco.mj_forward(model, data)   <span class="cmt"># 進めずに派生量だけ計算（xpos などを埋める）</span>
+
+    with mujoco.viewer.launch_passive(model, data) as viewer:
+        while viewer.is_running():
+            t0 = time.time()
+
+            if args.sim:
+                mujoco.mj_step(model, data)
+                viewer.sync()
+                wait = model.opt.timestep / args.speed - (time.time() - t0)
+                if wait &gt; 0:
+                    time.sleep(wait)
+            else:
+                viewer.sync()
+                time.sleep(1 / 60)       <span class="cmt"># 静止表示なら 60Hz で十分</span>
+
+
+if __name__ == "__main__":
+    main()</pre></div>
+
+  <h3>使い方</h3>
+  <div class="code"><pre class="sh"><span class="cmt"># 書いたモデルを静止状態で点検する（まずこれ）</span>
+uv run python sim/view_model.py pendulum.xml
+
+<span class="cmt"># 物理を進めて動かす</span>
+uv run python sim/view_model.py pendulum.xml --sim
+
+<span class="cmt"># ゆっくり見る</span>
+uv run python sim/view_model.py cartpole.xml --sim --speed 0.25</pre></div>
+
+  <p>起動すると、まず構造がコンソールに出る。<strong>MJCF を書いたら必ずこれを見ること。</strong>
+     ビューアを眺める前に、数字が意図どおりかを確認するほうが速い。</p>
+
+  <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=0
+  joint[0] slider       slide  qposadr=0 dofadr=0
+  joint[1] hinge        hinge  qposadr=1 dofadr=1
+  actuator[0] slide_motor  ctrlrange=[-3.  3.]</pre></div>
+
+  <h3>モデル点検のチェックポイント</h3>
+  <ul>
+    <li><code>nu</code> が 0 なら <code>&lt;actuator&gt;</code> の書き忘れ</li>
+    <li><code>njnt</code> が想定より少なければ <code>&lt;joint&gt;</code> の書き忘れ。その body は親に溶接されている</li>
+    <li>joint の型が意図と違えば <code>type</code> のタイポ</li>
+    <li><code>ctrlrange</code> が <code>[0. 0.]</code> なら未指定。実機のトルク上限を反映させること</li>
+    <li>ビューアでは <strong>Rendering パネルの Joint を ON</strong> にして、関節軸の向きを目視確認する</li>
+  </ul>
 
 <!-- ===== 2 ===== -->
 <section>
@@ -541,10 +642,347 @@ model = mujoco.MjModel.from_xml_path(str(ROOT / "models" / args.model))</pre></d
   </div>
 </section>
 
-<!-- ===== 7 ===== -->
+<!-- ===== 07 見た目 ===== -->
 <section>
   <div class="sec-head">
     <div class="eyebrow">07</div>
+    <h2>見た目を整える — 明るいシーンの作り方</h2>
+    <p>MuJoCo の既定の見た目は暗い。これは意図的な控えめ設定で、
+       モデルが悪いわけではない。<strong>描画設定は物理に一切影響しない</strong>ので、
+       安心して好きに変えてよい。</p>
+  </div>
+
+  <h3>なぜ暗いのか</h3>
+  <p>既定値を実際に読み出すと、原因がはっきりする。</p>
+  <div class="code"><pre class="sh">headlight.ambient = [0.1 0.1 0.1]     <span class="cmt"># 環境光がほぼ無い</span>
+headlight.diffuse = [0.4 0.4 0.4]     <span class="cmt"># 主光源も弱い</span>
+geom の既定 rgba  = [0.5 0.5 0.5 1]   <span class="cmt"># 中間グレー = 暗く見える</span></pre></div>
+  <p><code>&lt;light&gt;</code> を 1 つも書かないと、この弱いヘッドライトだけがシーンを照らす。
+     床も既定の中間グレーなので、全体がくすんで見える。</p>
+
+  <h3>明るいシーンの一式</h3>
+  <p>下の 3 ブロックを <code>&lt;worldbody&gt;</code> の前に置き、床に <code>material="grid"</code> を付ける。
+     これで一般的な MuJoCo デモと同等の見た目になる。</p>
+
+  <div class="code"><pre>&lt;visual&gt;
+  &lt;headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/&gt;
+  &lt;rgba haze="0.87 0.90 0.92 1"/&gt;
+  &lt;global azimuth="140" elevation="-20"/&gt;
+  &lt;quality shadowsize="4096"/&gt;
+&lt;/visual&gt;
+
+&lt;asset&gt;
+  <span class="cmt">&lt;!-- 空。上から下へのグラデーション --&gt;</span>
+  &lt;texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/&gt;
+
+  <span class="cmt">&lt;!-- 床のチェッカー模様。スケール感が掴めるので必ず入れる --&gt;</span>
+  &lt;texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/&gt;
+  &lt;material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.05"/&gt;
+
+  <span class="cmt">&lt;!-- リンク用のマテリアル。色をここで一元管理できる --&gt;</span>
+  &lt;material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/&gt;
+&lt;/asset&gt;
+
+&lt;worldbody&gt;
+  <span class="cmt">&lt;!-- キーライト: 影を落とす主光源 --&gt;</span>
+  &lt;light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" specular="0.15 0.15 0.15" castshadow="true"/&gt;
+
+  <span class="cmt">&lt;!-- フィルライト: 反対側から弱く当てて影を潰しすぎない --&gt;</span>
+  &lt;light name="fill" pos="-2 2 2.5" dir="0.5 -0.5 -1" directional="true" diffuse="0.15 0.15 0.15" castshadow="false"/&gt;
+
+  &lt;geom name="floor" type="plane" size="3 3 0.05" material="grid"/&gt;
+
+  <span class="cmt">&lt;!-- ここから下がロボット本体 --&gt;</span>
+&lt;/worldbody&gt;</pre></div>
+
+  <div class="callout">
+    <span class="k">最重要: 光量は足し算になる</span>
+    <p>MuJoCo の明るさは <strong>ヘッドライト ＋ 各 light の合計</strong>で決まる。
+       ヘッドライトを上げたまま <code>&lt;light&gt;</code> を 2 灯足すと合計が 1.0 を大きく超え、
+       <strong>床が真っ白に飛んでチェッカー模様が消える</strong>。<br>
+       上の設定はこのバランスを取ってある。<code>&lt;light&gt;</code> を明示的に置くなら
+       ヘッドライトは <code>0.3</code> 前後まで下げること。逆にライトを置かないなら
+       ヘッドライトを <code>0.45 / 0.75</code> くらいまで上げてよい。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">チェッカーが見えないときの診断</span>
+    <p>白飛びのほかに、<strong>2 色の差が小さすぎて見えない</strong>ケースがある。
+       <code>rgb1</code> と <code>rgb2</code> の差は <strong>0.25 以上</strong>取ること。
+       差が 0.1 程度だと、少し明るくしただけで消える。<br>
+       テクスチャ自体が適用されているかは Python 側で確認できる。</p>
+  </div>
+
+  <div class="code"><pre>fid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+print("matid   ", model.geom_matid[fid])      <span class="cmt"># -1 ならマテリアル未適用</span>
+print("texid   ", model.mat_texid[model.geom_matid[fid]])
+print("texrepeat", model.mat_texrepeat)</pre></div>
+
+  <p><code>matid</code> が <code>-1</code> なら <code>material="grid"</code> の書き忘れかタイポ。
+     <code>-1</code> でないのに見えないなら、原因は<strong>光量かコントラスト</strong>。</p>
+
+  <h3>それぞれ何をしているか</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>要素・属性</th><th>効果</th></tr></thead>
+      <tbody>
+        <tr><td><code>headlight ambient</code></td><td>全方向から当たる環境光。上げると影の中も見えるようになる</td></tr>
+        <tr><td><code>headlight diffuse</code></td><td>カメラ位置から当たる主光源。全体の明るさ</td></tr>
+        <tr><td><code>global azimuth / elevation</code></td><td>起動時のカメラ角度。毎回マウスで回さずに済む</td></tr>
+        <tr><td><code>quality shadowsize</code></td><td>影の解像度。既定は粗いのでギザギザする</td></tr>
+        <tr><td><code>texture skybox</code></td><td>背景。空があると奥行きが出て姿勢が読み取りやすい</td></tr>
+        <tr><td><code>texture checker</code> + <code>material</code></td><td><strong>床の格子模様。スケール感と移動量が目で分かる</strong></td></tr>
+        <tr><td><code>light directional="true"</code></td><td>平行光線（太陽光）。位置ではなく <code>dir</code> の向きだけが効く</td></tr>
+        <tr><td><code>castshadow</code></td><td>影を落とすか。<strong>影があると 3D の奥行きが一気に分かる</strong></td></tr>
+        <tr><td><code>material</code></td><td>色・光沢の定義。複数 geom で共有でき、色の一元管理ができる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">床のチェッカーは実用装備</span>
+    <p>見栄えの問題ではない。<strong>格子があるとロボットがどれだけ移動したか目で測れる</strong>。
+       単色の床では、カメラが動いているのかロボットが動いているのか区別がつかない。
+       Step 10 で歩行を見るとき、これが無いと進んでいるかどうか判定できない。</p>
+  </div>
+
+  <h3>カメラを配置する</h3>
+  <p>既定の「フリーカメラ」はマウスで回す軌道カメラで、起動時の距離は
+     <code>1.5 × model.stat.extent</code>、注視点は <code>model.stat.center</code> で決まる。</p>
+
+  <div class="code"><pre>&lt;statistic extent="4" center="0 0 0.5"/&gt;    <span class="cmt">&lt;!-- 計算上のカメラ距離は 6.0 --&gt;</span></pre></div>
+
+  <div class="callout">
+    <span class="k">注意: statistic はビューアに効かないことがある</span>
+    <p><code>&lt;statistic extent&gt;</code> が変えるのは <strong>フリーカメラの初期距離の計算値</strong>だけで、
+       インタラクティブビューア（<code>launch_passive</code>）はこれを初期カメラに反映しないことがある。
+       実際 <code>mjv_defaultFreeCamera</code> が 6.0 を返していても、ビューアの見た目が変わらない。<br>
+       <strong>XML だけで確実に決めたいなら、次の「固定カメラを起動時カメラにする」を使う。</strong></p>
+  </div>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:6px">固定カメラを起動時カメラにする（確実）</h4>
+  <p><code>&lt;camera&gt;</code> を定義し、<code>&lt;global cameraid&gt;</code> でそれを起動時カメラに指定する。
+     <strong>引き具合はカメラの <code>pos</code> そのもの</strong>になるので、曖昧さがない。</p>
+
+  <div class="code"><pre>&lt;visual&gt;
+  &lt;global azimuth="140" elevation="-20" cameraid="0"/&gt;   <span class="cmt">&lt;!-- 0 番のカメラで起動 --&gt;</span>
+&lt;/visual&gt;
+
+&lt;worldbody&gt;
+  &lt;camera name="main" pos="0 -6 1.5" mode="targetbody" target="upper"/&gt;
+  ...
+&lt;/worldbody&gt;</pre></div>
+
+  <div class="callout">
+    <span class="k">launch_passive は cameraid を自動では見ない</span>
+    <p><code>mujoco.viewer.launch_passive</code> は <code>mujoco.MjvCamera()</code> を
+       <strong>まっさらな状態で作ってビューアに渡す</strong>実装になっており、
+       <code>model.vis.global_.cameraid</code> を読まない。
+       つまり XML に <code>cameraid</code> を書いてもフリーカメラのまま起動する。<br>
+       設定は XML に置いたまま、スクリプト側で<strong>それを反映する 3 行</strong>を書けばよい。
+       この 3 行は汎用なので、以後どのモデルでも XML だけで制御できるようになる。</p>
+  </div>
+
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    <span class="cmt"># XML の &lt;global cameraid="..."&gt; を反映する</span>
+    if model.vis.global_.cameraid &gt;= 0:
+        viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        viewer.cam.fixedcamid = model.vis.global_.cameraid
+
+    while viewer.is_running():
+        ...</pre></div>
+
+  <p>ビューア左パネルの <strong>Camera セレクタ</strong>に <code>Free / main</code> が並んでいれば、
+     カメラ定義自体は正しく読まれている。手動で切り替えることもできる。</p>
+
+  <p><code>cameraid</code> は <code>&lt;camera&gt;</code> を定義した順のインデックス（1 台目が <code>0</code>）。
+     <code>-1</code> がフリーカメラで、これが既定。
+     ビューアの <strong>Camera セレクタ</strong>で <code>Free</code> に戻せば、いつでもマウス操作の軌道カメラに切り替わる。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>設定</th><th>効く対象</th><th>確実性</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;statistic extent&gt;</code></td><td>フリーカメラの初期距離</td><td>ビューアでは反映されないことがある</td></tr>
+        <tr><td><code>&lt;camera&gt;</code> + <code>&lt;global cameraid&gt;</code></td><td><strong>起動時カメラそのもの</strong></td><td>確実。ただし <code>launch_passive</code> では上の 3 行で反映が必要</td></tr>
+        <tr><td><code>viewer.cam.distance</code>（Python）</td><td>実行時の上書き</td><td>確実。ただしスクリプトごと</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>好きな位置から見たいなら <code>&lt;camera&gt;</code> を置く。何台でも定義でき、
+     ビューアの <strong>Camera セレクタ</strong>で切り替えられる。</p>
+
+  <div class="code"><pre>&lt;worldbody&gt;
+  <span class="cmt">&lt;!-- 横から。targetbody なら常に対象を向くので向きの計算が不要 --&gt;</span>
+  &lt;camera name="side" pos="0 -3.5 1.2" mode="targetbody" target="upper"/&gt;
+
+  <span class="cmt">&lt;!-- 正面から。xyaxes で向きを直接指定 --&gt;</span>
+  &lt;camera name="front" pos="3.5 0 1.0" xyaxes="0 1 0  0 0 1"/&gt;
+
+  <span class="cmt">&lt;!-- 真上から --&gt;</span>
+  &lt;camera name="top" pos="0 0 4" xyaxes="1 0 0  0 1 0"/&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p><code>xyaxes</code> は「カメラの x 軸と y 軸を world のどの向きに合わせるか」の指定。
+     <strong>カメラは自分の -z 方向を見る</strong>。慣れるまでは <code>targetbody</code> のほうが楽。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>mode</th><th>挙動</th><th>使いどころ</th></tr></thead>
+      <tbody>
+        <tr><td><code>fixed</code>（既定）</td><td>置いた場所に固定</td><td>定点観測、動画撮影</td></tr>
+        <tr><td><code>targetbody</code></td><td>位置は固定、<strong>常に対象を向く</strong></td><td>振り子・アームの観察</td></tr>
+        <tr><td><code>track</code></td><td><strong>対象と一緒に移動</strong>、向きはワールド固定</td><td><strong>Step 10 の歩行</strong>。追いかけカメラ</td></tr>
+        <tr><td><code>trackcom</code></td><td>重心を追う</td><td>多リンクの全体を追う</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><code>track</code> は追跡したい body の中に置く。歩行ロボットが画面外に出ていかなくなる。</p>
+  <div class="code"><pre>&lt;body name="torso"&gt;
+  &lt;camera name="follow" pos="0 -3 1" mode="track"/&gt;
+  ...
+&lt;/body&gt;</pre></div>
+
+  <p>Python から切り替えるとき、およびオフスクリーン描画のとき:</p>
+  <div class="code"><pre>viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+viewer.cam.fixedcamid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, "side")
+
+renderer.update_scene(data, camera="side")     <span class="cmt"># 動画保存などのオフスクリーン描画</span></pre></div>
+
+  <div class="callout tip">
+    <span class="k">カメラの置き場所は関節軸で決まる</span>
+    <p>joint が <code>axis="0 1 0"</code>（y 軸まわり）なら、運動は <strong>x-z 平面内</strong>で起きる。
+       これを観察するには <strong>y 軸上（横）にカメラを置く</strong>必要がある。
+       x 軸上に置くと、曲がっている振り子が真っ直ぐに見えてしまう。<br>
+       カートポールも同じで、台車が x 方向に動き棒が y 軸まわりに倒れるなら、カメラは -y 側。
+       <strong>関節軸を見れば、どこから見るべきかが決まる。</strong></p>
+  </div>
+
+  <h3>ワールド原点に 3 軸を表示する</h3>
+  <p>座標軸が見えていると、<code>pos</code> の符号ミスや <code>axis</code> の向き違いが即座に分かる。
+     方法は 2 つあり、<strong>まずは方法 1 で十分</strong>。</p>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:4px">方法 1: ビューアの Frame 表示（XML 不要・推奨）</h4>
+  <p>ビューア左の <strong>Rendering パネル → Frame</strong> を <code>World</code> にする。
+     太い RGB の矢印で原点の 3 軸が出る。<code>Body</code> にすれば全 body の座標系が出るので、
+     <strong>親相対座標がどう積み重なっているかが一目で分かる</strong>。</p>
+
+  <p>起動時から出しておきたいなら Python から指定する。</p>
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    with viewer.lock():                                    <span class="cmt"># UI は別スレッドなのでロックする</span>
+        viewer.opt.frame = mujoco.mjtFrame.mjFRAME_WORLD   <span class="cmt"># 原点の 3 軸</span>
+        viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True   <span class="cmt"># 関節軸も一緒に</span></pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>mjtFrame の値</th><th>表示されるもの</th></tr></thead>
+      <tbody>
+        <tr><td><code>mjFRAME_NONE</code>（既定）</td><td>なし</td></tr>
+        <tr><td><code>mjFRAME_WORLD</code></td><td><strong>ワールド原点の 3 軸</strong></td></tr>
+        <tr><td><code>mjFRAME_BODY</code></td><td>全 body の座標系。<strong>親相対座標の確認に最適</strong></td></tr>
+        <tr><td><code>mjFRAME_GEOM</code> / <code>mjFRAME_SITE</code></td><td>各 geom / site の座標系</td></tr>
+        <tr><td><code>mjFRAME_CAMERA</code> / <code>mjFRAME_LIGHT</code></td><td>カメラ・ライトの向き</td></tr>
+        <tr><td><code>mjFRAME_CONTACT</code></td><td>接触点の座標系。Step 3 の接触デバッグで使う</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:10px">方法 2: XML に site で描く</h4>
+  <p>常に出しておきたい、色や長さを自分で決めたいときはこちら。
+     <strong><code>geom</code> ではなく <code>site</code> を使うこと。</strong></p>
+
+  <div class="code"><pre>&lt;worldbody&gt;
+  &lt;site name="axis_x" type="cylinder" fromto="0 0 0.002  0.4 0 0.002" size="0.008" rgba="0.9 0.15 0.15 1"/&gt;
+  &lt;site name="axis_y" type="cylinder" fromto="0 0 0.002  0 0.4 0.002" size="0.008" rgba="0.15 0.7 0.2 1"/&gt;
+  &lt;site name="axis_z" type="cylinder" fromto="0 0 0      0 0 0.4"     size="0.008" rgba="0.2 0.35 0.9 1"/&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p>色は世界共通の慣習で <strong>赤 = X / 緑 = Y / 青 = Z</strong>（RGB = XYZ）。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th><code>geom</code></th><th><code>site</code></th></tr></thead>
+      <tbody>
+        <tr><td>衝突判定</td><td><strong>する</strong></td><td>しない</td></tr>
+        <tr><td>質量・慣性への寄与</td><td><strong>する</strong></td><td>しない</td></tr>
+        <tr><td>用途</td><td>実体のある物体</td><td>マーカー、センサ取付点、目標位置</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><code>geom</code> で軸を描くと<strong>見た目の飾りが物理に混入する</strong>
+     （見えない棒に衝突する、質量が増えて周期が変わる）。<code>site</code> なら物理は一切変わらない。</p>
+
+  <div class="callout">
+    <span class="k">site が見えないときの 3 つの原因</span>
+    <p><strong>1. group が 3 以上</strong> — MuJoCo の初期表示は group 0-2 のみ
+       （<code>sitegroup = [1,1,1,0,0,0]</code>）。<code>group</code> を書かなければ 0 なので出る。<br>
+       <strong>2. <code>size</code> の桁違い</strong> — <code>size</code> は<strong>半径</strong>。
+       <code>0.008</code> = 8mm。<code>0.8</code> と書くと画面を覆う巨大な円盤になる。<br>
+       <strong>3. 床に埋まっている</strong> — X 軸と Y 軸は <code>z=0</code> の plane と同じ高さなので半分埋まる。
+       上の例で <code>0.002</code> だけ浮かせているのはこのため。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 2 で本当に効くのは Joint 表示</span>
+    <p>原点の軸より重要なのが <strong>Rendering パネルの Joint 表示</strong>。
+       <code>axis="0 1 0"</code> と書いた関節が意図した向きに付いているかは、
+       数字を睨むより見るほうが確実。<strong>回転軸を間違えたまま気づかず RL を回す事故</strong>は
+       初期に非常によく起きる。カートポールを組んだら必ず ON にして確認すること。</p>
+  </div>
+
+  <h3>Python 側から変えることもできる</h3>
+  <p>描画パラメータは <code>MjModel</code> の中にあり、実行時に書き換えられる。</p>
+  <div class="code"><pre>model.vis.headlight.ambient[:] = [0.30, 0.30, 0.30]
+model.vis.headlight.diffuse[:] = [0.35, 0.35, 0.35]
+
+model.vis.global_.azimuth = 140      <span class="cmt"># global は Python の予約語なので global_</span>
+model.vis.global_.elevation = -20
+
+fid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+model.geom_rgba[fid] = [0.85, 0.87, 0.85, 1]</pre></div>
+
+  <p>ビューアのカメラと表示オプションは <code>viewer</code> 側にある。</p>
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    viewer.cam.distance = 3.0
+    viewer.cam.lookat[:] = [0, 0, 0.6]
+    viewer.cam.azimuth = 140
+    viewer.cam.elevation = -20
+
+    with viewer.lock():          <span class="cmt"># UI は別スレッドなのでロックしてから触る</span>
+        viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True   <span class="cmt"># 関節軸を常時表示</span></pre></div>
+
+  <h3>どちらに書くべきか</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>XML に書く</th><th>Python に書く</th></tr></thead>
+      <tbody>
+        <tr><td>向いているもの</td><td><strong>モデル固有の見た目</strong>。床、照明、既定カメラ、部品の色</td>
+            <td><strong>スクリプトごとの都合</strong>。デバッグ表示、実行時に切り替えたいもの</td></tr>
+        <tr><td>適用範囲</td><td>そのモデルを開く全スクリプト</td><td>そのスクリプトだけ</td></tr>
+        <tr><td>git</td><td>モデルの差分として残る</td><td>コードの差分として残る</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>推奨は XML。</strong> <code>view_model.py</code>・学習スクリプト・評価スクリプトのどれから開いても
+     同じ見た目になる。Python 側に書くと、スクリプトを増やすたびにコピーすることになる。</p>
+
+  <div class="callout">
+    <span class="k">Step 11 への伏線: 照明のドメインランダマイゼーション</span>
+    <p>「描画は物理に影響しない」には例外がある。<strong>カメラ画像を観測に使う方策</strong>を作る場合、
+       照明は方策の入力そのものになる。実機の照明環境はシミュと必ず違うので、
+       学習中に毎エピソード <code>model.light_diffuse</code> や <code>headlight</code> を
+       ランダムに変えて頑健化する。<br>
+       そのときに使うのが、ここで見た<strong>「Python から実行時に書き換えられる」</strong>という性質。</p>
+  </div>
+</section>
+
+<!-- ===== 7 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">08</div>
     <h2>actuator — ついに動かせるようになる</h2>
     <p><code>nu = 0</code> だった振り子に、モータを 1 つ付ける。</p>
   </div>
@@ -586,7 +1024,7 @@ mujoco.mj_step(model, data)</pre></div>
 <!-- ===== 8 ===== -->
 <section>
   <div class="sec-head">
-    <div class="eyebrow">08</div>
+    <div class="eyebrow">09</div>
     <h2>default — 繰り返しをまとめる</h2>
     <p>脚が 4 本ある、関節が 12 個ある、といったモデルで同じ属性を書き続けるのは苦痛。
        <code>&lt;default&gt;</code> は CSS のクラスに近い仕組み。</p>
@@ -614,7 +1052,7 @@ mujoco.mj_step(model, data)</pre></div>
 <!-- ===== 9 ===== -->
 <section>
   <div class="sec-head">
-    <div class="eyebrow">09</div>
+    <div class="eyebrow">10</div>
     <h2>sensor — 実機センサとの接点</h2>
     <p>「シミュレーション上で何が測れるか」を宣言する。
        <strong>実機で測れないものをここに書いてはいけない</strong>、という制約意識がここで芽生える。</p>
@@ -653,7 +1091,7 @@ mujoco.mj_step(model, data)</pre></div>
 <!-- ===== 10 ===== -->
 <section>
   <div class="sec-head">
-    <div class="eyebrow">10 · 課題</div>
+    <div class="eyebrow">11 · 課題</div>
     <h2>手を動かす</h2>
     <p>ここからが本番。<strong>骨格だけ示すので、埋めながら書くこと。</strong></p>
   </div>
@@ -745,7 +1183,7 @@ print(data.qpos, data.sensordata)    <span class="cmt"># 振り子は回り続�
 <!-- ===== 11 ===== -->
 <section>
   <div class="sec-head">
-    <div class="eyebrow">11</div>
+    <div class="eyebrow">12</div>
     <h2>よく出るエラーと対処</h2>
   </div>
   <div class="tw">
@@ -772,7 +1210,7 @@ print(data.qpos, data.sensordata)    <span class="cmt"># 振り子は回り続�
 <!-- ===== 12 ===== -->
 <section>
   <div class="sec-head">
-    <div class="eyebrow">12</div>
+    <div class="eyebrow">13</div>
     <h2>完了条件</h2>
     <p>チェック状態はこのブラウザに保存される。全部埋まったら報告すること。</p>
   </div>

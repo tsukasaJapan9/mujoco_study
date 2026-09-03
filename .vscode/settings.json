@@ -1,0 +1,21 @@
+{
+  "[xml]": {
+    "editor.defaultFormatter": "redhat.vscode-xml",
+    "editor.formatOnSave": true
+  },
+  // MJCF は属性が多く 1 行が長い。既定の 100 桁折り返しだと属性がバラバラに改行されるので無効化
+  "xml.format.maxLineWidth": 0,
+  "xml.format.splitAttributes": "preserve",
+  "xml.format.preserveAttributeLineBreaks": true,
+  // 既存の書き方に合わせて <geom .../> の前に空白を入れない
+  "xml.format.spaceBeforeEmptyCloseTag": false,
+  "xml.format.enforceQuoteStyle": "preserve",
+
+  // Cursor の Python 型チェックは Pylance ではなく cursorpyright。
+  // mujoco は型スタブを同梱していないので該当の誤検出だけ黙らせる
+  "cursorpyright.analysis.typeCheckingMode": "standard",
+  "cursorpyright.analysis.diagnosticSeverityOverrides": {
+    "reportAttributeAccessIssue": "none",
+    "reportMissingTypeStubs": "none"
+  }
+}

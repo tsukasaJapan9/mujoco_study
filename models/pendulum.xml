@@ -21,7 +21,7 @@
   </asset>
   <worldbody>
     <!-- シーンを見るカメラ -->
-    <camera name="main" pos="0 -3 1.5" mode="targetbody" target="upper"/>
+    <camera name="main" pos="0 -3 1.5" mode="targetbody" target="pole"/>
 
     <!-- キーライト: 影を落とす主光源 -->
     <light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" specular="0.15 0.15 0.15" castshadow="true"/>
@@ -37,15 +37,17 @@
     <site name="axis_y" type="cylinder" fromto="0 0 0.002  0 0.4 0.002" size="0.008" rgba="0.15 0.7 0.2 1"/>
     <site name="axis_z" type="cylinder" fromto="0 0 0      0 0 0.4" size="0.008" rgba="0.2 0.35 0.9 1"/>
 
-    <body name="upper" pos="0 0 1">              <!-- world から見て高さ 1m -->
-      <joint name="j1" type="hinge" axis="0 1 0"/>
-      <geom type="capsule" material="link" fromto="0 0 0  0 0 -0.5" size="0.02"/>
-
-      <body name="lower" pos="0 0 -0.5">         <!-- upper から見て 0.5m 下 -->
-        <joint name="j2" type="hinge" axis="0 1 0"/>
-        <geom type="capsule" material="link" fromto="0 0 0  0 0 -0.4" size="0.02"/>
-      </body>
+    <!-- ロボットの定義 -->
+    <body name="pole" pos="0 0 1">
+      <joint name="hinge" type="hinge" axis="0 1 0" damping="0.05"/>
+      <geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/>
     </body>
   </worldbody>
-
+  <actuator>
+    <motor name="torque" joint="hinge" gear="1" ctrlrange="-2 2"/>
+  </actuator>
+  <sensor>
+    <jointpos name="theta" joint="hinge"/>
+    <jointvel name="omega" joint="hinge"/>
+  </sensor>
 </mujoco>

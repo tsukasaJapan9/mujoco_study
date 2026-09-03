@@ -11,6 +11,7 @@ MODELS = ROOT / "models"
 
 # mjtJoint の並び順（0=free, 1=ball, 2=slide, 3=hinge）
 JOINT_TYPES = ("free", "ball", "slide", "hinge")
+SENSOR_PREFIX = len("mjSENS_")
 
 
 def load(name):
@@ -40,6 +41,12 @@ def summary(model):
       f"qposadr={model.jnt_qposadr[j]} dofadr={model.jnt_dofadr[j]}"
     )
 
+  for s in range(model.nsensor):
+    name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_SENSOR, s)
+    stype = mujoco.mjtSensor(model.sensor_type[s]).name[SENSOR_PREFIX:].lower()
+    adr, dim = model.sensor_adr[s], model.sensor_dim[s]
+    print(f"  sensor[{s}] {name:<12} {stype:<12} adr={adr} dim={dim}")
+
   for a in range(model.nu):
     name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a)
     print(f"  actuator[{a}] {name:<12} ctrlrange={model.actuator_ctrlrange[a]}")
@@ -56,6 +63,12 @@ def main():
 
   model = load(args.model)
   data = mujoco.MjData(model)
+
+  # 初期値の設定
+  # data.qpos[0] = 0.5
+  # トルクの設定
+  data.ctrl[0] = 2.0
+
   summary(model)
 
   cam = mujoco.MjvCamera()
@@ -74,12 +87,18 @@ def main():
       viewer.cam.elevation = cam.elevation
       viewer.cam.lookat[:] = cam.lookat
 
+    i = 0
     while viewer.is_running():
       t0 = time.time()
 
       if args.sim:
         mujoco.mj_step(model, data)
         viewer.sync()
+
+        if i % 400 == 0:
+          print(
+            f"t={data.time:5.2f}  angle={data.sensordata[0]:7.3f}  rate={data.sensordata[1]:7.3f}"
+          )
         wait = model.opt.timestep / args.speed - (time.time() - t0)
         if wait > 0:
           time.sleep(wait)

@@ -7,3 +7,7 @@ models_out/
 *.zip
 *.mp4
 MUJOCO_LOG.TXT
+
+# MuJoCo ビューアのダンプ出力
+MJDATA.TXT
+MJMODEL.TXT

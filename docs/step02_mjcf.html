@@ -112,6 +112,23 @@
   .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
                text-transform:uppercase; color:var(--sim); }
 
+  /* staged tasks */
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
   /* interactive */
   .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
          box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
@@ -284,6 +301,12 @@ def summary(model):
         name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a)
         print(f"  actuator[{a}] {name:&lt;12} ctrlrange={model.actuator_ctrlrange[a]}")
 
+    for s in range(model.nsensor):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_SENSOR, s)
+        stype = mujoco.mjtSensor(model.sensor_type[s]).name[7:].lower()   <span class="cmt"># "mjSENS_" を落とす</span>
+        print(f"  sensor[{s}] {name:&lt;12} {stype:&lt;12} "
+              f"adr={model.sensor_adr[s]} dim={model.sensor_dim[s]}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="MJCF を読み込んで表示する")
@@ -329,10 +352,35 @@ uv run python sim/view_model.py cartpole.xml --sim --speed 0.25</pre></div>
   <p>起動すると、まず構造がコンソールに出る。<strong>MJCF を書いたら必ずこれを見ること。</strong>
      ビューアを眺める前に、数字が意図どおりかを確認するほうが速い。</p>
 
-  <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=0
+  <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=4
   joint[0] slider       slide  qposadr=0 dofadr=0
   joint[1] hinge        hinge  qposadr=1 dofadr=1
-  actuator[0] slide_motor  ctrlrange=[-3.  3.]</pre></div>
+  actuator[0] slide_motor  ctrlrange=[-1.  1.]
+  sensor[0] cart_pos     jointpos     adr=0 dim=1
+  sensor[1] cart_vel     jointvel     adr=1 dim=1
+  sensor[2] pole_angle   jointpos     adr=2 dim=1
+  sensor[3] pole_rate    jointvel     adr=3 dim=1</pre></div>
+
+  <div class="callout">
+    <span class="k">nsensor と nsensordata は一致しない</span>
+    <p>センサによっては複数の値を返す。<code>framepos</code> は 3 次元、<code>framequat</code> は 4 次元、
+       <code>gyro</code> は 3 次元。だから <strong>センサ 3 個で nsensordata が 5</strong> になったりする。<br>
+       <code>data.sensordata</code> の何番目がどのセンサかは <code>sensor_adr</code>（開始位置）と
+       <code>sensor_dim</code>（値の個数）を見る。</p>
+  </div>
+
+  <div class="code"><pre>adr, dim = model.sensor_adr[i], model.sensor_dim[i]
+value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサの値</span></pre></div>
+
+  <p><code>jointpos</code> と <code>jointvel</code> だけなら <code>dim=1</code> なので順番どおりに並ぶが、
+     IMU を使い始めると必ずこの計算が要る。Step 12 の実機モデルでは避けて通れない。</p>
+
+  <div class="callout tip">
+    <span class="k">sensordata も導出量</span>
+    <p><code>data.sensordata</code> は <strong><code>mj_forward</code> か <code>mj_step</code> を
+       呼ぶまでゼロのまま</strong>。<code>xpos</code> と同じで、<code>qpos</code> から計算される量だから。
+       値を確認したいときは <code>mj_forward</code> の後で読むこと。</p>
+  </div>
 
   <h3>モデル点検のチェックポイント</h3>
   <ul>
@@ -342,6 +390,7 @@ uv run python sim/view_model.py cartpole.xml --sim --speed 0.25</pre></div>
     <li><code>ctrlrange</code> が <code>[0. 0.]</code> なら未指定。実機のトルク上限を反映させること</li>
     <li>ビューアでは <strong>Rendering パネルの Joint を ON</strong> にして、関節軸の向きを目視確認する</li>
   </ul>
+</section>
 
 <!-- ===== 2 ===== -->
 <section>
@@ -1093,90 +1142,298 @@ mujoco.mj_step(model, data)</pre></div>
   <div class="sec-head">
     <div class="eyebrow">11 · 課題</div>
     <h2>手を動かす</h2>
-    <p>ここからが本番。<strong>骨格だけ示すので、埋めながら書くこと。</strong></p>
+    <p>段階ごとに区切ってある。<strong>各段階の最後で必ずビューアを開いて確認すること。</strong>
+       まとめて書いてから動かすと、どこで壊れたのか分からなくなる。
+       「少し書く → 見る」の反復が、モデリングでは最も速い。</p>
   </div>
 
+  <!-- ============ 課題 1 ============ -->
   <div class="task">
     <span class="tno">課題 1</span>
-    <h3>振り子をファイル化し、モータとセンサを付ける</h3>
-    <p><code>models/pendulum.xml</code> を作る。Step 1 の XML をベースに、次の 4 点を追加する。</p>
-    <ol>
-      <li><code>&lt;compiler angle="radian"/&gt;</code> を入れる</li>
-      <li><code>&lt;actuator&gt;</code> に <code>motor</code> を 1 つ（<code>ctrlrange</code> は <code>-2 2</code> 程度）</li>
-      <li><code>&lt;sensor&gt;</code> に <code>jointpos</code> と <code>jointvel</code></li>
-      <li><code>&lt;joint&gt;</code> に <code>damping="0.05"</code></li>
-    </ol>
-    <p><strong>確認すること</strong></p>
-    <div class="code"><pre>print(model.nu)                      <span class="cmt"># 1 になったか</span>
-print(model.nsensordata)             <span class="cmt"># 2 になったか</span>
+    <h3>振り子にモータとセンサを付ける</h3>
+    <p><code>nu = 0</code>（誰も動かせない）から <code>nu = 1</code>（トルクを与えられる）へ。
+       ここを越えると制御と強化学習の話が始まる。</p>
 
-data.ctrl[0] = 1.0                   <span class="cmt"># 一定トルクを与え続ける</span>
-for _ in range(500):
+    <div class="stage">
+      <div class="sh"><span class="sn">1-1</span><h4>単振り子に戻す</h4></div>
+      <p>§04 の説明で二重振り子にしたなら、まず単振り子に戻す。
+         二重振り子は <code>models/double_pendulum.xml</code> として別ファイルに退避しておくこと
+         （課題 3 でそのまま使う）。</p>
+      <div class="code"><pre>&lt;worldbody&gt;
+  &lt;body name="pole" pos="0 0 1"&gt;
+    &lt;joint name="hinge" type="hinge" axis="0 1 0"/&gt;
+    &lt;geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/&gt;
+  &lt;/body&gt;
+&lt;/worldbody&gt;</pre></div>
+      <p class="why"><b>なぜ</b> 課題は 1 自由度が前提。二重振り子のままだと <code>nq</code> も
+         <code>nu</code> も想定と変わり、確認したい数字が読めなくなる。
+         <b>確認</b> <code>uv run view_model.py pendulum.xml</code> で <code>njnt=1</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-2</span><h4>damping を足す</h4></div>
+      <div class="code"><pre>&lt;joint name="hinge" type="hinge" axis="0 1 0" damping="0.05"/&gt;</pre></div>
+      <p class="why"><b>なぜ</b> 実機の軸受けやグリスには必ず抵抗がある。
+         <code>damping</code> が無いと振り子は永久に揺れ続け、現実と乖離する。
+         値は「実測して合わせる」もので、Step 11 のシステム同定で調整対象になる。
+         <b>確認</b> <code>--sim</code> で動かし、振幅が徐々に小さくなること。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-3</span><h4>モータを付ける（nu = 1 になる）</h4></div>
+      <p><code>&lt;/worldbody&gt;</code> の<strong>後ろ</strong>に追加する。</p>
+      <div class="code"><pre>&lt;actuator&gt;
+  &lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-2 2"/&gt;
+&lt;/actuator&gt;</pre></div>
+      <p class="why"><b>joint="hinge"</b> でどの関節を駆動するか指定する。名前が一致していないとエラー。<br>
+         <b>gear="1"</b> は <code>実トルク = ctrl × gear</code>。減速機付きモータをモデル化するときここが効く。<br>
+         <b>ctrlrange="-2 2"</b> は<strong>実機のトルク上限</strong>に対応する。無制限にすると、
+         実機では出せないトルクを前提にした方策が学習されてしまう。
+         <b>確認</b> サマリに <code>nu=1</code> と <code>actuator[0] torque ctrlrange=[-2. 2.]</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-4</span><h4>センサを付ける</h4></div>
+      <div class="code"><pre>&lt;sensor&gt;
+  &lt;jointpos name="theta" joint="hinge"/&gt;
+  &lt;jointvel name="omega" joint="hinge"/&gt;
+&lt;/sensor&gt;</pre></div>
+      <p class="why"><b>なぜ</b> <code>data.qpos</code> を直接読めば同じ値は得られるが、
+         <strong>実機で測れるものだけを sensor として宣言する</strong>癖をつけるためにこう書く。
+         この区別が Step 11 の「特権情報」の議論に直結する。<br>
+         <b>並び順</b> <code>data.sensordata</code> は<strong>定義した順</strong>に値が並ぶ。
+         <code>sensordata[0]</code> が角度、<code>[1]</code> が角速度。
+         <b>確認</b> <code>nsensordata=2</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-5</span><h4>トルクを与えて動かす</h4></div>
+      <p><strong>実行する前に予想すること。</strong> 一定トルク 1.0 を与え続けたら、
+         振り子は回り続けるか、それともある角度で釣り合って止まるか。</p>
+      <div class="code"><pre>data.ctrl[0] = 1.0                  <span class="cmt"># トルク 1.0 N·m を与え続ける</span>
+
+for i in range(2000):
     mujoco.mj_step(model, data)
-print(data.qpos, data.sensordata)    <span class="cmt"># 振り子は回り続ける？ 途中で止まる？</span></pre></div>
-    <p><strong>考えること</strong>: 一定トルク 1.0 を与え続けたとき、振り子はどうなるか。
-       回り続けるか、ある角度で釣り合って止まるか。<strong>まず予想してから実行すること。</strong>
-       <code>ctrlrange</code> を <code>-0.5 0.5</code> に狭めると結果は変わるか。</p>
+    if i % 400 == 0:
+        print(f"t={data.time:5.2f}  angle={data.sensordata[0]:7.3f}  rate={data.sensordata[1]:7.3f}")</pre></div>
+      <p class="why"><b>見どころ</b> 重力の復元トルクは <code>-m·g·d·sin θ</code> で、
+         θ が 90° のとき最大 <code>m·g·d</code> になる。この値とモータのトルクの<strong>大小関係</strong>が
+         結果を決める。振り子の <code>m·g·d</code> は約 1.62 N·m だった（Step 1 で計算した値）。
+         トルク 1.0 はそれより小さい。ならばどうなるか。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-6</span><h4>トルク上限を変えて比べる</h4></div>
+      <div class="code"><pre>&lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-0.5 0.5"/&gt;</pre></div>
+      <p class="why"><b>なぜ</b> <code>ctrl</code> に 1.0 を書いても、<code>ctrlrange</code> の外なら
+         <strong>0.5 に切り詰められる</strong>。「指令したのに動かない」の典型原因。<br>
+         <b>Step 4 への接続</b> トルク上限が <code>m·g·d</code> より小さいと、
+         振り子は<strong>力任せには持ち上がらない</strong>。何度も揺すって勢いをつけるしかない。
+         これがスイングアップが面白い問題になる理由そのもの。</p>
+    </div>
   </div>
 
+  <!-- ============ 課題 2 ============ -->
   <div class="task">
     <span class="tno">課題 2 · 本題</span>
     <h3>カートポールをゼロから組む</h3>
-    <p>台車（cart）がレール上を左右に滑り、その上に棒（pole）が立っている系。
-       <strong>強化学習の「Hello World」</strong>で、Step 5 以降でずっと使う。</p>
+    <p>台車がレール上を滑り、その上に棒が立つ系。<strong>強化学習の Hello World</strong> で、
+       Step 5 以降ずっと使う。完成形は <code>nq=2 nv=2 nu=1</code> になる。</p>
 
-    <p>構造はこうなる。<strong>body の入れ子と joint の型</strong>を自分で決めること。</p>
-    <div class="code"><pre>&lt;mujoco model="cartpole"&gt;
+    <div class="stage">
+      <div class="sh"><span class="sn">2-1</span><h4>器を作る（床とシーンだけ）</h4></div>
+      <p><code>models/cartpole.xml</code> を新規作成。まずロボット抜きで、床が映ることだけ確認する。</p>
+      <div class="code"><pre>&lt;mujoco model="cartpole"&gt;
   &lt;compiler angle="radian"/&gt;
   &lt;option timestep="0.002"/&gt;
+  &lt;statistic extent="2" center="0 0 0.6"/&gt;
+
+  &lt;visual&gt;
+    &lt;headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/&gt;
+    &lt;global azimuth="90" elevation="-15" cameraid="0"/&gt;
+  &lt;/visual&gt;
+
+  &lt;asset&gt;
+    &lt;texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/&gt;
+    &lt;texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/&gt;
+    &lt;material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.05"/&gt;
+    &lt;material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/&gt;
+    &lt;material name="rail" rgba="0.55 0.58 0.60 1"/&gt;
+  &lt;/asset&gt;
 
   &lt;worldbody&gt;
-    &lt;light pos="0 0 3"/&gt;
-    &lt;geom name="floor" type="plane" size="3 3 0.1" rgba="0.85 0.9 0.87 1"/&gt;
-
-    <span class="cmt">&lt;!-- TODO: レール（見た目だけ。衝突させない） --&gt;</span>
-
-    &lt;body name="cart" pos="0 0 0.5"&gt;
-      <span class="cmt">&lt;!-- TODO: x 方向に滑る joint。type と axis は？ --&gt;</span>
-      <span class="cmt">&lt;!-- TODO: 台車の geom（box） --&gt;</span>
-
-      &lt;body name="pole" pos="0 0 0"&gt;
-        <span class="cmt">&lt;!-- TODO: 回転する joint。軸の向きは？ --&gt;</span>
-        <span class="cmt">&lt;!-- TODO: 棒の geom（capsule）。上向きに伸ばす --&gt;</span>
-      &lt;/body&gt;
-    &lt;/body&gt;
+    &lt;camera name="main" pos="0 -3.5 1.0" mode="targetbody" target="cart"/&gt;
+    &lt;light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" castshadow="true"/&gt;
+    &lt;geom name="floor" type="plane" size="3 3 0.05" material="grid"/&gt;
   &lt;/worldbody&gt;
-
-  &lt;actuator&gt;
-    <span class="cmt">&lt;!-- TODO: cart の joint を駆動する motor --&gt;</span>
-  &lt;/actuator&gt;
 &lt;/mujoco&gt;</pre></div>
+      <p class="why"><b>注意</b> このままだと <code>camera</code> が存在しない body <code>cart</code> を
+         参照しているのでエラーになる。2-2 で <code>cart</code> を作るまでは、
+         camera の行を一時的にコメントアウトしておくとよい。<br>
+         <b>確認</b> <code>uv run view_model.py cartpole.xml</code> で床だけが見える。</p>
+    </div>
 
-    <p><strong>自分で答えを出すポイント</strong></p>
-    <ul>
-      <li>台車を x 方向に動かす joint の <code>type</code> と <code>axis</code> は？</li>
-      <li>棒が倒れる回転軸は x・y・z のどれ？（台車が x 方向に動くとき、棒は何軸まわりに倒れる？）</li>
-      <li>棒は body 原点から見て<strong>上向き</strong>に伸ばす。<code>fromto</code> をどう書く？</li>
-      <li><code>pole</code> の <code>pos</code> が <code>0 0 0</code> なのはなぜ問題ないか</li>
-      <li>モータは cart と pole のどちらに付ける？（付けないほうが<strong>劣駆動</strong>になる）</li>
-    </ul>
+    <div class="stage">
+      <div class="sh"><span class="sn">2-2</span><h4>レールを引く（見た目だけ）</h4></div>
+      <div class="code"><pre>&lt;geom name="rail" type="capsule" fromto="-1.6 0 0.5  1.6 0 0.5" size="0.01" material="rail" contype="0" conaffinity="0"/&gt;</pre></div>
+      <p class="why"><b>contype="0" conaffinity="0"</b> が肝。これを付けた geom は
+         <strong>衝突計算に一切参加せず、描画だけされる</strong>。
+         レールは「台車がここを通る」ことを目で示すための飾りで、物理的に台車を支えているわけではない。
+         支えているのは次に作る <code>slide</code> 関節のほう。</p>
+    </div>
 
-    <p><strong>完成したら確認</strong></p>
-    <div class="code"><pre>print(f"nq={model.nq} nv={model.nv} nu={model.nu}")   <span class="cmt"># 2 2 1 になるはず</span></pre></div>
-    <p>ビューアで開き、<strong>Rendering パネルの Joint 表示を ON</strong> にして、
-       関節軸が意図した向きに付いているか目で確認すること。
-       棒を少し傾けた初期値を与えて、倒れる方向が自然か見る。</p>
+    <div class="stage">
+      <div class="sh"><span class="sn">2-3</span><h4>台車を作る — ここが最初の判断</h4></div>
+      <p>台車を <strong>x 方向にだけ滑らせる</strong>には、joint の <code>type</code> と
+         <code>axis</code> をどう書くか。§05 の表を見て自分で決めること。</p>
+      <div class="code"><pre>&lt;body name="cart" pos="0 0 0.5"&gt;
+  &lt;joint name="slider" type="???" axis="? ? ?" range="-1.5 1.5"/&gt;
+  &lt;geom name="cart_geom" type="box" size="0.1 0.05 0.05" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;joint name="slider" type="slide" axis="1 0 0" range="-1.5 1.5"/&gt;</pre></div>
+          <p class="why"><b>slide</b> は直動関節。<code>axis="1 0 0"</code> で x 方向に限定される。
+             上下にも前後にも動かないのは、その自由度を<strong>作っていない</strong>から。
+             実機ならリニアガイドに相当する。<br>
+             <b>range</b> はメカストッパ。実機のレールには端がある。<br>
+             <b>size="0.1 0.05 0.05"</b> は box なので<strong>半分の長さ</strong>。
+             実寸は 20cm × 10cm × 10cm。<br>
+             <b>台車が落ちない理由</b> 鉛直方向の自由度が無いから。重力は掛かっているが、
+             動ける方向が x しかないので落ちようがない。</p>
+        </div>
+      </details>
+      <p class="why"><b>確認</b> <code>nq=1 nv=1</code>。ビューアで <strong>Rendering → Joint を ON</strong> にして、
+         矢印が x 方向を向いているか目で見る。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-4</span><h4>棒を載せる — ここが最大の考えどころ</h4></div>
+      <p><code>cart</code> の<strong>子</strong>として <code>pole</code> を作る。
+         棒が倒れる回転軸は x・y・z のどれか。<br>
+         ヒント: 台車は x 方向に動く。棒はその動きに合わせて<strong>どの平面内で</strong>倒れてほしいか。
+         その平面に<strong>垂直な軸</strong>が回転軸になる。</p>
+      <div class="code"><pre>&lt;body name="pole" pos="0 0 0"&gt;
+  &lt;joint name="hinge" type="hinge" axis="? ? ?"/&gt;
+  &lt;geom name="pole_geom" type="capsule" fromto="? ? ?  ? ? ?" size="0.02" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;body name="pole" pos="0 0 0"&gt;
+  &lt;joint name="hinge" type="hinge" axis="0 1 0"/&gt;
+  &lt;geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 0.6" size="0.02" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+          <p class="why"><b>axis="0 1 0"</b> — 台車が x 方向に動くので、棒は
+             <strong>x-z 平面内</strong>で倒れてほしい。その平面に垂直な軸は y。<br>
+             <b>fromto="0 0 0  0 0 0.6"</b> — body 原点から <strong>+z 方向（上向き）</strong>に 60cm。
+             振り子のときは下向き（<code>-0.5</code>）だったが、カートポールは上に立てる。<br>
+             <b>pos="0 0 0" でよい理由</b> 親（cart）の原点＝台車の中心が、そのまま棒の回転軸の位置になる。
+             台車の上面に載せたければ <code>pos="0 0 0.05"</code> とするが、
+             物理的な違いはわずかで、まずは 0 で問題ない。</p>
+        </div>
+      </details>
+      <p class="why"><b>確認</b> <code>nq=2 nv=2</code>。Joint 表示で、
+         棒の回転軸が<strong>画面の奥行き方向</strong>を向いていること。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-5</span><h4>モータを付ける — どちらの関節に？</h4></div>
+      <p><code>slider</code> と <code>hinge</code>、どちらに <code>motor</code> を付けるか。
+         <strong>両方に付けてはいけない。</strong>その理由も考えること。</p>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;actuator&gt;
+  &lt;motor name="slide_motor" joint="slider" gear="10" ctrlrange="-1 1"/&gt;
+&lt;/actuator&gt;</pre></div>
+          <p class="why"><b>台車のほうに付ける。</b> 棒の関節はフリーのまま。
+             これで <code>nu=1</code>、<code>nv=2</code> となり <strong>劣駆動</strong>になる。<br>
+             棒を直接回すモータは存在しないので、<strong>台車を左右に動かした反作用でしか
+             棒の角度を制御できない</strong>。だから難しく、だから強化学習の題材になる。
+             両方に付けると <code>nu=nv=2</code> の完全駆動になり、
+             棒を直接立てるだけの退屈な問題に変わってしまう。<br>
+             <b>gear="10"</b> は台車を動かすのに 1 N では弱いため。
+             <code>ctrl</code> が <code>-1〜1</code>、実際の力は <code>-10〜10</code> N になる。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-6</span><h4>センサを付ける</h4></div>
+      <div class="code"><pre>&lt;sensor&gt;
+  &lt;jointpos name="cart_pos" joint="slider"/&gt;
+  &lt;jointvel name="cart_vel" joint="slider"/&gt;
+  &lt;jointpos name="pole_angle" joint="hinge"/&gt;
+  &lt;jointvel name="pole_rate" joint="hinge"/&gt;
+&lt;/sensor&gt;</pre></div>
+      <p class="why"><b>この 4 つが Step 6 の観測ベクトルになる。</b>
+         実機のカートポールでも、台車位置はエンコーダ、棒の角度もエンコーダで測れる。
+         <strong>実機で測れる 4 つだけを宣言している</strong>ことに意味がある。
+         <b>確認</b> <code>nsensordata=4</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-7</span><h4>検証する</h4></div>
+      <div class="code"><pre class="sh">uv run view_model.py cartpole.xml --sim</pre></div>
+      <p>サマリがこうなっていれば完成。</p>
+      <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=4
+  joint[0] slider       slide  qposadr=0 dofadr=0
+  joint[1] hinge        hinge  qposadr=1 dofadr=1
+  actuator[0] slide_motor  ctrlrange=[-1.  1.]</pre></div>
+      <p>次に、棒を少し傾けて倒してみる。</p>
+      <div class="code"><pre>data.qpos[1] = 0.25          <span class="cmt"># 棒を 0.25 rad 傾ける</span>
+for _ in range(600):
+    mujoco.mj_step(model, data)
+print("cart x =", data.qpos[0], " pole angle =", data.qpos[1])</pre></div>
+      <p class="why"><b>ここで一番大事な観察</b> モータ入力はゼロ（<code>data.ctrl</code> は 0）なのに、
+         <strong>台車が動く</strong>（実測で約 −0.35 m）。棒が倒れる反作用が台車を押すため。<br>
+         これが<strong>2 つの自由度が結合している</strong>ということ。
+         台車を動かせば棒に影響し、棒が動けば台車に影響する。
+         この結合こそが、台車の制御だけで棒を立てられる理由でもある。</p>
+    </div>
   </div>
 
+  <!-- ============ 課題 3 ============ -->
   <div class="task">
     <span class="tno">課題 3 · 発展（任意）</span>
-    <h3>二重振り子を作ってカオスを見る</h3>
-    <p>§04 のコード例そのままで作れる。作ったら Step 1 のログ取得コードを流用して、
-       <strong>初期角度を 0.0001 rad だけ変えた 2 本の軌道</strong>を重ねてプロットしてみること。</p>
-    <p>最初はぴったり重なっているのに、数秒後には全く違う運動になる。
-       これが<strong>カオス</strong>で、「決定的な方程式なのに長期予測が不可能」という現象。
-       強化学習が難しい問題の一因でもあり、<strong>sim2real が難しい根本理由</strong>でもある。
-       初期値のわずかな差が指数的に増幅するなら、シミュと実機の軌道は必ず乖離する。</p>
+    <h3>二重振り子でカオスを見る</h3>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-1</span><h4>モデルを用意する</h4></div>
+      <p>1-1 で退避した <code>models/double_pendulum.xml</code> を使う。
+         <code>damping</code> は <strong>0 にする</strong>（減衰があると差が消えてしまう）。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-2</span><h4>初期値をわずかに変えた 2 本を回す</h4></div>
+      <div class="code"><pre>def run(q0):
+    model = mujoco.MjModel.from_xml_path(str(MODELS / "double_pendulum.xml"))
+    data = mujoco.MjData(model)
+    data.qpos[:] = q0
+    log = np.zeros((5000, 2))
+    for i in range(5000):
+        mujoco.mj_step(model, data)
+        log[i] = [data.time, data.qpos[1]]      <span class="cmt"># 2 本目の角度を記録</span>
+    return log
+
+a = run([1.0, 1.0])
+b = run([1.0, 1.0001])          <span class="cmt"># 0.0001 rad だけ違う</span>
+
+plt.plot(a[:, 0], a[:, 1], label="q0 = 1.0000")
+plt.plot(b[:, 0], b[:, 1], label="q0 = 1.0001", alpha=0.7)</pre></div>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-3</span><h4>何が見えるか</h4></div>
+      <p class="why">最初はぴったり重なっているのに、数秒後には全く違う運動になる。これが<strong>カオス</strong>。
+         決定的な方程式なのに、長期予測が原理的に不可能になる。<br>
+         <b>Sim2Real との関係</b> これは Phase D の根本問題そのもの。
+         初期値のわずかな差が指数的に増幅するなら、<strong>シミュと実機の軌道は必ず乖離する</strong>。
+         だから sim2real の目標は「軌道を一致させること」ではなく、
+         <strong>ズレても破綻しない方策を作ること</strong>になる。この発想の転換が Step 11 の出発点。</p>
+    </div>
   </div>
 </section>
 
@@ -1196,6 +1453,12 @@ print(data.qpos, data.sensordata)    <span class="cmt"># 振り子は回り続�
             <td>geom を追加するか <code>&lt;inertial&gt;</code> を明示</td></tr>
         <tr><td>Unknown attribute / element</td><td>属性名のタイポ、その要素で使えない属性</td>
             <td>XML リファレンスでその要素の属性一覧を確認</td></tr>
+        <tr><td><code>unknown target body in camera</code><br><code>unknown joint in actuator</code> など</td>
+            <td><strong>名前参照の切れ</strong>。参照先をリネームしたのに参照側を直していない</td>
+            <td>エラーが示す行の名前を、実際の定義名と突き合わせる</td></tr>
+        <tr><td><code>unique element 'X' found 2 times</code></td>
+            <td>設定要素を 2 つ書いた（<code>&lt;global&gt;</code> など）</td>
+            <td>既存の行に<strong>属性を追加</strong>する。行を増やさない</td></tr>
         <tr><td>関節が動かない</td><td>body に joint を書いていない</td><td>親に溶接された状態。joint を追加</td></tr>
         <tr><td>可動範囲がおかしい</td><td><code>compiler angle</code> が degree のまま</td><td><code>angle="radian"</code> を明示</td></tr>
         <tr><td>モデルが一瞬で吹き飛ぶ</td><td>geom 同士が初期状態で重なっている</td><td>初期姿勢を見直す。Rendering の接触点表示で確認</td></tr>
@@ -1203,6 +1466,30 @@ print(data.qpos, data.sensordata)    <span class="cmt"># 振り子は回り続�
       </tbody>
     </table>
   </div>
+  <div class="callout">
+    <span class="k">名前参照は切れやすい</span>
+    <p>MJCF は名前による参照を多用する。<strong>参照先をリネームしたら、参照している側も直す。</strong></p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>参照する側</th><th>属性</th><th>参照先</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;camera mode="targetbody"&gt;</code></td><td><code>target</code></td><td>body 名</td></tr>
+        <tr><td><code>&lt;motor&gt;</code> / <code>&lt;position&gt;</code></td><td><code>joint</code></td><td>joint 名</td></tr>
+        <tr><td><code>&lt;jointpos&gt;</code> / <code>&lt;jointvel&gt;</code></td><td><code>joint</code></td><td>joint 名</td></tr>
+        <tr><td><code>&lt;geom&gt;</code> / <code>&lt;site&gt;</code></td><td><code>material</code></td><td>material 名</td></tr>
+        <tr><td><code>&lt;material&gt;</code></td><td><code>texture</code></td><td>texture 名</td></tr>
+        <tr><td><code>&lt;geom&gt;</code> / <code>&lt;joint&gt;</code></td><td><code>class</code></td><td>default クラス名</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>「unknown ○○ in ××」というメッセージを見たら、名前のタイポかリネーム後の直し忘れ。</strong>
+     課題 1-1 で body を <code>upper</code> → <code>pole</code>、joint を <code>j1</code> → <code>hinge</code> に
+     変えたなら、camera の <code>target</code>、motor の <code>joint</code>、sensor の <code>joint</code> も
+     すべて新しい名前にする必要がある。</p>
+
   <p>XML リファレンスは常に開いておくこと →
      <a href="https://mujoco.readthedocs.io/en/stable/XMLreference.html">MuJoCo XML Reference</a></p>
 </section>

@@ -8,7 +8,7 @@
 
 このステップが終わると、次のことができるようになります。
 
-- MuJoCo が入った venv がある
+- MuJoCo が入った uv 環境がある
 - XML でモデルを書き、Python から読み込んで動かせる
 - **`MjModel` と `MjData` の違い**を自分の言葉で説明できる
 - ビューアで 3D 表示しながらシミュレーションを回せる
@@ -20,30 +20,34 @@ MuJoCo の学習で最初につまずくのは「物理」ではなく「何が�
 
 ## 1-1. 環境構築
 
-### venv を作る
+### uv プロジェクトを作る
+
+このリポジトリは **uv** で管理する（`venv` + `pip` は使わない）。
 
 ```bash
 cd ~/works/mujoco_study
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -U pip
+uv init                # 未実施なら。pyproject.toml と .venv が作られる
+uv add mujoco
 ```
 
-以降、作業のたびに `source .venv/bin/activate` を忘れないこと。
-プロンプトの先頭に `(.venv)` が出ていれば有効です。
+**今はこれだけ入れる。** Gymnasium も PyTorch もまだ不要。
+一度に全部入れると依存衝突が起きたとき原因を切り分けられなくなる。
 
-### MuJoCo を入れる
+実行はすべて `uv run` を通す。仮想環境を手で activate する必要はない。
 
 ```bash
-pip install mujoco
+uv run python sim/hello_mujoco.py
 ```
 
-**今はこれだけ入れます。** Gymnasium も PyTorch もまだ不要です。
-一度に全部入れると依存関係の衝突が起きたとき原因が分からなくなります。
+| やりたいこと | コマンド |
+|---|---|
+| パッケージを追加 | `uv add <name>` |
+| スクリプトを実行 | `uv run python <path>` |
+| 依存を同期（clone 直後など） | `uv sync` |
 
 ### `.gitignore` を作る
 
-リポジトリ直下に以下の内容で `.gitignore` を作ってください。
+リポジトリ直下に以下の内容で `.gitignore` を作る。
 
 ```gitignore
 .venv/
@@ -59,7 +63,7 @@ models_out/
 ### 動作確認
 
 ```bash
-python -c "import mujoco; print(mujoco.__version__)"
+uv run python -c "import mujoco; print(mujoco.__version__)"
 ```
 
 バージョン番号（`3.x.x`）が出れば OK。
@@ -67,7 +71,7 @@ python -c "import mujoco; print(mujoco.__version__)"
 ### ビューアの動作確認
 
 ```bash
-python -m mujoco.viewer
+uv run python -m mujoco.viewer
 ```
 
 MuJoCo のビューアウィンドウが開けば成功です。
@@ -266,27 +270,294 @@ RL では自分がループを持つので、常にこちらを使います。
 
 ---
 
-## 1-6. 課題 3: 状態を配列に貯めてプロットする（任意だが強く推奨）
+## 1-5b. Tips: 座標軸を表示する
 
-RL の実験では「ログを取ってプロットする」を毎回やります。今のうちに癖にしてください。
+### 方法1: ビューアの機能（XML 変更不要・推奨）
 
-```bash
-pip install matplotlib
+ビューア左側の **Rendering** パネルで:
+
+| 項目 | 設定 | 表示されるもの |
+|---|---|---|
+| **Frame** | `World` | 原点の XYZ 軸 |
+| **Frame** | `Body` | 全 body の座標系（親相対座標の理解に効く） |
+| **Joint** | ON | **関節軸が矢印で表示される** |
+
+色は世界共通の慣習で **赤=X / 緑=Y / 青=Z**（RGB = XYZ）。
+
+Step 2 以降で最も重要なのは **Joint 表示**。`axis="0 1 0"` と書いた関節が意図した向きに
+付いているかは、数字を睨むより見たほうが確実。回転軸を間違えたまま気づかず RL を回す事故は
+初期に非常によく起きる。
+
+### 方法2: XML に書き込む（`geom` ではなく `site` を使う）
+
+```xml
+<worldbody>
+  <site name="axis_x" type="cylinder" fromto="0 0 0  0.3 0 0" size="0.006" rgba="1 0 0 1"/>
+  <site name="axis_y" type="cylinder" fromto="0 0 0  0 0.3 0" size="0.006" rgba="0 1 0 1"/>
+  <site name="axis_z" type="cylinder" fromto="0 0 0  0 0 0.3" size="0.006" rgba="0 0 1 1"/>
+</worldbody>
 ```
 
-角度 `qpos[0]` と角速度 `qvel[0]` の時系列をプロットしてください。
-横軸は `data.time`。位相平面（横軸 `qpos[0]`、縦軸 `qvel[0]`）も描くと、
-**閉じた軌道（エネルギー保存）**が見えます。
+**なぜ `site` なのか**:
 
-さらに `<joint>` に `damping="0.1"` を足して、位相平面が渦巻きに変わるのを確認してください。
-これが「エネルギーが散逸する」ということの目で見える形です。
+| | `geom` | `site` |
+|---|---|---|
+| 衝突判定 | **する** | しない |
+| 質量・慣性への寄与 | **する** | しない |
+| 用途 | 実体のある物体 | マーカー、センサ取付点、目標位置 |
+
+`geom` で軸を描くと**見た目のための飾りが物理に混入する**（見えない棒に衝突する、質量が増えて
+周期が変わる）。`site` は純粋な目印なので物理は一切変わらない。
+
+`site` はこの先も頻出する。`<sensor>` は site を参照するし、到達目標点や力の作用点も site。
+**「物理には関わらないが位置を知りたい点」は全部 site**。
+
+`size` は**半径**で単位はメートル。`0.006` = 半径 6mm。桁を間違えると画面を覆う巨大な円盤になる。
+
+X 軸と Y 軸は床（`z=0` の plane）と同じ高さなので半分埋まって見える。気になるなら始点を
+わずかに浮かせる（`fromto="0 0 0.001  0.3 0 0.001"`）。
+
+**`group` 属性の注意**: `group="3"` のように 3 以上を付けると、**デフォルトでは描画されない**。
+MuJoCo の初期状態は group 0-2 のみ表示で、3-5 は非表示。
+
+```
+sitegroup  [1, 1, 1, 0, 0, 0]   <- group 0,1,2 は表示 / 3,4,5 は非表示
+geomgroup  [1, 1, 1, 0, 0, 0]
+jointgroup [1, 1, 1, 0, 0, 0]
+```
+
+常に見せたいなら `group` を付けない（= group 0）。撮影時だけ消したいなど切り替えたい場合に
+`group="3"` を使い、ビューアの Rendering パネルの **Site group** で 3 番にチェックを入れる。
+
+`<body>` の中に site を置けば、その body に貼り付いて一緒に動く。振り子の body 内に置くと、
+棒と一緒に回る座標系が見えて、親相対座標がどういうことか体感できる。
+
+### MuJoCo の座標系の約束
+
+- **Z が上**（重力が `0 0 -9.81` なのはこのため）
+- **右手系**（X→Y への回転で Z が進む向き）
+- 長さの単位は **メートル**
+
+ROS や多くの CAD と同じ Z-up 右手系だが、Unity（Y-up 左手系）とは違う。
+実機の CAD から MJCF を起こす Step 12 で取り違えるとモデルが横倒しになる。
+
+---
+
+## 1-6. 課題 3: 状態を記録してプロットする
+
+RL の実験では「ログを取ってプロットする」を毎回やる。今のうちに癖にしておくこと。
+**学習が失敗したとき、原因が分かるかどうかはログの質で決まる。**
+
+```bash
+uv add matplotlib
+```
+
+### ステップ1: ログを配列に貯める
+
+ビューアと違い、ここでは**描画せずに一気に回して**後からまとめてプロットする。
+シミュレーションは実時間に縛られないので、10 秒分の物理が一瞬で終わる。
+
+```python
+import matplotlib.pyplot as plt
+import mujoco
+import numpy as np
+
+model = mujoco.MjModel.from_xml_string(XML)
+data = mujoco.MjData(model)
+data.qpos[0] = 0.1  # 初期角度 [rad]
+
+n_steps = 5000  # 0.002 s x 5000 = 10 秒ぶん
+log = np.zeros((n_steps, 3))  # 各行 [time, qpos, qvel]
+
+for i in range(n_steps):
+    mujoco.mj_step(model, data)
+    log[i] = [data.time, data.qpos[0], data.qvel[0]]
+
+t, q, v = log[:, 0], log[:, 1], log[:, 2]
+```
+
+> **なぜ `list.append` ではなく `np.zeros` で先に確保するのか**
+> ステップ数が事前に分かっているなら確保しておくほうが速く、型も揃う。
+> RL の学習ループでも「バッファを先に確保して埋める」書き方が標準。今から慣れておく。
+
+### ステップ2: 時系列と位相平面を並べて描く
+
+```python
+fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+
+# 左: 時系列
+axes[0].plot(t, q, label="angle [rad]")
+axes[0].plot(t, v, label="angular velocity [rad/s]", alpha=0.7)
+axes[0].set_xlabel("time [s]")
+axes[0].set_title("time series")
+axes[0].legend()
+axes[0].grid(alpha=0.3)
+
+# 右: 位相平面
+axes[1].plot(q, v, lw=0.8)
+axes[1].set_xlabel("angle [rad]")
+axes[1].set_ylabel("angular velocity [rad/s]")
+axes[1].set_title("phase plane")
+axes[1].grid(alpha=0.3)
+
+fig.tight_layout()
+plt.show()
+```
+
+> **ラベルは英語で書くこと。** matplotlib のデフォルトフォントは日本語グリフを持たないので、
+> 日本語を書くと豆腐（□□□）になる。日本語を出すにはフォント設定が要るが、
+> 学習用のグラフは英語で十分。
+
+### 見るべきもの
+
+**位相平面（右のグラフ）が今日の主役。** 横軸に角度、縦軸に角速度を取ると、
+振り子の状態が平面上の 1 点として表される。時間が進むとその点が軌跡を描く。
+
+| 設定 | 位相平面の形 | 意味 |
+|---|---|---|
+| `damping` なし | **閉じた楕円**（同じ軌道を回り続ける） | エネルギーが保存されている |
+| `damping="0.1"` | **内側に巻き込む渦** | エネルギーが散逸して原点に収束する |
+
+`<joint>` に `damping="0.1"` を足して、渦に変わることを確認すること。
+「エネルギーが失われる」という言葉が、目に見える形になる。
+
+この位相平面は Step 4（エネルギー整形によるスイングアップ）で再登場する。
+そのとき、**振り子を立てるとは位相平面上で特定の軌道に乗せることだ**という見方をする。
+今のうちに図の読み方に慣れておくと、そこが一気に楽になる。
+
+### ステップ3: 周期を実測する（完了条件）
+
+目視で読み取ってもよいが、コードで測ったほうが正確で速い。
+角度が**プラスからマイナスへ変わる瞬間**（下降ゼロ交差）を拾い、その間隔を平均する。
+
+```python
+idx = np.where((q[:-1] > 0) & (q[1:] <= 0))[0]  # 下降ゼロ交差のインデックス
+period = np.diff(t[idx]).mean()
+print(f"measured period = {period:.4f} s")
+```
+
+これを理論値と比べる。1-4 のヒントにある剛体棒の物理振子の式を使うこと。
+**ズレたら、その理由を考えるのがこの課題の本題。**
+
+> ヒント: 理論式は「微小振動」の仮定の上に立っている。初期角度 `0.1 rad` は微小か？
+> `data.qpos[0]` を `0.05` や `1.0` に変えて周期を測り直すと、何が起きるか。
+
+### 発展: 条件を変えて重ねて描く
+
+`damping` を変えて複数条件を比較したくなる。XML を毎回書き直すのではなく、
+**XML をテンプレートにして値を差し込み、シミュレーションを関数にまとめる**とよい。
+
+```python
+XML_TEMPLATE = """..."""  # damping の値を {damping} にしておく
+
+
+def run(damping: float, n_steps: int = 5000) -> np.ndarray:
+    """1 条件ぶん回して [time, qpos, qvel] の配列を返す"""
+    ...
+
+
+for d in [0.0, 0.05, 0.2]:
+    log = run(d)
+    plt.plot(log[:, 1], log[:, 2], label=f"damping={d}")
+```
+
+この「条件を変えて回す関数」は、Step 11 のドメインランダマイゼーションで
+**そのままの形で使う**。物理パラメータを引数に取って結果を返す構造は変わらない。
+
+### Tips: 「見る実行」と「測る実行」を分ける
+
+ビューア + `time.sleep` は**実時間**で再生する。5000 ステップ = 10 秒分の物理に現実の 10 秒かかる。
+測定のたびに待つのは無駄なので、フラグで切り替えられるようにする。
+ビューアと sleep を外せば同じ 10 秒分が **0.05 秒程度**で終わる（約 200 倍速）。
+
+```python
+import argparse, contextlib
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--view", action="store_true", help="ビューアで実時間再生する")
+args = parser.parse_args()
+
+ctx = mujoco.viewer.launch_passive(model, data) if args.view else contextlib.nullcontext()
+
+with ctx as viewer:
+    for i in range(n_steps):
+        step_start = time.time()
+        mujoco.mj_step(model, data)
+        log[i] = [data.time, data.qpos[0], data.qvel[0]]
+
+        if viewer is not None:
+            viewer.sync()
+            wait = model.opt.timestep - (time.time() - step_start)
+            if wait > 0:
+                time.sleep(wait)
+```
+
+```bash
+uv run python sim/hello_mujoco.py           # 一瞬で終わる（測定用）
+uv run python sim/hello_mujoco.py --view    # 実時間で見る
+```
+
+- `contextlib.nullcontext()` は「何もしない `with`」。`as` で受けると `None` が入るので、
+  viewer の有無でループを二重に書かずに済む
+- ループ条件を `while viewer.is_running()` から `for i in range(n_steps)` に変えている点に注意。
+  ビューアなしの実行では `is_running()` が存在しない
+
+**見るときも実時間である必要はない**:
+
+```python
+SPEED = 4.0                                            # 4 倍速
+wait = model.opt.timestep / SPEED - (time.time() - step_start)
+
+if i % 8 == 0:      # 物理 500Hz に対し画面は 60Hz 程度で十分
+    viewer.sync()
+```
+
+**なぜ重要か**: この分離はそのまま RL のコード構造になる。
+
+| 用途 | 描画 | 速度 |
+|---|---|---|
+| **学習**（Step 7〜） | なし | 実時間の数千倍。数時間で数百万ステップ |
+| **評価・デバッグ** | あり | 実時間。人間が目で確認する |
+
+SB3 でも学習時は `render_mode=None`、評価時だけ `render_mode="human"` で環境を作り直す。
+**学習ループの中で描画したら、その時点で学習は成立しない。**
+
+### 図を保存する
+
+```python
+fig.savefig("docs/img/step01_phase_plane.png", dpi=150, bbox_inches="tight")
+```
+
+`plt.show()` はウィンドウを閉じるまでプログラムが止まる。
+保存だけしたい場合や SSH 越しで実行する場合は、import の前に次を入れる。
+
+```python
+import matplotlib
+
+matplotlib.use("Agg")  # 画面を使わない描画バックエンド
+```
+
+---
+
+### 「何も見えない」ときの点検順序
+
+MuJoCo では今後も繰り返し起きる。手順として持っておくこと。
+
+1. **group が 3 以上になっていないか**（デフォルト非表示）
+2. **`rgba` の 4 番目（アルファ）が 0 になっていないか**（透明）
+3. **`size` の桁は合っているか**（小さすぎて点 / 大きすぎて画面を覆い気づかない）
+4. **他の物体の内部に埋まっていないか**（Rendering パネルの Transparent をオンにする）
+5. **そもそもモデルに入っているか** — `print(model.nsite)` / `model.ngeom` で数を確認
+
+5 は地味だが重要。XML の書き間違いでコンパイルエラーにならず要素が無視されることがある。
+数が合っていれば「モデルには入っているが見えていない」と切り分けられる。
 
 ---
 
 ## 1-7. 完了条件チェックリスト
 
-- [ ] `python -c "import mujoco; print(mujoco.__version__)"` が通る
-- [ ] `python -m mujoco.viewer` でウィンドウが開き、マウス操作できる
+- [ ] `uv run python -c "import mujoco; print(mujoco.__version__)"` が通る
+- [ ] `uv run python -m mujoco.viewer` でウィンドウが開き、マウス操作できる
 - [ ] `sim/hello_mujoco.py` が動き、状態が時間発展するのを確認した
 - [ ] `nq` / `nv` / `nu` の値と、その理由を説明できる
 - [ ] `MjModel` と `MjData` のどちらが `mj_step` で変化するか説明できる

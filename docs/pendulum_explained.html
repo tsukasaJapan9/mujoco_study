@@ -1,0 +1,788 @@
+<title>振り子モデルの解剖</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:940px; margin:0 auto; padding:0 24px 96px; }
+  h1,h2,h3 { font-family:var(--f-display); text-wrap:balance; line-height:1.4; margin:0; }
+  p { margin:0; max-width:64ch; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:64px 0 36px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:16px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+
+  section { padding-top:56px; display:flex; flex-direction:column; gap:20px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .fig { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         padding:24px 20px; box-shadow:var(--shadow); overflow-x:auto; }
+  .fig svg { display:block; width:100%; height:auto; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:10px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:520px; }
+  th,td { text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+  pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.7; background:var(--surface);
+        border:1px solid var(--rule); border-radius:4px; padding:16px 18px; overflow-x:auto; margin:0; }
+  pre .c { color:var(--muted); }
+  pre .k { color:var(--sim); }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:16px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+
+  /* ---- interactive ---- */
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:300px 1fr;
+         gap:0; overflow:hidden; }
+  .lab-controls { padding:22px 20px; border-right:1px solid var(--rule);
+                  display:flex; flex-direction:column; gap:20px; background:var(--surface-2); }
+  .lab-stage { padding:22px 20px; display:flex; flex-direction:column; gap:18px; min-width:0; }
+  .ctrl { display:flex; flex-direction:column; gap:7px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim);
+               font-variant-numeric:tabular-nums; font-weight:600; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  input[type=range]:focus-visible { outline:2px solid var(--sim); outline-offset:3px; }
+  .btns { display:flex; gap:8px; }
+  button { font-family:var(--f-display); font-size:13px; font-weight:500; cursor:pointer;
+           background:var(--surface); color:var(--ink); border:1px solid var(--rule-strong);
+           border-radius:3px; padding:7px 14px; transition:background .12s, border-color .12s; }
+  button:hover { border-color:var(--sim); color:var(--sim); }
+  button:focus-visible { outline:2px solid var(--sim); outline-offset:2px; }
+  button.primary { background:var(--sim); color:var(--surface); border-color:var(--sim); }
+  button.primary:hover { opacity:.88; color:var(--surface); }
+
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:10px 12px; display:flex; flex-direction:column; gap:2px; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:17px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  .readout .accent .rv { color:var(--sim); }
+
+  .stage-row { display:grid; grid-template-columns:230px 1fr; gap:18px; align-items:start; }
+  .plots { display:grid; grid-template-columns:1fr 1fr; gap:14px; min-width:0; }
+  .plot { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .plot .pt { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em;
+              text-transform:uppercase; color:var(--muted); font-weight:600; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+  #cv-pend { background:var(--surface-2); }
+
+  @media (max-width:860px) {
+    .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); }
+    .stage-row { grid-template-columns:1fr; }
+    .plots { grid-template-columns:1fr; }
+  }
+  ul { margin:0; padding-left:20px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Step 1 · 補助教材</div>
+  <h1>振り子モデルの解剖</h1>
+  <p>XML に 8 行書いただけの棒が、なぜあの周期で揺れるのか。
+     MJCF の記述・物理量・運動方程式・位相平面が、どう1つに繋がっているかを図で追う。</p>
+</header>
+
+<!-- ============ 1. モデルの正体 ============ -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">01</div>
+    <h2>XML に書いたものと、MuJoCo が計算したもの</h2>
+    <p>あなたが書いたのは<strong>形状</strong>だけ。質量・重心・慣性モーメントは、
+       そこから MuJoCo が導いている。この「書いた値」と「導かれた値」の区別が出発点。</p>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 380" role="img" aria-label="振り子モデルの分解図。XMLの記述から質量・重心・慣性が導出される流れ">
+      <g font-family="IBM Plex Sans JP, sans-serif" font-size="13">
+
+        <!-- left: the geometry -->
+        <text x="20" y="26" fill="var(--muted)" font-family="IBM Plex Mono, monospace"
+              font-size="11" letter-spacing="1.5">GEOMETRY</text>
+
+        <!-- ceiling -->
+        <line x1="60" y1="60" x2="240" y2="60" stroke="var(--rule-strong)" stroke-width="2"/>
+        <g stroke="var(--rule-strong)" stroke-width="1.5">
+          <line x1="70" y1="60" x2="60" y2="70"/><line x1="95" y1="60" x2="85" y2="70"/>
+          <line x1="120" y1="60" x2="110" y2="70"/><line x1="145" y1="60" x2="135" y2="70"/>
+          <line x1="170" y1="60" x2="160" y2="70"/><line x1="195" y1="60" x2="185" y2="70"/>
+          <line x1="220" y1="60" x2="210" y2="70"/><line x1="240" y1="60" x2="230" y2="70"/>
+        </g>
+
+        <!-- rod -->
+        <line x1="150" y1="60" x2="150" y2="290" stroke="var(--sim)" stroke-width="13"
+              stroke-linecap="round" opacity="0.85"/>
+
+        <!-- pivot -->
+        <circle cx="150" cy="60" r="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>
+        <text x="168" y="52" fill="var(--ink)" font-weight="500">回転軸 (hinge)</text>
+        <text x="168" y="70" fill="var(--muted)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">body 原点 · z = 0</text>
+
+        <!-- COM -->
+        <circle cx="150" cy="175" r="8" fill="var(--real)"/>
+        <circle cx="150" cy="175" r="3.2" fill="var(--surface)"/>
+        <text x="168" y="171" fill="var(--real)" font-weight="500">重心 (COM)</text>
+        <text x="168" y="189" fill="var(--muted)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">z = −0.25 · 質量が集中する点</text>
+
+        <!-- tip -->
+        <text x="168" y="296" fill="var(--muted)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">z = −0.5 · 棒の先端</text>
+
+        <!-- dimension d -->
+        <g stroke="var(--real)" stroke-width="1.3">
+          <line x1="105" y1="60" x2="105" y2="175"/>
+          <line x1="99" y1="60" x2="111" y2="60"/>
+          <line x1="99" y1="175" x2="111" y2="175"/>
+        </g>
+        <text x="97" y="122" fill="var(--real)" text-anchor="end" font-weight="500"
+              font-family="IBM Plex Mono, monospace" font-size="12.5">d = 0.25</text>
+
+        <!-- dimension L -->
+        <g stroke="var(--ink-2)" stroke-width="1.3">
+          <line x1="60" y1="60" x2="60" y2="290"/>
+          <line x1="54" y1="60" x2="66" y2="60"/>
+          <line x1="54" y1="290" x2="66" y2="290"/>
+        </g>
+        <text x="52" y="180" fill="var(--ink-2)" text-anchor="end" font-weight="500"
+              font-family="IBM Plex Mono, monospace" font-size="12.5">L = 0.5</text>
+
+        <text x="20" y="330" fill="var(--muted)" font-size="12">棒は太さ 4cm（半径 0.02m）の capsule。</text>
+        <text x="20" y="350" fill="var(--muted)" font-size="12">質量は棒全体に均等に分布している。</text>
+
+        <!-- arrow -->
+        <path d="M380 175 H430" stroke="var(--rule-strong)" stroke-width="1.5" fill="none"/>
+        <path d="M424 169 L432 175 L424 181 Z" fill="var(--rule-strong)"/>
+        <text x="405" y="163" fill="var(--muted)" font-size="11" text-anchor="middle"
+              font-family="IBM Plex Mono, monospace">compile</text>
+
+        <!-- middle: what you wrote -->
+        <rect x="300" y="60" width="0" height="0"/>
+        <text x="300" y="26" fill="var(--muted)" font-family="IBM Plex Mono, monospace"
+              font-size="11" letter-spacing="1.5">あなたが書いた</text>
+        <rect x="300" y="40" width="72" height="26" rx="3" fill="var(--sim-soft)" stroke="var(--sim)"/>
+        <text x="336" y="58" text-anchor="middle" fill="var(--ink)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">fromto</text>
+        <rect x="300" y="76" width="72" height="26" rx="3" fill="var(--sim-soft)" stroke="var(--sim)"/>
+        <text x="336" y="94" text-anchor="middle" fill="var(--ink)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">size</text>
+        <rect x="300" y="112" width="72" height="26" rx="3" fill="var(--sim-soft)" stroke="var(--sim)"/>
+        <text x="336" y="130" text-anchor="middle" fill="var(--ink)" font-size="11.5"
+              font-family="IBM Plex Mono, monospace">type</text>
+        <text x="336" y="160" text-anchor="middle" fill="var(--muted)" font-size="11">＋ 密度 1000</text>
+        <text x="336" y="176" text-anchor="middle" fill="var(--muted)" font-size="11">（デフォルト）</text>
+
+        <!-- right: derived -->
+        <text x="450" y="26" fill="var(--muted)" font-family="IBM Plex Mono, monospace"
+              font-size="11" letter-spacing="1.5">MUJOCO が計算した</text>
+
+        <rect x="450" y="40" width="410" height="58" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.4"/>
+        <text x="466" y="63" fill="var(--ink)" font-weight="500" font-size="13">質量 m ≈ 0.662 kg</text>
+        <text x="466" y="84" fill="var(--muted)" font-size="11.5" font-family="IBM Plex Mono, monospace">model.body_mass[bid]</text>
+
+        <rect x="450" y="110" width="410" height="58" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.4"/>
+        <text x="466" y="133" fill="var(--ink)" font-weight="500" font-size="13">重心位置 d = 0.25 m（棒の中央）</text>
+        <text x="466" y="154" fill="var(--muted)" font-size="11.5" font-family="IBM Plex Mono, monospace">model.body_ipos[bid] → [0, 0, −0.25]</text>
+
+        <rect x="450" y="180" width="410" height="58" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.4"/>
+        <text x="466" y="203" fill="var(--ink)" font-weight="500" font-size="13">慣性モーメント I ≈ 0.0567 kg·m²</text>
+        <text x="466" y="224" fill="var(--muted)" font-size="11.5" font-family="IBM Plex Mono, monospace">body_inertia + m·d²（平行軸の定理）</text>
+
+        <rect x="450" y="250" width="410" height="58" rx="4" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.4"/>
+        <text x="466" y="273" fill="var(--ink)" font-weight="500" font-size="13">→ 周期 T ≈ 1.17 s が決まる</text>
+        <text x="466" y="294" fill="var(--muted)" font-size="11.5" font-family="IBM Plex Mono, monospace">T = 2π√( I / (m·g·d) )</text>
+
+        <text x="450" y="336" fill="var(--muted)" font-size="12">XML に質量を1文字も書いていないのに周期が決まるのは、</text>
+        <text x="450" y="356" fill="var(--muted)" font-size="12">形状と密度から m・d・I がすべて導かれるため。</text>
+      </g>
+    </svg>
+    <figcaption>左が XML に書いた形状、右が MuJoCo が導いた物理量。Step 12 で実機の MJCF を作るときは、
+      この右側の値が実測値と合っているかを確認する作業（システム同定）になる。</figcaption>
+  </div>
+
+  <div class="callout">
+    <span class="k">自分の環境で確認する</span>
+    <p>下のコードで、上の図の数値が本当にモデルに入っているか確かめられる。
+       図の値はカプセル形状から手計算した概算なので、あなたのモデルの実際の値と数％ずれることがある。
+       <strong>信じるべきは print した値のほう。</strong></p>
+  </div>
+
+<pre><span class="c"># body の物理量を読み出す</span>
+bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, <span class="k">"pole"</span>)
+print(<span class="k">"mass    "</span>, model.body_mass[bid])     <span class="c"># 質量</span>
+print(<span class="k">"com     "</span>, model.body_ipos[bid])     <span class="c"># 重心位置 → [0, 0, -0.25]</span>
+print(<span class="k">"inertia "</span>, model.body_inertia[bid])  <span class="c"># 主慣性モーメント（重心まわり）</span>
+print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="c"># [1,0,0,0] なら主軸 = body 座標系</span></pre>
+</section>
+
+<!-- ============ 2. d と L ============ -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">02</div>
+    <h2>なぜ <code>d</code> であって <code>L</code> ではないのか</h2>
+    <p>重力は重心にかかる。回転軸から重心までの距離が、てこの腕の長さになる。</p>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 330" role="img" aria-label="重力が重心にかかり、腕の長さdでトルクを生む図">
+      <g font-family="IBM Plex Sans JP, sans-serif" font-size="13">
+
+        <!-- vertical reference -->
+        <line x1="230" y1="50" x2="230" y2="280" stroke="var(--rule-strong)"
+              stroke-width="1.2" stroke-dasharray="4 5"/>
+        <text x="236" y="278" fill="var(--muted)" font-size="11">鉛直</text>
+
+        <!-- rod tilted -->
+        <g transform="rotate(28 230 50)">
+          <line x1="230" y1="50" x2="230" y2="270" stroke="var(--sim)" stroke-width="12"
+                stroke-linecap="round" opacity="0.85"/>
+          <circle cx="230" cy="160" r="8" fill="var(--real)"/>
+          <circle cx="230" cy="160" r="3.2" fill="var(--surface)"/>
+        </g>
+
+        <!-- pivot -->
+        <circle cx="230" cy="50" r="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>
+
+        <!-- angle arc -->
+        <path d="M230 130 A 80 80 0 0 0 267.6 120.6" fill="none" stroke="var(--ink-2)" stroke-width="1.5"/>
+        <text x="248" y="146" fill="var(--ink)" font-style="italic" font-size="15">θ</text>
+
+        <!-- gravity arrow from COM -->
+        <g stroke="var(--real)" stroke-width="2">
+          <line x1="281.6" y1="147.1" x2="281.6" y2="225"/>
+        </g>
+        <path d="M275.6 219 L281.6 231 L287.6 219 Z" fill="var(--real)"/>
+        <text x="292" y="200" fill="var(--real)" font-weight="500">m·g</text>
+        <text x="292" y="218" fill="var(--muted)" font-size="11">重力は重心にかかる</text>
+
+        <!-- lever arm -->
+        <g stroke="var(--real)" stroke-width="1.3" stroke-dasharray="3 3">
+          <line x1="230" y1="147.1" x2="281.6" y2="147.1"/>
+        </g>
+        <text x="255" y="140" fill="var(--real)" text-anchor="middle" font-size="12"
+              font-family="IBM Plex Mono, monospace">d·sin θ</text>
+
+        <!-- d label along rod -->
+        <text x="196" y="110" fill="var(--muted)" text-anchor="end" font-size="12"
+              font-family="IBM Plex Mono, monospace">d</text>
+        <line x1="230" y1="50" x2="281.6" y2="147.1" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+
+        <!-- formula block -->
+        <rect x="430" y="60" width="420" height="88" rx="4" fill="var(--surface-2)" stroke="var(--rule)"/>
+        <text x="450" y="92" fill="var(--muted)" font-size="12">重力が生む復元トルク</text>
+        <text x="450" y="126" fill="var(--ink)" font-size="21" font-family="IBM Plex Mono, monospace">τ = − m·g·d·sin θ</text>
+
+        <text x="430" y="182" fill="var(--ink)" font-weight="500" font-size="14">読み方</text>
+        <text x="430" y="208" fill="var(--ink-2)" font-size="13">・マイナス符号 = 常に「戻す」向きに働く</text>
+        <text x="430" y="230" fill="var(--ink-2)" font-size="13">・d が大きいほど強く戻される（＝速く振れる）</text>
+        <text x="430" y="252" fill="var(--ink-2)" font-size="13">・sin θ であって θ ではない ← <tspan fill="var(--real)" font-weight="500">これが非線形の正体</tspan></text>
+        <text x="430" y="286" fill="var(--muted)" font-size="12">θ が小さいとき sin θ ≈ θ。この近似が成り立つ範囲でだけ、</text>
+        <text x="430" y="306" fill="var(--muted)" font-size="12">「周期は振幅によらない」という高校物理の話が成立する。</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>理想の単振り子</th><th>今回の剛体棒（物理振子）</th></tr></thead>
+      <tbody>
+        <tr><td>質量の分布</td><td>先端に一点集中</td><td><strong>棒全体に均等</strong></td></tr>
+        <tr><td>重心までの距離 <code>d</code></td><td class="num">L</td><td class="num">L / 2 = 0.25 m</td></tr>
+        <tr><td>慣性モーメント <code>I</code></td><td class="num">m·L²</td><td class="num">≈ m·L²/3</td></tr>
+        <tr><td>周期</td><td class="num">T = 2π√(L/g)</td><td class="num">T = 2π√(I/(m·g·d))</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>右の式に理想の単振り子の値（<code>I = mL²</code>, <code>d = L</code>）を代入すると
+     <code>T = 2π√(L/g)</code> に戻る。<strong>単振り子の式は物理振子の式の特殊ケース</strong>であり、
+     質量が分布した棒には使えない。1-4 のヒントで「そのまま当てるとズレる」と書いたのはこの意味。</p>
+</section>
+
+<!-- ============ 3. 実験室 ============ -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">03 · 触って確かめる</div>
+    <h2>振幅と減衰を変えてみる</h2>
+    <p>スライダを動かすと、その条件で 12 秒ぶんを計算し直して描画する。
+       課題 Q3・Q4・Q5 で自分のコードから読み取るべきものが、ここでは即座に見える。
+       <strong>まず予想してから動かすこと。</strong></p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top">
+          <label for="s-theta">初期角度 θ₀</label>
+          <span class="val" id="v-theta">0.05 rad</span>
+        </div>
+        <input type="range" id="s-theta" min="0.02" max="3.00" step="0.01" value="0.05">
+        <span class="hint">鉛直から何ラジアン傾けて手を離すか。0.05 rad ≈ 2.9°、1.0 rad ≈ 57°</span>
+      </div>
+
+      <div class="ctrl">
+        <div class="ctrl-top">
+          <label for="s-damp">damping</label>
+          <span class="val" id="v-damp">0.00</span>
+        </div>
+        <input type="range" id="s-damp" min="0" max="0.40" step="0.01" value="0">
+        <span class="hint">関節の粘性抵抗。MJCF の <code>&lt;joint damping="..."&gt;</code> に対応する</span>
+      </div>
+
+      <div class="btns">
+        <button class="primary" id="btn-play">一時停止</button>
+        <button id="btn-reset">条件をリセット</button>
+      </div>
+
+      <div class="ctrl">
+        <span class="hint" style="line-height:1.7">
+          <strong style="color:var(--ink)">試してみる順番</strong><br>
+          ① θ₀ = 0.05・damping = 0 → 基準の周期を読む<br>
+          ② θ₀ を 1.0、2.0 と上げる → 周期はどうなる？<br>
+          ③ damping を上げる → 位相平面の形は？
+        </span>
+      </div>
+    </div>
+
+    <div class="lab-stage">
+      <div class="readout">
+        <div class="accent">
+          <span class="rk">実測周期</span>
+          <span class="rv" id="r-measured">—</span>
+        </div>
+        <div>
+          <span class="rk">理論値（微小振動）</span>
+          <span class="rv" id="r-theory">—</span>
+        </div>
+        <div>
+          <span class="rk">ズレ</span>
+          <span class="rv" id="r-diff">—</span>
+        </div>
+      </div>
+
+      <div class="stage-row">
+        <canvas id="cv-pend" width="460" height="460" aria-label="振り子のアニメーション"></canvas>
+        <div class="plots">
+          <div class="plot">
+            <span class="pt">time series — angle</span>
+            <canvas id="cv-time" width="640" height="420" aria-label="角度の時系列グラフ"></canvas>
+          </div>
+          <div class="plot">
+            <span class="pt">phase plane — θ vs θ̇</span>
+            <canvas id="cv-phase" width="640" height="420" aria-label="位相平面のグラフ"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="k">ここで見えるはずのこと</span>
+    <p><strong>θ₀ を大きくすると周期が伸びる。</strong>同じ振り子、同じ重力なのに。
+       原因は <code>sin θ</code> の非線形性で、θ が大きいと復元トルクが
+       「θ に比例する」より弱くなり、戻るのに時間がかかる。<br>
+       <strong>damping を入れると位相平面が渦になる。</strong>
+       閉じた楕円＝エネルギー保存、内向きの渦＝エネルギーが熱として失われている状態。</p>
+  </div>
+</section>
+
+<!-- ============ 4. 位相平面 ============ -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">04</div>
+    <h2>位相平面の読み方</h2>
+    <p>横軸に角度、縦軸に角速度を取った平面。振り子の「状態」がこの平面上の 1 点で表される。
+       Step 4 のスイングアップ、Step 5 の状態空間の議論は、すべてこの図の上で行われる。</p>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 300" role="img" aria-label="位相平面上の4点と振り子の姿勢の対応">
+      <g font-family="IBM Plex Sans JP, sans-serif" font-size="12.5">
+        <!-- axes -->
+        <line x1="60" y1="160" x2="420" y2="160" stroke="var(--rule-strong)" stroke-width="1.4"/>
+        <line x1="240" y1="30" x2="240" y2="290" stroke="var(--rule-strong)" stroke-width="1.4"/>
+        <text x="428" y="164" fill="var(--muted)" font-size="11">θ</text>
+        <text x="246" y="28" fill="var(--muted)" font-size="11">θ̇</text>
+
+        <!-- ellipse -->
+        <ellipse cx="240" cy="160" rx="140" ry="95" fill="none" stroke="var(--sim)" stroke-width="2"/>
+        <!-- direction arrow -->
+        <path d="M240 65 L256 70 L246 78 Z" fill="var(--sim)"/>
+
+        <!-- 4 marked points -->
+        <circle cx="380" cy="160" r="6" fill="var(--real)"/>
+        <text x="392" y="156" fill="var(--ink)" font-weight="500">① 右端</text>
+        <text x="392" y="174" fill="var(--muted)" font-size="11">角度 最大 / 速度 0</text>
+
+        <circle cx="240" cy="65" r="6" fill="var(--real)"/>
+        <text x="252" y="52" fill="var(--ink)" font-weight="500">② 中央通過</text>
+        <text x="252" y="70" fill="var(--muted)" font-size="11">角度 0 / 速度 最大</text>
+
+        <circle cx="100" cy="160" r="6" fill="var(--real)"/>
+        <text x="92" y="156" fill="var(--ink)" text-anchor="end" font-weight="500">③ 左端</text>
+        <text x="92" y="174" fill="var(--muted)" font-size="11" text-anchor="end">角度 最小 / 速度 0</text>
+
+        <circle cx="240" cy="255" r="6" fill="var(--real)"/>
+        <text x="252" y="252" fill="var(--ink)" font-weight="500">④ 中央通過（逆向き）</text>
+
+        <text x="60" y="290" fill="var(--muted)" font-size="11.5">1 周＝振り子 1 往復。閉じている＝同じ運動の繰り返し</text>
+
+        <!-- right: interpretation -->
+        <rect x="500" y="40" width="360" height="70" rx="4" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.4"/>
+        <text x="518" y="68" fill="var(--ink)" font-weight="500" font-size="13.5">閉じた楕円</text>
+        <text x="518" y="92" fill="var(--ink-2)" font-size="12.5">エネルギーが保存されている（damping なし）</text>
+
+        <rect x="500" y="126" width="360" height="70" rx="4" fill="var(--real-soft)" stroke="var(--real)" stroke-width="1.4"/>
+        <text x="518" y="154" fill="var(--ink)" font-weight="500" font-size="13.5">内向きの渦</text>
+        <text x="518" y="178" fill="var(--ink-2)" font-size="12.5">エネルギーが散逸し、原点（静止）に collapse する</text>
+
+        <rect x="500" y="212" width="360" height="70" rx="4" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1.4"/>
+        <text x="518" y="240" fill="var(--ink)" font-weight="500" font-size="13.5">Step 4 での意味</text>
+        <text x="518" y="264" fill="var(--ink-2)" font-size="12.5">スイングアップ＝外側の軌道へ乗り換える操作</text>
+      </g>
+    </svg>
+  </div>
+
+  <ul>
+    <li>点が<strong>時計回りに 1 周する</strong>と、振り子が 1 往復したことになる</li>
+    <li>楕円が<strong>大きいほどエネルギーが高い</strong>。振幅も最高速度も大きい</li>
+    <li>Step 4 のエネルギー整形とは、<strong>モータで少しずつエネルギーを注入して、楕円を外側へ広げていく</strong>操作にほかならない。倒立状態は、この平面上の特別な 1 点として現れる</li>
+  </ul>
+</section>
+
+<!-- ============ 5. 対応表 ============ -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">05</div>
+    <h2>MJCF ・ 物理量 ・ コードの対応</h2>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>MJCF の記述</th><th>物理的な意味</th><th>Python から読む</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;geom type="capsule" fromto size&gt;</code></td><td>形状 → 質量・慣性の source</td><td><code>model.body_mass[bid]</code></td></tr>
+        <tr><td>（書いていない）</td><td>重心位置 d</td><td><code>model.body_ipos[bid]</code></td></tr>
+        <tr><td>（書いていない）</td><td>慣性モーメント I</td><td><code>model.body_inertia[bid]</code></td></tr>
+        <tr><td><code>&lt;joint type="hinge" axis&gt;</code></td><td>回転自由度そのもの</td><td><code>data.qpos[0]</code> / <code>data.qvel[0]</code></td></tr>
+        <tr><td><code>&lt;joint damping="0.1"&gt;</code></td><td>粘性トルク −c·θ̇</td><td><code>model.dof_damping[0]</code></td></tr>
+        <tr><td><code>&lt;option gravity&gt;</code></td><td>重力加速度 g</td><td><code>model.opt.gravity</code></td></tr>
+        <tr><td><code>&lt;option timestep&gt;</code></td><td>積分の刻み幅</td><td><code>model.opt.timestep</code></td></tr>
+        <tr><td>（Step 2 で追加）<code>&lt;motor&gt;</code></td><td>入力トルク τ</td><td><code>data.ctrl[0]</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>いま MuJoCo が内部で解いているのは、結局この 1 本の式:</p>
+<pre>I · θ̈  =  <span class="c">−m·g·d·sin θ</span>  <span class="c">−c·θ̇</span>  <span class="k">+ τ</span>
+           重力の復元トルク    減衰      モータ（Step 2 以降）</pre>
+  <p>Step 3 で出てくる一般形 <code>M(q)q̈ + C(q,q̇) = τ</code> は、これを多自由度に拡張しただけのもの。
+     いま 1 自由度で完全に理解しておくと、四足歩行の 18 自由度でも同じ式を読んでいるだけだと分かる。</p>
+</section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // --- 物理定数（カプセル形状 r=0.02, L=0.5, 密度1000 から算出）---
+  var G = 9.81, R = 0.02, LEN = 0.5, RHO = 1000;
+  var mCyl = RHO * Math.PI * R * R * LEN;
+  var mSph = RHO * (4 / 3) * Math.PI * R * R * R;
+  var M = mCyl + mSph;
+  var D = LEN / 2;
+  var Icyl = mCyl * (3 * R * R + LEN * LEN) / 12 + mCyl * D * D;
+  var mHemi = mSph / 2, hOff = 3 * R / 8;
+  var IhemiCm = (2 / 5) * mHemi * R * R - mHemi * hOff * hOff;
+  var Ibot = IhemiCm + mHemi * Math.pow(LEN + hOff, 2);
+  var Itop = IhemiCm + mHemi * hOff * hOff;
+  var I = Icyl + Ibot + Itop;
+  var T_SMALL = 2 * Math.PI * Math.sqrt(I / (M * G * D));
+
+  var DT = 0.002, N = 6000;               // 12 秒ぶん
+  var traj = { t: null, q: null, v: null, period: NaN };
+
+  function simulate(theta0, damping) {
+    var t = new Float64Array(N), q = new Float64Array(N), v = new Float64Array(N);
+    var th = theta0, om = 0;
+    for (var i = 0; i < N; i++) {
+      var acc = (-M * G * D * Math.sin(th) - damping * om) / I;
+      om += acc * DT;                      // semi-implicit Euler
+      th += om * DT;
+      t[i] = i * DT; q[i] = th; v[i] = om;
+    }
+    return { t: t, q: q, v: v, period: measurePeriod(t, q) };
+  }
+
+  function measurePeriod(t, q) {
+    var cross = [];
+    for (var i = 0; i < q.length - 1; i++) {
+      if (q[i] > 0 && q[i + 1] <= 0) {
+        var frac = q[i] / (q[i] - q[i + 1]);          // 線形補間で交差時刻を推定
+        cross.push(t[i] + frac * (t[i + 1] - t[i]));
+      }
+    }
+    if (cross.length < 2) return NaN;
+    var sum = 0;
+    for (var k = 1; k < cross.length; k++) sum += cross[k] - cross[k - 1];
+    return sum / (cross.length - 1);
+  }
+
+  // --- canvas helpers ---
+  function tok(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  function setup(cv) {
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || cv.width, h = cv.width ? cv.clientWidth * (cv.height / cv.width) : 300;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx: ctx, w: w, h: h };
+  }
+
+  function drawPlot(cv, xs, ys, opts) {
+    var s = setup(cv), ctx = s.ctx, w = s.w, h = s.h;
+    var pad = { l: 34, r: 10, t: 10, b: 24 };
+    var xmin = opts.xmin, xmax = opts.xmax, ymin = opts.ymin, ymax = opts.ymax;
+    var X = function (x) { return pad.l + (x - xmin) / (xmax - xmin) * (w - pad.l - pad.r); };
+    var Y = function (y) { return h - pad.b - (y - ymin) / (ymax - ymin) * (h - pad.t - pad.b); };
+
+    ctx.fillStyle = tok("--surface"); ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    var i;
+    for (i = 0; i <= 4; i++) {
+      var gy = pad.t + i * (h - pad.t - pad.b) / 4;
+      ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(w - pad.r, gy); ctx.stroke();
+    }
+    ctx.strokeStyle = tok("--rule-strong");
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+    if (xmin < 0 && xmax > 0) {
+      ctx.beginPath(); ctx.moveTo(X(0), pad.t); ctx.lineTo(X(0), h - pad.b); ctx.stroke();
+    }
+
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 1.6; ctx.beginPath();
+    for (i = 0; i < xs.length; i++) {
+      var px = X(xs[i]), py = Y(ys[i]);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    if (opts.cursor != null && opts.cursor < xs.length) {
+      ctx.fillStyle = tok("--real");
+      ctx.beginPath();
+      ctx.arc(X(xs[opts.cursor]), Y(ys[opts.cursor]), 4.5, 0, 6.2832);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillText(opts.ylab, 4, pad.t + 9);
+    ctx.fillText(opts.xlab, w - pad.r - ctx.measureText(opts.xlab).width, h - 6);
+  }
+
+  function drawPendulum(cv, theta) {
+    var s = setup(cv), ctx = s.ctx, w = s.w, h = s.h;
+    var cx = w / 2, cy = h * 0.22, rodPx = Math.min(h * 0.52, w * 0.42);
+
+    ctx.fillStyle = tok("--surface-2"); ctx.fillRect(0, 0, w, h);
+
+    // ceiling
+    ctx.strokeStyle = tok("--rule-strong"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 70, cy); ctx.lineTo(cx + 70, cy); ctx.stroke();
+    ctx.lineWidth = 1.2;
+    for (var k = -6; k <= 6; k++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + k * 11, cy); ctx.lineTo(cx + k * 11 - 8, cy - 8);
+      ctx.stroke();
+    }
+
+    // vertical reference
+    ctx.strokeStyle = tok("--rule"); ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + rodPx + 26); ctx.stroke();
+    ctx.setLineDash([]);
+
+    var tx = cx + rodPx * Math.sin(theta), ty = cy + rodPx * Math.cos(theta);
+    var mx = cx + rodPx * 0.5 * Math.sin(theta), my = cy + rodPx * 0.5 * Math.cos(theta);
+
+    // rod
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 11; ctx.lineCap = "round";
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // COM
+    ctx.fillStyle = tok("--real");
+    ctx.beginPath(); ctx.arc(mx, my, 7, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = tok("--surface");
+    ctx.beginPath(); ctx.arc(mx, my, 2.8, 0, 6.2832); ctx.fill();
+
+    // pivot
+    ctx.fillStyle = tok("--surface"); ctx.strokeStyle = tok("--ink"); ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, 6.2832); ctx.fill(); ctx.stroke();
+
+    // angle label
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "12px 'IBM Plex Mono', monospace";
+    ctx.fillText("theta = " + theta.toFixed(3) + " rad", 12, h - 14);
+    ctx.fillStyle = tok("--real");
+    ctx.fillText("COM", mx + 12, my + 4);
+  }
+
+  // --- wiring ---
+  var sTheta = document.getElementById("s-theta");
+  var sDamp = document.getElementById("s-damp");
+  var vTheta = document.getElementById("v-theta");
+  var vDamp = document.getElementById("v-damp");
+  var rMeasured = document.getElementById("r-measured");
+  var rTheory = document.getElementById("r-theory");
+  var rDiff = document.getElementById("r-diff");
+  var btnPlay = document.getElementById("btn-play");
+  var btnReset = document.getElementById("btn-reset");
+  var cvPend = document.getElementById("cv-pend");
+  var cvTime = document.getElementById("cv-time");
+  var cvPhase = document.getElementById("cv-phase");
+
+  var cursor = 0, playing = true, lastFrame = 0;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (reduce.matches) { playing = false; btnPlay.textContent = "再生"; }
+
+  function recompute() {
+    var th0 = parseFloat(sTheta.value), c = parseFloat(sDamp.value);
+    vTheta.textContent = th0.toFixed(2) + " rad";
+    vDamp.textContent = c.toFixed(2);
+    traj = simulate(th0, c);
+    cursor = 0;
+
+    rTheory.innerHTML = T_SMALL.toFixed(4) + ' <small>s</small>';
+    if (isNaN(traj.period)) {
+      rMeasured.textContent = "—";
+      rDiff.textContent = "—";
+    } else {
+      rMeasured.innerHTML = traj.period.toFixed(4) + ' <small>s</small>';
+      var pct = (traj.period / T_SMALL - 1) * 100;
+      rDiff.innerHTML = (pct >= 0 ? "+" : "") + pct.toFixed(2) + ' <small>%</small>';
+    }
+    render();
+  }
+
+  function render() {
+    drawPendulum(cvPend, traj.q[cursor]);
+
+    var step = 4;                                   // 間引いて描画
+    var xs = [], ys = [], px = [], py = [];
+    for (var i = 0; i < N; i += step) {
+      xs.push(traj.t[i]); ys.push(traj.q[i]);
+      px.push(traj.q[i]); py.push(traj.v[i]);
+    }
+    var qmax = 0, vmax = 0;
+    for (var j = 0; j < N; j++) {
+      if (Math.abs(traj.q[j]) > qmax) qmax = Math.abs(traj.q[j]);
+      if (Math.abs(traj.v[j]) > vmax) vmax = Math.abs(traj.v[j]);
+    }
+    qmax = qmax * 1.15 || 1; vmax = vmax * 1.15 || 1;
+
+    drawPlot(cvTime, xs, ys, {
+      xmin: 0, xmax: 12, ymin: -qmax, ymax: qmax,
+      xlab: "t [s]", ylab: "theta [rad]", cursor: Math.floor(cursor / step)
+    });
+    drawPlot(cvPhase, px, py, {
+      xmin: -qmax, xmax: qmax, ymin: -vmax, ymax: vmax,
+      xlab: "theta", ylab: "omega", cursor: Math.floor(cursor / step)
+    });
+  }
+
+  function frame(ts) {
+    if (playing) {
+      if (!lastFrame) lastFrame = ts;
+      var dt = Math.min((ts - lastFrame) / 1000, 0.05);
+      lastFrame = ts;
+      cursor = (cursor + Math.round(dt / DT)) % N;
+      render();
+    } else {
+      lastFrame = 0;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  sTheta.addEventListener("input", recompute);
+  sDamp.addEventListener("input", recompute);
+  btnPlay.addEventListener("click", function () {
+    playing = !playing;
+    btnPlay.textContent = playing ? "一時停止" : "再生";
+  });
+  btnReset.addEventListener("click", function () {
+    sTheta.value = 0.05; sDamp.value = 0; recompute();
+  });
+  window.addEventListener("resize", render);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  }
+
+  recompute();
+  requestAnimationFrame(frame);
+})();
+</script>

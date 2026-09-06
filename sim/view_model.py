@@ -65,9 +65,9 @@ def main():
   data = mujoco.MjData(model)
 
   # 初期値の設定
-  # data.qpos[0] = 0.5
+  data.qpos[1] = 0.25
   # トルクの設定
-  data.ctrl[0] = 2.0
+  # data.ctrl[0] = 2.0
 
   summary(model)
 
@@ -95,10 +95,6 @@ def main():
         mujoco.mj_step(model, data)
         viewer.sync()
 
-        if i % 400 == 0:
-          print(
-            f"t={data.time:5.2f}  angle={data.sensordata[0]:7.3f}  rate={data.sensordata[1]:7.3f}"
-          )
         wait = model.opt.timestep / args.speed - (time.time() - t0)
         if wait > 0:
           time.sleep(wait)

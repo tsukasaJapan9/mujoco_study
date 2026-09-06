@@ -1,0 +1,973 @@
+<title>物理エンジンとアクチュエータ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Phase A · Step 3</div>
+  <h1>物理エンジンとアクチュエータ</h1>
+  <p>シミュレーションが壊れる原因と、実機と合わない原因を、エンジンの側から理解する。
+     Sim2Real の話がここから本格的に始まる。</p>
+  <div class="meta">
+    <span class="chip">目安 10 時間</span>
+    <span class="chip">前提: Step 2 完了</span>
+    <span class="chip">本題: motor / position / velocity の使い分け</span>
+  </div>
+</header>
+
+<!-- ===== 00 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">00</div>
+    <h2>このステップで手に入るもの</h2>
+  </div>
+  <ul>
+    <li><code>mj_step</code> が解いている方程式を、1 自由度の具体例から多自由度の一般形まで繋げて読める</li>
+    <li><strong>何がシミュレーションを発散させるのか</strong>を説明でき、積分器を選べる</li>
+    <li><strong>motor / position / velocity の 3 つが同じ式の特殊ケース</strong>だと分かる</li>
+    <li>実機のモータ制御方式（トルク制御・位置制御サーボ）とシミュを対応づけられる</li>
+    <li><code>armature</code> と <code>frictionloss</code> が減速機の何を表しているか言える</li>
+  </ul>
+  <div class="callout tip">
+    <span class="k">このステップの位置づけ</span>
+    <p>Step 2 までは「モデルを書く」話だった。ここからは<strong>「モデルが現実とどうズレるか」</strong>の話になる。
+       Phase D で扱う sim2real ギャップの発生源のうち、
+       <strong>アクチュエータ・接触・未モデル化</strong>の 3 つはこの Step で正体が分かる。</p>
+  </div>
+</section>
+
+<!-- ===== 01 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">01</div>
+    <h2>mj_step が解いている式</h2>
+  </div>
+
+  <p>Step 1 の振り子で立てた式はこれだった。</p>
+  <div class="code"><pre>I · θ̈  =  −m·g·d·sin θ  −  c·θ̇  +  τ
+           重力の復元トルク   減衰    アクチュエータ</pre></div>
+
+  <p>多自由度になると、スカラーがベクトルと行列に変わるだけで構造は同じ。</p>
+  <div class="code"><pre>M(q) · q̈  +  C(q, q̇)  =  τ
+
+M(q)     質量行列（nv × nv）。姿勢 q によって変わる
+C(q, q̇)  コリオリ力・遠心力・重力をまとめた項
+τ        アクチュエータ由来の一般化力</pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>1 自由度</th><th>多自由度</th><th>Python から見る</th></tr></thead>
+      <tbody>
+        <tr><td class="num">I（慣性モーメント）</td><td class="num">M(q)（質量行列 nv×nv）</td><td><code>mujoco.mj_fullM(model, data, M)</code></td></tr>
+        <tr><td class="num">θ, θ̇, θ̈</td><td class="num">q, q̇, q̈</td><td><code>data.qpos</code> / <code>qvel</code> / <code>qacc</code></td></tr>
+        <tr><td class="num">−m·g·d·sin θ − c·θ̇</td><td class="num">−C(q, q̇)</td><td><code>data.qfrc_bias</code></td></tr>
+        <tr><td class="num">τ</td><td class="num">τ</td><td><code>data.qfrc_actuator</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>四足歩行ロボットの 18 自由度でも、読んでいるのは同じ式</strong>。
+     いま 1 自由度で完全に理解しておけば、あとは次元が増えるだけ。</p>
+
+  <div class="code"><pre>import numpy as np
+
+M = np.zeros((model.nv, model.nv))
+mujoco.mj_fullM(model, data, M)         <span class="cmt"># 質量行列を取り出す</span>
+print(M)
+print(data.qfrc_bias)                    <span class="cmt"># コリオリ+重力の項</span>
+print(data.qfrc_actuator)                <span class="cmt"># アクチュエータが加えた一般化力</span></pre></div>
+</section>
+
+<!-- ===== 02 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">02</div>
+    <h2>timestep と積分器 — 何が発散を招くのか</h2>
+    <p><code>timestep</code> を大きくすると壊れる、とよく言われる。だが
+       <strong>ただ大きいだけでは壊れない</strong>。壊れるのは「硬い」要素があるときだけ。</p>
+  </div>
+
+  <h3>実測 1: 素の振り子は timestep 0.1 でも壊れない</h3>
+  <p>減衰なしの振り子を 5 秒回し、エネルギーが保存されているかを見た（1.000 が理想）。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>timestep</th><th>Euler</th><th>implicitfast</th><th>RK4</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0.002</td><td class="num">1.000</td><td class="num">1.000</td><td class="num">1.000</td></tr>
+        <tr><td class="num">0.01</td><td class="num">1.001</td><td class="num">1.001</td><td class="num">1.000</td></tr>
+        <tr><td class="num">0.05</td><td class="num">1.004</td><td class="num">1.004</td><td class="num">1.000</td></tr>
+        <tr><td class="num">0.1</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">1.000</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>エネルギーが 0.8% 増えただけで、発散はしない。MuJoCo の Euler は
+     <strong>semi-implicit</strong>（速度を先に更新してから位置に使う）なので、素直な系には強い。</p>
+
+  <h3>実測 2: 硬い position アクチュエータを入れると壊れる</h3>
+  <p>同じ振り子に <code>&lt;position kp="..." kv="..."/&gt;</code> を付けて 3 秒回した結果。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>timestep</th><th colspan="3">kp=500 kv=10</th><th colspan="3">kp=2000 kv=40</th></tr>
+             <tr><th></th><th>Euler</th><th>implicitfast</th><th>RK4</th><th>Euler</th><th>implicitfast</th><th>RK4</th></tr></thead>
+      <tbody>
+        <tr><td class="num">0.001</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td>
+                                      <td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">0.002</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td>
+                                      <td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">0.005</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td>
+                                      <td class="ng">発散</td><td class="ok">安定</td><td class="ng">発散</td></tr>
+        <tr><td class="num">0.01</td><td class="ng">発散</td><td class="ok">安定</td><td class="ok">安定</td>
+                                     <td class="ng">発散</td><td class="ok">安定</td><td class="ng">発散</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">この表から読み取るべき 3 つのこと</span>
+    <p><strong>1. 発散の原因は timestep 単体ではなく「硬さ × timestep」。</strong>
+       ゲインを 500 → 2000 に上げただけで、壊れる timestep が 1/2 になった。<br>
+       <strong>2. RK4 は硬さには効かない。</strong> RK4 は高次だが<strong>陽解法</strong>なので、
+       kp=2000 では Euler と同じ timestep で壊れる。「高精度＝安定」ではない。<br>
+       <strong>3. implicitfast だけが全条件で生き残った。</strong>
+       減衰やアクチュエータの<strong>速度に比例する項を陰的に扱う</strong>ため、硬い系に強い。</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>integrator</th><th>特徴</th><th>使いどころ</th></tr></thead>
+      <tbody>
+        <tr><td><code>Euler</code></td><td>semi-implicit。最も軽い</td><td>接触もゲインも穏やかな系</td></tr>
+        <tr><td><code>implicitfast</code></td><td>速度依存項を陰的に扱う。<strong>安定性が高い</strong></td><td><strong>迷ったらこれ。ロボット RL の実質的な標準</strong></td></tr>
+        <tr><td><code>implicit</code></td><td>implicitfast より厳密。やや重い</td><td>流体抵抗など特殊な減衰があるとき</td></tr>
+        <tr><td><code>RK4</code></td><td>4 次精度。<strong>硬い系には無力</strong></td><td>接触が無く精度が要る系（軌道計算など）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code"><pre>&lt;option timestep="0.002" integrator="implicitfast"/&gt;</pre></div>
+
+  <div class="callout tip">
+    <span class="k">実機とのつながり</span>
+    <p>実機のサーボは内部で高いゲインの制御ループを回している。それを忠実に再現しようとすると
+       <strong>シミュ側も硬くなり、小さい timestep が必要になる</strong>。
+       「実機に近づけるほど遅くなる」というトレードオフがここに現れる。<br>
+       Step 10 で MJX を使って数千環境を並列に回すとき、この timestep が
+       そのまま計算量に直結する。</p>
+  </div>
+</section>
+
+<!-- ===== 03 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">03 · 本題</div>
+    <h2>アクチュエータ 3 種は、同じ 1 つの式</h2>
+    <p><code>motor</code> / <code>position</code> / <code>velocity</code> は別物に見えるが、
+       MuJoCo の内部では<strong>まったく同じ式のパラメータ違い</strong>にすぎない。</p>
+  </div>
+
+  <div class="code"><pre>力 = gain × ctrl  +  bias₀  +  bias₁ × q  +  bias₂ × q̇</pre></div>
+
+  <p>実際に MuJoCo が保持している値を読み出すと、こうなっている。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>宣言</th><th>gain</th><th>bias (0, 1, 2)</th><th>結果として得られる式</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;motor/&gt;</code></td><td class="num">1</td><td class="num">(0, 0, 0)</td>
+            <td class="num">f = ctrl</td></tr>
+        <tr><td><code>&lt;position kp="30" kv="2"/&gt;</code></td><td class="num">30</td><td class="num">(0, −30, −2)</td>
+            <td class="num"><strong>f = 30(ctrl − q) − 2·q̇</strong></td></tr>
+        <tr><td><code>&lt;velocity kv="1.5"/&gt;</code></td><td class="num">1.5</td><td class="num">(0, 0, −1.5)</td>
+            <td class="num">f = 1.5(ctrl − q̇)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">position アクチュエータの正体は PD 制御</span>
+    <p><code>f = kp(ctrl − q) − kv·q̇</code> は、<strong>PD 制御そのもの</strong>。
+       つまり <code>&lt;position&gt;</code> を使うということは、
+       <strong>シミュレータの中に PD 制御器を 1 つ埋め込む</strong>ということ。<br>
+       これは実機のサーボモータが内部で回している制御ループに対応する。
+       Step 4 で自分で PD 制御を書くが、その前にここで正体を知っておくと見通しがよくなる。</p>
+  </div>
+
+  <p>自分の環境で確認できる。</p>
+  <div class="code"><pre>for i in range(model.nu):
+    name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+    print(name, "gain =", model.actuator_gainprm[i, :3], " bias =", model.actuator_biasprm[i, :3])</pre></div>
+
+  <h3>どれを選ぶかは「実機のモータに何を指令できるか」で決まる</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>MJCF</th><th>指令する量</th><th>対応する実機</th><th>Sim2Real での注意</th></tr></thead>
+      <tbody>
+        <tr><td><code>motor</code></td><td>トルク [N·m]</td>
+            <td>BLDC + FOC ドライバ、電流制御できるモータ</td>
+            <td>電流→トルクの係数を実測する必要がある</td></tr>
+        <tr><td><code>position</code></td><td>目標角度 [rad]</td>
+            <td><strong>シリアルバスサーボ（STS3215 等）、多くのホビーサーボ</strong></td>
+            <td><strong>実機サーボの内部ゲインとシミュの kp/kv を合わせる</strong></td></tr>
+        <tr><td><code>velocity</code></td><td>目標角速度 [rad/s]</td>
+            <td>速度制御モードのモータドライバ</td>
+            <td>加速度の上限が実機では効くことが多い</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">ここを間違えると Sim2Real は成功しない</span>
+    <p>安価なサーボは<strong>目標角度しか受け付けない</strong>。
+       それなのに <code>motor</code>（トルク指令）で学習した方策を作ると、
+       <strong>実機に指令を送る手段が存在しない</strong>という事態になる。<br>
+       逆に、実機がトルク制御できるのに <code>position</code> で学習すると、
+       シミュ内の PD ゲインと実機サーボのゲインの差がそのままギャップになる。<br>
+       <strong>使うハードを決めてから、対応するアクチュエータ型を選ぶ。</strong>
+       これが Step 12 で最初にやる判断になる。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">RL の実務では position が圧倒的に多い</span>
+    <p>四足歩行の論文の多くは、方策の出力を<strong>「関節の目標角度」</strong>にしている。
+       トルク直接指令より学習が安定し、方策の出力が多少ばらついても
+       PD 制御が吸収してくれるため実機で滑らかに動くから。
+       Step 9 でこの設計判断を扱う。</p>
+  </div>
+</section>
+
+<!-- ===== 04 インタラクティブ ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">04 · 触って確かめる</div>
+    <h2>position アクチュエータの kp と kv</h2>
+    <p>Step 1 の振り子（<code>I = 0.0567</code>, <code>m·g·d = 1.623</code>, <code>damping = 0.05</code>）に
+       position アクチュエータを付け、<strong>目標角度 1.0 rad へのステップ応答</strong>を見る。
+       スライダを動かす前に、まず何が起きるか予想すること。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kp">kp（比例ゲイン）</label><span class="val" id="v-kp">20</span></div>
+        <input type="range" id="s-kp" min="1" max="200" step="1" value="20">
+        <span class="hint">目標との「ずれ」に対する強さ。大きいほど強く引き寄せる</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kv">kv（微分ゲイン）</label><span class="val" id="v-kv">1.0</span></div>
+        <input type="range" id="s-kv" min="0" max="20" step="0.1" value="1.0">
+        <span class="hint">速度に対するブレーキ。振動を抑えるが、大きすぎると鈍くなる</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-fr">forcerange（トルク上限）</label><span class="val" id="v-fr">なし</span></div>
+        <input type="range" id="s-fr" min="0" max="30" step="0.5" value="0">
+        <span class="hint">0 = 制限なし。実機のモータには必ず上限がある</span>
+      </div>
+      <div class="btns">
+        <button class="preset" data-kp="20" data-kv="1" data-fr="0">初期値</button>
+        <button class="preset" data-kp="120" data-kv="1" data-fr="0">kp だけ大</button>
+        <button class="preset" data-kp="120" data-kv="12" data-fr="0">kp/kv 両方大</button>
+        <button class="preset" data-kp="60" data-kv="4" data-fr="2">上限 2 N·m</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">定常角度</span><span class="rv" id="r-final">—</span></div>
+        <div><span class="rk">定常偏差</span><span class="rv" id="r-err">—</span></div>
+        <div><span class="rk">オーバーシュート</span><span class="rv" id="r-os">—</span></div>
+        <div><span class="rk">整定時間</span><span class="rv" id="r-ts">—</span></div>
+      </div>
+      <canvas id="cv" width="820" height="380" aria-label="ステップ応答のグラフ"></canvas>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="k">必ず気づいてほしいこと: 定常偏差</span>
+    <p>目標を 1.0 rad にしても、<strong>そこには到達しない</strong>。
+       重力が振り子を引き戻しているのに対し、position アクチュエータは
+       「ずれ」があって初めて力を出すから。釣り合いはこうなる。</p>
+  </div>
+  <div class="code"><pre>kp × (目標 − θ)  =  m·g·d × sin θ
+       ↑ 生み出す力        ↑ 重力の抵抗
+
+kp を大きくすると偏差は小さくなるが、決してゼロにはならない</pre></div>
+  <p>この「残ってしまうずれ」を消すのが積分項（PID の I）で、Step 4 で扱う。
+     <strong>PD 制御だけでは重力に対して定常偏差が残る</strong>——
+     これは実機のロボットアームでも必ず起きる現象。</p>
+
+  <div class="callout tip">
+    <span class="k">forcerange を 2 に設定してみる</span>
+    <p>プリセット「上限 2 N·m」を押すと、目標にまったく届かなくなる。
+       <code>m·g·d = 1.623</code> に対して上限 2 N·m では、
+       持ち上げられる角度に限界があるため。<strong>ゲインをいくら上げても物理的に届かない。</strong><br>
+       実機で「ゲインを上げても目標に行かない」ときは、まずトルクが飽和していないか疑う。</p>
+  </div>
+</section>
+
+<!-- ===== 05 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">05</div>
+    <h2>armature と frictionloss — 減速機の正体</h2>
+    <p>この 2 つは<strong>Sim2Real ギャップの主要因</strong>でありながら、
+       書き忘れられることが最も多い属性。</p>
+  </div>
+
+  <h3>armature: 回転子の慣性が減速比の 2 乗で効く</h3>
+  <div class="code"><pre>&lt;joint name="j" type="hinge" axis="0 1 0" armature="0.01"/&gt;</pre></div>
+
+  <p><code>armature</code> は<strong>質量行列の対角に直接足される</strong>。実測すると:</p>
+  <div class="code"><pre class="sh">質量行列の対角 = [0.05674  0.06674  0.05674]
+                            ↑ armature="0.01" を書いた関節だけ +0.01</pre></div>
+
+  <p>物理的な意味はこう。減速機付きモータでは、モータ側の回転子が
+     関節側から見ると <strong>減速比の 2 乗倍</strong>の慣性として現れる。</p>
+  <div class="code"><pre>armature ≈ 回転子の慣性 × 減速比²
+
+例: 回転子慣性 1.0e-6 kg·m²、減速比 30:1
+    → armature ≈ 1.0e-6 × 900 = 9.0e-4</pre></div>
+
+  <div class="callout">
+    <span class="k">なぜ書き忘れると実機で失敗するか</span>
+    <p>armature を書かないシミュは、<strong>実機よりずっと軽やかに動く</strong>。
+       関節を素早く振り回す方策が学習され、実機では回転子の慣性のせいでその動きが出せない。<br>
+       ANYmal の論文（Hwangbo 2019）が<strong>アクチュエータネット</strong>を導入したのは、
+       この種のモータ内部のダイナミクスを armature のような単純なパラメータでは
+       表しきれなかったから。Step 11 で扱う。</p>
+  </div>
+
+  <h3>frictionloss: 速度によらない一定の抵抗</h3>
+  <div class="code"><pre>&lt;joint name="j" type="hinge" axis="0 1 0" damping="0.05" frictionloss="0.02"/&gt;</pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th><code>damping</code></th><th><code>frictionloss</code></th></tr></thead>
+      <tbody>
+        <tr><td>式</td><td class="num">−c · q̇</td><td class="num">−F · sign(q̇)</td></tr>
+        <tr><td>速度依存</td><td>比例する</td><td><strong>しない（一定）</strong></td></tr>
+        <tr><td>物理的な正体</td><td>グリスの粘性、空気抵抗</td><td><strong>ギヤの噛み合い、シールの摩擦</strong></td></tr>
+        <tr><td>止まっているとき</td><td>ゼロ</td><td><strong>動き出しを妨げる</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>最後の行が重要。<code>frictionloss</code> があると、<strong>小さいトルクでは動き出さない</strong>。
+     実機の減速機付きサーボはまさにこの挙動をする。
+     これが無いシミュで学習した方策は、実機で「細かい指令が効かない」現象に直面する。</p>
+</section>
+
+<!-- ===== 06 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">06</div>
+    <h2>接触モデル</h2>
+    <p>Step 1〜3 の振り子は宙に浮いていて接触が無かった。
+       歩行や把持に進むと、ここが最大の難所になる。</p>
+  </div>
+
+  <div class="code"><pre class="sh">solref  の既定 = [0.02  1.0]        [時定数 s, 減衰比]
+solimp  の既定 = [0.9  0.95  0.001  0.5  2]
+friction の既定 = [1.0  0.005  0.0001]   [すべり, ころがり, ひねり]</pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>パラメータ</th><th>意味</th><th>実機で言えば</th></tr></thead>
+      <tbody>
+        <tr><td><code>solref[0]</code></td><td>接触が解決される<strong>時定数</strong>[秒]。小さいほど硬い</td>
+            <td>床材の硬さ。コンクリート vs カーペット</td></tr>
+        <tr><td><code>solref[1]</code></td><td>減衰比。1 で臨界減衰（跳ねない）</td><td>反発係数</td></tr>
+        <tr><td><code>solimp</code></td><td>めり込みに対する拘束の強さの変化</td><td>接触が効き始める深さ</td></tr>
+        <tr><td><code>friction[0]</code></td><td><strong>すべり摩擦係数</strong></td><td>足裏のゴム、床の材質</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">Sim2Real 最大の罠のひとつ</span>
+    <p><code>solref[0]</code> を小さくする（＝硬くする）と、02 で見たとおり
+       <strong>小さい timestep が必要になる</strong>。硬くすれば現実に近づくが、計算が重くなり発散もしやすい。<br>
+       摩擦係数に至っては、実機で測っても<strong>場所や湿度で変わる</strong>。
+       だから 1 つの値に合わせ込むのではなく、<strong>範囲でランダム化する</strong>（Step 11 の DR）
+       という戦略になる。</p>
+  </div>
+
+  <p>接触のデバッグには可視化が要る。ビューアの <strong>Rendering パネル</strong>で
+     <code>Contact Point</code> と <code>Contact Force</code> を ON にすると、
+     どこで何 N の力が働いているかが見える。Python からはこう。</p>
+  <div class="code"><pre>with viewer.lock():
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True</pre></div>
+</section>
+
+<!-- ===== 07 課題 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">07 · 課題</div>
+    <h2>手を動かす</h2>
+    <p>今回は<strong>意図的に壊す</strong>課題が入っている。
+       うまくいく設定だけを見ていると、実機で壊れたときに原因が見えない。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 1</span>
+    <h3>シミュレーションを発散させる</h3>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-1</span><h4>硬いサーボのモデルを作る</h4></div>
+      <p><code>models/stiff_pendulum.xml</code> を作る。Step 2 の <code>pendulum.xml</code> をコピーし、
+         アクチュエータを <code>position</code> に差し替える。</p>
+      <div class="code"><pre>&lt;option timestep="0.002" integrator="Euler"/&gt;
+
+&lt;actuator&gt;
+  &lt;position name="servo" joint="hinge" kp="2000" kv="40" ctrlrange="-3.14 3.14"/&gt;
+&lt;/actuator&gt;</pre></div>
+      <p class="why"><b>なぜ kp=2000 なのか</b> 実機のサーボは想像以上に硬い。
+         この値は「安価なサーボの内部ゲイン」として現実的な範囲。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-2</span><h4>timestep を上げて壊す</h4></div>
+      <div class="code"><pre>for dt in [0.001, 0.002, 0.005, 0.01]:
+    model.opt.timestep = dt          <span class="cmt"># 実行時に書き換えられる</span>
+    data = mujoco.MjData(model)
+    data.qpos[0] = 0.5
+    for _ in range(int(3.0 / dt)):
+        mujoco.mj_step(model, data)
+        if not np.isfinite(data.qpos).all():
+            print(f"dt={dt}: 発散")
+            break
+    else:
+        print(f"dt={dt}: 安定  最終角度={data.qpos[0]:.4f}")</pre></div>
+      <p class="why"><b>発散の見つけ方</b> <code>np.isfinite</code> で NaN / inf を検出する。
+         実際には NaN になる前に <code>qvel</code> が異常な大きさになるので、
+         <code>abs(data.qvel[0]) &gt; 1e4</code> のような閾値でも捕まえられる。<br>
+         <b>期待される結果</b> <code>dt=0.005</code> 以上で発散する（検証済み）。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-3</span><h4>積分器を変えて比較する</h4></div>
+      <div class="code"><pre>&lt;option timestep="0.005" integrator="implicitfast"/&gt;</pre></div>
+      <p class="why"><b>やること</b> <code>Euler</code> / <code>implicitfast</code> / <code>RK4</code> の
+         3 通りで 1-2 を繰り返し、表にまとめる。<br>
+         <b>予想を立ててから</b> RK4 は Euler より高次の積分法。安定になると思うか。
+         結果は §02 の表と一致するはず。<strong>なぜそうなるのか</strong>を自分の言葉で説明できるようにすること。</p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 2 · 本題</span>
+    <h3>アクチュエータ 3 種を比べる</h3>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-1</span><h4>3 種類を 1 つのモデルに並べる</h4></div>
+      <p><code>models/actuators.xml</code> を作り、<strong>同じ振り子を 3 本</strong>並べて
+         それぞれ違うアクチュエータを付ける。横に並べると挙動の違いが一目で分かる。</p>
+      <div class="code"><pre>&lt;worldbody&gt;
+  &lt;body name="a" pos="-0.6 0 1"&gt;
+    &lt;joint name="j_motor" type="hinge" axis="0 1 0" damping="0.05"/&gt;
+    &lt;geom type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/&gt;
+  &lt;/body&gt;
+  &lt;body name="b" pos="0 0 1"&gt;
+    &lt;joint name="j_pos" type="hinge" axis="0 1 0" damping="0.05"/&gt;
+    &lt;geom type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/&gt;
+  &lt;/body&gt;
+  &lt;body name="c" pos="0.6 0 1"&gt;
+    &lt;joint name="j_vel" type="hinge" axis="0 1 0" damping="0.05"/&gt;
+    &lt;geom type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/&gt;
+  &lt;/body&gt;
+&lt;/worldbody&gt;
+
+&lt;actuator&gt;
+  &lt;motor    name="a_motor" joint="j_motor" gear="1" ctrlrange="-2 2"/&gt;
+  &lt;position name="a_pos"   joint="j_pos"   kp="30" kv="2" ctrlrange="-3.14 3.14"/&gt;
+  &lt;velocity name="a_vel"   joint="j_vel"   kv="1.5" ctrlrange="-5 5"/&gt;
+&lt;/actuator&gt;</pre></div>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-2</span><h4>全部に 1.0 を指令する</h4></div>
+      <div class="code"><pre>data.ctrl[:] = 1.0
+for _ in range(3000):
+    mujoco.mj_step(model, data)
+print(data.qpos)      <span class="cmt"># 3 本それぞれの角度</span>
+print(data.qvel)</pre></div>
+      <p><strong>同じ「1.0」でも意味がまったく違う。</strong>実行する前に、
+         3 本がそれぞれどうなるか予想すること。</p>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <p class="why">
+            <b>motor（トルク 1.0 N·m）</b> 課題 1 でやったとおり、
+            <code>sin θ = 1.0 / 1.623</code> の釣り合い角 <code>0.664 rad</code> で止まる。<br>
+            <b>position（目標角度 1.0 rad）</b> 1.0 rad の<strong>手前</strong>で止まる。
+            重力とゲインの釣り合いで定常偏差が残るため。<code>kp=30</code> なら
+            <code>30(1.0 − θ) = 1.623·sin θ</code> を満たす θ。<br>
+            <b>velocity（目標角速度 1.0 rad/s）</b> 一定速度で<strong>回り続けようとする</strong>が、
+            重力が邪魔をするので上りで遅く下りで速い、脈動した回転になる。</p>
+          <p class="why"><b>ここが本質</b> <code>ctrl</code> という同じ配列に同じ 1.0 を書いても、
+            <strong>アクチュエータ型によって単位も意味も違う</strong>。
+            N·m なのか rad なのか rad/s なのか。
+            Step 6 で観測と行動を設計するとき、この区別が方策の設計そのものになる。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-3</span><h4>gain と bias を読み出して確認する</h4></div>
+      <div class="code"><pre>for i in range(model.nu):
+    name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+    print(f"{name:10} gain={model.actuator_gainprm[i, 0]:6.1f} "
+          f"bias={model.actuator_biasprm[i, :3]}")</pre></div>
+      <p class="why"><b>確認すること</b> §03 の表と一致するか。
+         <code>position</code> の bias が <code>(0, -kp, -kv)</code> になっていること、
+         つまり <strong>PD 制御の式がそのまま入っている</strong>ことを自分の目で見る。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-4</span><h4>kp と kv を振ってステップ応答を測る</h4></div>
+      <p>§04 のインタラクティブで見た挙動を、自分のコードで再現する。
+         目標角度 1.0 rad へのステップ応答を、複数の <code>kp</code> でプロットする。</p>
+      <div class="code"><pre>def step_response(kp, kv, T=3.0):
+    <span class="cmt"># XML の kp/kv を実行時に書き換える</span>
+    model.actuator_gainprm[1, 0] = kp
+    model.actuator_biasprm[1, 1] = -kp
+    model.actuator_biasprm[1, 2] = -kv
+    data = mujoco.MjData(model)
+    data.ctrl[1] = 1.0
+    log = np.zeros(int(T / model.opt.timestep))
+    for i in range(len(log)):
+        mujoco.mj_step(model, data)
+        log[i] = data.qpos[1]
+    return log
+
+for kp in [10, 30, 100, 300]:
+    plt.plot(step_response(kp, 2.0), label=f"kp={kp}")
+plt.axhline(1.0, ls="--", color="gray")     <span class="cmt"># 目標</span></pre></div>
+      <p class="why"><b>測ること</b> それぞれの <strong>定常偏差</strong>（目標との差）。
+         <code>kp</code> を 10 倍にすると偏差はどうなるか。ゼロになるか。<br>
+         <b>理論値</b> <code>kp(1.0 − θ) = 1.623·sin θ</code> を解いた値と一致するはず。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-5</span><h4>言葉にする</h4></div>
+      <p class="why">次の問いに、自分の言葉で答えられるか確認すること。これが Step 3 の到達点。<br>
+         ・<b>安価なサーボしか使えない実機</b>のために方策を学習するなら、どのアクチュエータ型を使うか<br>
+         ・<code>position</code> を選んだとき、<strong>実機とシミュで合わせ込むべきパラメータ</strong>は何か<br>
+         ・<code>motor</code> で学習した方策を <code>position</code> の実機に載せられない理由</p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 3 · 発展</span>
+    <h3>armature と frictionloss の効果を測る</h3>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-1</span><h4>armature が質量行列に入るのを見る</h4></div>
+      <div class="code"><pre>M = np.zeros((model.nv, model.nv))
+mujoco.mj_fullM(model, data, M)
+print(np.diag(M))</pre></div>
+      <p class="why"><code>armature="0.01"</code> の有無で対角成分を比較する。
+         ちょうど <code>0.01</code> だけ増えるはず。<strong>質量が増えたのと同じ効果</strong>を持つ。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-2</span><h4>frictionloss で動き出さなくなるのを見る</h4></div>
+      <p><code>frictionloss="0.3"</code> を付けた振り子に、小さいトルクを与える。</p>
+      <div class="code"><pre>for tau in [0.1, 0.2, 0.3, 0.5]:
+    data = mujoco.MjData(model)
+    data.ctrl[0] = tau
+    for _ in range(1000):
+        mujoco.mj_step(model, data)
+    print(f"tau={tau}: 角度={data.qpos[0]:.4f}")</pre></div>
+      <p class="why"><b>見どころ</b> ある値を境に、<strong>まったく動かなくなる</strong>。
+         これが実機の「小さい指令が効かない」現象そのもの。
+         強化学習の方策が出す微細な出力が実機で無視される、という形で Phase D に効いてくる。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 08 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">08</div>
+    <h2>よく出る症状と対処</h2>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>症状</th><th>原因</th><th>対処</th></tr></thead>
+      <tbody>
+        <tr><td>モデルが飛んでいく / NaN</td><td>硬さ × timestep。高ゲイン、硬い接触</td>
+            <td><code>integrator="implicitfast"</code>、timestep を下げる、ゲインを下げる</td></tr>
+        <tr><td>目標角度に届かない</td><td>重力に対する定常偏差、またはトルク飽和</td>
+            <td><code>kp</code> を上げる。<code>data.actuator_force</code> が上限に張り付いていないか見る</td></tr>
+        <tr><td>指令したのに動かない</td><td><code>ctrlrange</code> の clamp、<code>frictionloss</code></td>
+            <td><code>data.actuator_force</code> と <code>ctrlrange</code> を確認</td></tr>
+        <tr><td>物体が床にめり込む</td><td>接触が柔らかすぎる（<code>solref[0]</code> が大）</td>
+            <td><code>solref</code> の時定数を小さく。ただし timestep とのトレードオフ</td></tr>
+        <tr><td>物体が跳ね続ける</td><td><code>solref[1]</code>（減衰比）が小さい</td><td>1.0 に近づける</td></tr>
+        <tr><td>シミュが極端に遅い</td><td>timestep が小さすぎる、接触点が多すぎる</td>
+            <td>衝突用 geom を単純な形状にする。<code>contype/conaffinity</code> で不要な判定を切る</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 09 ===== -->
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">09</div>
+    <h2>完了条件</h2>
+    <p>チェック状態はこのブラウザに保存される。</p>
+  </div>
+  <div class="check" id="checklist">
+    <label><input type="checkbox" data-ck="s3a"><span>硬いゲインで実際にシミュレーションを発散させた</span></label>
+    <label><input type="checkbox" data-ck="s3b"><span>Euler / implicitfast / RK4 を比較し、<strong>RK4 が硬い系に効かない理由</strong>を説明できる</span></label>
+    <label><input type="checkbox" data-ck="s3c"><span>motor / position / velocity が同じ式のパラメータ違いだと説明できる</span></label>
+    <label><input type="checkbox" data-ck="s3d"><span><code>actuator_gainprm</code> / <code>biasprm</code> を読み出して PD の式を確認した</span></label>
+    <label><input type="checkbox" data-ck="s3e"><span>3 種のアクチュエータに同じ <code>ctrl=1.0</code> を与え、結果の違いを説明できる</span></label>
+    <label><input type="checkbox" data-ck="s3f"><span><code>kp</code> を変えてステップ応答を測り、<strong>定常偏差が残る理由</strong>を説明できる</span></label>
+    <label><input type="checkbox" data-ck="s3g"><span>実機のサーボに合わせるならどの型を選ぶか、理由とともに言える</span></label>
+    <label><input type="checkbox" data-ck="s3h"><span><code>armature</code> が質量行列に加算されるのを数値で確認した</span></label>
+    <label><input type="checkbox" data-ck="s3i"><span>（発展）<code>frictionloss</code> で動き出さなくなる閾値を測った</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次のステップ</span>
+    <p>Step 4 では、ここで見た PD 制御を<strong>自分の手で書く</strong>。
+       シミュレータに埋め込まれた <code>position</code> アクチュエータではなく、
+       Python 側で毎ステップ計算する。制御周期と物理周期を分ける実装になり、
+       これがそのまま実機の制御ループの構造になる。<br>
+       さらにエネルギー整形でスイングアップに挑む。
+       <strong>強化学習を使わずに振り子を立てる</strong>のが Step 4 のゴール。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo × 強化学習 × Sim2Real 講座 — Step 3</span>
+  <span>models/stiff_pendulum.xml · models/actuators.xml</span>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- copy buttons ---------- */
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  /* ---------- checklist ---------- */
+  var KEY = "mujoco-step03-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+
+  /* ---------- step response lab ---------- */
+  var I = 0.056749, MGD = 1.62313, C = 0.05, TARGET = 1.0, DT = 0.001, N = 3000;
+  var cv = document.getElementById("cv"); if (!cv) return;
+  var sKp = document.getElementById("s-kp"), sKv = document.getElementById("s-kv"),
+      sFr = document.getElementById("s-fr");
+
+  function simulate(kp, kv, fr) {
+    var th = 0, om = 0, out = new Float64Array(N);
+    for (var i = 0; i < N; i++) {
+      var f = kp * (TARGET - th) - kv * om;
+      if (fr > 0) f = Math.max(-fr, Math.min(fr, f));
+      var acc = (f - MGD * Math.sin(th) - C * om) / I;
+      om += acc * DT; th += om * DT;
+      if (!isFinite(th) || Math.abs(th) > 1e3) { for (; i < N; i++) out[i] = NaN; break; }
+      out[i] = th;
+    }
+    return out;
+  }
+
+  function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function draw() {
+    var kp = +sKp.value, kv = +sKv.value, fr = +sFr.value;
+    document.getElementById("v-kp").textContent = kp;
+    document.getElementById("v-kv").textContent = kv.toFixed(1);
+    document.getElementById("v-fr").textContent = fr === 0 ? "なし" : fr.toFixed(1) + " N·m";
+
+    var y = simulate(kp, kv, fr);
+    var last = y[N - 1];
+    var diverged = !isFinite(last);
+
+    var peak = 0, i;
+    for (i = 0; i < N; i++) if (isFinite(y[i]) && y[i] > peak) peak = y[i];
+    var os = diverged ? NaN : Math.max(0, (peak - last) / TARGET * 100);
+
+    var settle = NaN;
+    if (!diverged) {
+      for (i = N - 1; i >= 0; i--) {
+        if (Math.abs(y[i] - last) > 0.02 * TARGET) { settle = (i + 1) * DT; break; }
+      }
+      if (!isFinite(settle)) settle = 0;
+    }
+
+    document.getElementById("r-final").innerHTML =
+      diverged ? '<span style="color:var(--bad)">発散</span>' : last.toFixed(3) + ' <small>rad</small>';
+    document.getElementById("r-err").innerHTML =
+      diverged ? "—" : (TARGET - last).toFixed(3) + ' <small>rad</small>';
+    document.getElementById("r-os").innerHTML =
+      diverged ? "—" : os.toFixed(1) + ' <small>%</small>';
+    document.getElementById("r-ts").innerHTML =
+      diverged ? "—" : settle.toFixed(2) + ' <small>s</small>';
+
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = Math.round(w * 380 / 820);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    var pad = { l: 46, r: 14, t: 14, b: 30 };
+    var ymax = 1.8, ymin = -0.25;
+    function X(t) { return pad.l + t / (N * DT) * (w - pad.l - pad.r); }
+    function Y(v) { return h - pad.b - (v - ymin) / (ymax - ymin) * (h - pad.t - pad.b); }
+
+    ctx.fillStyle = tok("--code-bg"); ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    for (i = 0; i <= 4; i++) {
+      var gy = pad.t + i * (h - pad.t - pad.b) / 4;
+      ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(w - pad.r, gy); ctx.stroke();
+    }
+    ctx.strokeStyle = tok("--rule-strong");
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+
+    // target line
+    ctx.strokeStyle = tok("--real"); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(TARGET)); ctx.lineTo(w - pad.r, Y(TARGET)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = tok("--real");
+    ctx.font = "11px 'IBM Plex Mono', monospace";
+    ctx.fillText("目標 1.0", w - pad.r - 52, Y(TARGET) - 6);
+
+    // response
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 2; ctx.beginPath();
+    var started = false;
+    for (i = 0; i < N; i += 2) {
+      if (!isFinite(y[i])) break;
+      var px = X(i * DT), py = Y(Math.max(ymin, Math.min(ymax, y[i])));
+      if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    if (diverged) {
+      ctx.fillStyle = tok("--bad");
+      ctx.font = "600 14px 'Zen Kaku Gothic New', sans-serif";
+      ctx.fillText("発散しました", w / 2 - 40, h / 2);
+    }
+
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillText("theta [rad]", 6, pad.t + 9);
+    ctx.fillText("t [s]", w - pad.r - 24, h - 8);
+    ctx.fillText("0", pad.l - 14, Y(0) + 4);
+    ctx.fillText("1.5", pad.l - 26, Y(1.5) + 4);
+  }
+
+  [sKp, sKv, sFr].forEach(function (el) { el.addEventListener("input", draw); });
+  Array.prototype.forEach.call(document.querySelectorAll(".preset"), function (b) {
+    b.addEventListener("click", function () {
+      sKp.value = b.dataset.kp; sKv.value = b.dataset.kv; sFr.value = b.dataset.fr; draw();
+    });
+  });
+  window.addEventListener("resize", draw);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  }
+  draw();
+})();
+</script>

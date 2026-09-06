@@ -1262,15 +1262,28 @@ for i in range(2000):
   &lt;/asset&gt;
 
   &lt;worldbody&gt;
-    &lt;camera name="main" pos="0 -3.5 1.0" mode="targetbody" target="cart"/&gt;
+    &lt;camera name="main" pos="0 -3.5 1.0" xyaxes="1 0 0  0 0 1"/&gt;
     &lt;light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" castshadow="true"/&gt;
     &lt;geom name="floor" type="plane" size="3 3 0.05" material="grid"/&gt;
   &lt;/worldbody&gt;
 &lt;/mujoco&gt;</pre></div>
-      <p class="why"><b>注意</b> このままだと <code>camera</code> が存在しない body <code>cart</code> を
-         参照しているのでエラーになる。2-2 で <code>cart</code> を作るまでは、
-         camera の行を一時的にコメントアウトしておくとよい。<br>
-         <b>確認</b> <code>uv run view_model.py cartpole.xml</code> で床だけが見える。</p>
+      <p class="why"><b>カメラは target を使わない形にしておく</b> この段階では body が 1 つも無いので、
+         <code>mode="targetbody" target="cart"</code> と書くと存在しない body を参照してエラーになる。
+         <code>xyaxes="1 0 0  0 0 1"</code> は「カメラの x 軸を world の +x、y 軸を +z に合わせる」の意味で、
+         結果として <strong>+y 方向を向く</strong>。<code>y=-3.5</code> から原点を見る真横の視点になる。
+         台車が x 方向に動き棒が y 軸まわりに倒れるので、これが正しい視点。<br>
+         2-4 で <code>cart</code> ができたら <code>mode="targetbody" target="cart"</code> に変えてもよい。<br>
+         <b>確認</b> <code>uv run view_model.py cartpole.xml</code> で
+         <code>nq=0 nv=0 nu=0 nbody=1 ncam=1</code> と表示され、床だけが見える。
+         <code>nbody=1</code> は world だけという意味で、この段階では正常。</p>
+
+      <div class="callout">
+        <span class="k">カメラを消すなら cameraid も消す</span>
+        <p><code>ERROR fixed camera id is outside valid range</code> が出たら、
+           <code>&lt;global cameraid="0"/&gt;</code> が「0 番のカメラを使え」と指示しているのに
+           カメラが 1 台も無い状態。<strong>参照が切れている</strong>ので、
+           カメラを定義するか <code>cameraid</code> を消すかのどちらかにする。</p>
+      </div>
     </div>
 
     <div class="stage">

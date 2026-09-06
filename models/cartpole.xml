@@ -1,0 +1,51 @@
+<mujoco model="cartpole">
+  <compiler angle="radian"/>
+  <option timestep="0.002"/>
+  <statistic extent="2" center="0 0 0.6"/>
+
+  <visual>
+    <headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/>
+    <global azimuth="90" elevation="-15" cameraid="0"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/>
+    <texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.05"/>
+    <material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/>
+    <material name="rail" rgba="0.55 0.58 0.60 1"/>
+  </asset>
+
+  <worldbody>
+    <camera name="main" pos="0 -3.5 1.0" xyaxes="1 0 0  0 0 1"/>
+    <light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" castshadow="true"/>
+
+    <!-- 三軸 -->
+    <site name="axis_x" type="cylinder" fromto="0 0 0.002  0.4 0 0.002" size="0.008" rgba="0.9 0.15 0.15 1"/>
+    <site name="axis_y" type="cylinder" fromto="0 0 0.002  0 0.4 0.002" size="0.008" rgba="0.15 0.7 0.2 1"/>
+    <site name="axis_z" type="cylinder" fromto="0 0 0      0 0 0.4" size="0.008" rgba="0.2 0.35 0.9 1"/>
+
+    <geom name="floor" type="plane" size="3 3 0.05" material="grid"/>
+
+    <geom name="rail" type="capsule" fromto="-1.6 0 0.5  1.6 0 0.5" size="0.01" material="rail" contype="0" conaffinity="0"/>
+
+    <body name="cart" pos="0 0 0.5">
+      <joint name="slider" type="slide" axis="1 0 0" range="-1.5 1.5"/>
+      <geom name="cart_geom" type="box" size="0.1 0.05 0.05" material="link"/>
+
+      <body name="pole" pos="0 0 0">
+        <joint name="hinge" type="hinge" axis="0 1 0"/>
+        <geom name="pole_geom" type="capsule" fromto="0 0 0 0 0 0.6" size="0.02" material="link"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="slide_motor" joint="slider" gear="10" ctrlrange="-1 1"/>
+  </actuator>
+  <sensor>
+    <jointpos name="cart_pos" joint="slider"/>
+    <jointvel name="cart_vel" joint="slider"/>
+    <jointpos name="pole_angle" joint="hinge"/>
+    <jointvel name="pole_rate" joint="hinge"/>
+  </sensor>
+</mujoco>

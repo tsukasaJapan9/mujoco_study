@@ -204,7 +204,71 @@
     .phasebar > div { flex:none !important; }
     header.top { padding-top:44px; }
   }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
 </style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">設計方針</span><span class="t">なぜこの順番なのか</span></a></li>
+    <li><a href="#s02"><span class="n">全体像</span><span class="t">4 フェーズ / 12 ステップ</span></a></li>
+    <li><a href="#s03"><span class="n">ステップ詳細</span><span class="t">各ステップの中身</span></a></li>
+    <li><a href="#s04"><span class="n">Phase D の背骨</span><span class="t">Sim2Real は片道ではなく閉ループ</span></a></li>
+    <li><a href="#s05"><span class="n">分類</span><span class="t">ギャップの発生源と対策</span></a></li>
+    <li><a href="#s06"><span class="n">Step 12 の選択肢</span><span class="t">最初の自作ハードウェア候補</span></a></li>
+    <li><a href="#s07"><span class="n">技術スタック</span><span class="t">使うもの、あえて使わないもの</span></a></li>
+    <li><a href="#s08"><span class="n">共通ルール</span><span class="t">全ステップに適用する 5 つの約束</span></a></li>
+    <li><a href="#s09"><span class="n">参考資料</span><span class="t">常に開いておくもの</span></a></li>
+  </ol>
+</nav>
 
 <div class="wrap">
 
@@ -225,7 +289,7 @@
   </header>
 
   <!-- ===================== 方針 ===================== -->
-  <section>
+  <section id="s01">
     <div class="sec-head">
       <div class="eyebrow">設計方針</div>
       <h2>なぜこの順番なのか</h2>
@@ -250,7 +314,7 @@
   </section>
 
   <!-- ===================== 全体像 ===================== -->
-  <section>
+  <section id="s02">
     <div class="sec-head">
       <div class="eyebrow">全体像</div>
       <h2>4 フェーズ / 12 ステップ</h2>
@@ -269,7 +333,7 @@
   </section>
 
   <!-- ===================== ステップ ===================== -->
-  <section>
+  <section id="s03">
     <div class="sec-head">
       <div class="eyebrow">ステップ詳細</div>
       <h2>各ステップの中身</h2>
@@ -495,7 +559,7 @@
   </section>
 
   <!-- ===================== Sim2Real ループ図 ===================== -->
-  <section>
+  <section id="s04">
     <div class="sec-head">
       <div class="eyebrow">Phase D の背骨</div>
       <h2>Sim2Real は片道ではなく閉ループ</h2>
@@ -578,7 +642,7 @@
   </section>
 
   <!-- ===================== ギャップ表 ===================== -->
-  <section>
+  <section id="s05">
     <div class="sec-head">
       <div class="eyebrow">分類</div>
       <h2>ギャップの発生源と対策</h2>
@@ -599,7 +663,7 @@
   </section>
 
   <!-- ===================== 実機候補 ===================== -->
-  <section>
+  <section id="s06">
     <div class="sec-head">
       <div class="eyebrow">Step 12 の選択肢</div>
       <h2>最初の自作ハードウェア候補</h2>
@@ -636,7 +700,7 @@
   </section>
 
   <!-- ===================== スタック ===================== -->
-  <section>
+  <section id="s07">
     <div class="sec-head">
       <div class="eyebrow">技術スタック</div>
       <h2>使うもの、あえて使わないもの</h2>
@@ -664,7 +728,7 @@
   </section>
 
   <!-- ===================== ルール ===================== -->
-  <section>
+  <section id="s08">
     <div class="sec-head">
       <div class="eyebrow">共通ルール</div>
       <h2>全ステップに適用する 5 つの約束</h2>
@@ -679,7 +743,7 @@
   </section>
 
   <!-- ===================== 参考 ===================== -->
-  <section>
+  <section id="s09">
     <div class="sec-head">
       <div class="eyebrow">参考資料</div>
       <h2>常に開いておくもの</h2>
@@ -701,3 +765,52 @@
   </footer>
 
 </div>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

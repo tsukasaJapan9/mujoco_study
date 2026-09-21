@@ -132,7 +132,71 @@
   }
   ul { margin:0; padding-left:20px; color:var(--ink-2); font-size:14.5px; }
   li { margin:5px 0; }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
 </style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">01</span><span class="t">XML に書いたものと、MuJoCo が計算したもの</span></a></li>
+    <li><a href="#s02"><span class="n">02</span><span class="t">なぜ d であって L ではないのか</span></a></li>
+    <li><a href="#s03"><span class="n">03</span><span class="t">振幅と減衰を変えてみる</span></a></li>
+    <li><a href="#s04"><span class="n">04</span><span class="t">位相平面の読み方</span></a></li>
+    <li><a href="#s05"><span class="n">05</span><span class="t">MJCF ・ 物理量 ・ コードの対応</span></a></li>
+  </ol>
+</nav>
 
 <div class="wrap">
 
@@ -144,7 +208,7 @@
 </header>
 
 <!-- ============ 1. モデルの正体 ============ -->
-<section>
+<section id="s01">
   <div class="sec-head">
     <div class="eyebrow">01</div>
     <h2>XML に書いたものと、MuJoCo が計算したもの</h2>
@@ -277,7 +341,7 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
 </section>
 
 <!-- ============ 2. d と L ============ -->
-<section>
+<section id="s02">
   <div class="sec-head">
     <div class="eyebrow">02</div>
     <h2>なぜ <code>d</code> であって <code>L</code> ではないのか</h2>
@@ -361,7 +425,7 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
 </section>
 
 <!-- ============ 3. 実験室 ============ -->
-<section>
+<section id="s03">
   <div class="sec-head">
     <div class="eyebrow">03 · 触って確かめる</div>
     <h2>振幅と減衰を変えてみる</h2>
@@ -448,7 +512,7 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
 </section>
 
 <!-- ============ 4. 位相平面 ============ -->
-<section>
+<section id="s04">
   <div class="sec-head">
     <div class="eyebrow">04</div>
     <h2>位相平面の読み方</h2>
@@ -512,7 +576,7 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
 </section>
 
 <!-- ============ 5. 対応表 ============ -->
-<section>
+<section id="s05">
   <div class="sec-head">
     <div class="eyebrow">05</div>
     <h2>MJCF ・ 物理量 ・ コードの対応</h2>
@@ -534,9 +598,9 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
   </div>
 
   <p>いま MuJoCo が内部で解いているのは、結局この 1 本の式:</p>
-<pre>I · θ̈  =  <span class="c">−m·g·d·sin θ</span>  <span class="c">−c·θ̇</span>  <span class="k">+ τ</span>
+<pre>I · <span class="dd">θ</span>  =  <span class="c">−m·g·d·sin θ</span>  <span class="c">−c·θ̇</span>  <span class="k">+ τ</span>
            重力の復元トルク    減衰      モータ（Step 2 以降）</pre>
-  <p>Step 3 で出てくる一般形 <code>M(q)q̈ + C(q,q̇) = τ</code> は、これを多自由度に拡張しただけのもの。
+  <p>Step 3 で出てくる一般形 <code>M(q)<span class="dd">q</span> + C(q,q̇) = τ</code> は、これを多自由度に拡張しただけのもの。
      いま 1 自由度で完全に理解しておくと、四足歩行の 18 自由度でも同じ式を読んでいるだけだと分かる。</p>
 </section>
 
@@ -784,5 +848,54 @@ print(<span class="k">"iquat   "</span>, model.body_iquat[bid])    <span class="
 
   recompute();
   requestAnimationFrame(frame);
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
 })();
 </script>

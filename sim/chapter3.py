@@ -1,6 +1,5 @@
 # sim/view_model.py — models/ 以下の MJCF を読み込んで表示する
 import argparse
-import time
 from pathlib import Path
 
 import mujoco
@@ -12,6 +11,7 @@ MODELS = ROOT / "models"
 # mjtJoint の並び順（0=free, 1=ball, 2=slide, 3=hinge）
 JOINT_TYPES = ("free", "ball", "slide", "hinge")
 SENSOR_PREFIX = len("mjSENS_")
+INTEGRATOR_PREFIX = len("mjINT_")
 
 
 def load(name):
@@ -30,9 +30,7 @@ def summary(model):
   """モデルの構造を表示する。書いた MJCF が意図どおりか確認するために毎回見る。"""
   print(
     f"nq={model.nq}  nv={model.nv}  nu={model.nu}  "
-    f"nbody={model.nbody}  njnt={model.njnt}  nsensordata={model.nsensordata} "
-    f"timestep={model.opt.timestep} "
-    f"integrator={mujoco.mjtIntegrator(model.opt.integrator).name} "
+    f"nbody={model.nbody}  njnt={model.njnt}  nsensordata={model.nsensordata}"
   )
 
   for j in range(model.njnt):
@@ -53,6 +51,9 @@ def summary(model):
     name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a)
     print(f"  actuator[{a}] {name:<12} ctrlrange={model.actuator_ctrlrange[a]}")
 
+  integ = mujoco.mjtIntegrator(model.opt.integrator).name[INTEGRATOR_PREFIX:].lower()
+  print(f"timestep={model.opt.timestep}  integrator={integ}")
+
 
 def main():
   parser = argparse.ArgumentParser(description="MJCF を読み込んで表示する")
@@ -69,20 +70,21 @@ def main():
   # 初期値の設定
   # data.qpos[0] = 0.25
   # トルクの設定
-  data.ctrl[0] = 0.5
-
-  # data.ctrl[:] = 1.0
-  for _ in range(3000):
-    mujoco.mj_step(model, data)
-  print("----------------------")
-  print(data.qpos)  # 3 本それぞれの角度
-  print(data.qvel)
+  # data.ctrl[0] = 0.5
 
   summary(model)
 
   cam = mujoco.MjvCamera()
   mujoco.mjv_defaultFreeCamera(model, cam)
   mujoco.mj_forward(model, data)  # 進めずに派生量だけ計算（xpos などを埋める）
+
+  data.ctrl[:] = 1.0
+  # for _ in range(3000):
+  #   mujoco.mj_step(model, data)
+  # print(data.qpos)  # 3 本それぞれの角度
+  # print(data.qvel)
+
+  import time
 
   with mujoco.viewer.launch_passive(model, data) as viewer:
     # XMLにあるカメラをシーンカメラに設定
@@ -100,9 +102,6 @@ def main():
     while viewer.is_running():
       t0 = time.time()
 
-      # print("-------------------")
-      # print(data.qpos)
-
       if args.sim:
         mujoco.mj_step(model, data)
         viewer.sync()
@@ -113,6 +112,49 @@ def main():
       else:
         viewer.sync()
         time.sleep(1 / 60)  # 静止表示なら 60Hz で十分
+
+  # for dt in [0.001, 0.002, 0.005, 0.01]:
+  #   model.opt.timestep = dt  # 実行時に書き換えられる
+  #   model.opt.integrator = mujoco.mjtIntegrator.mjINT_EULER
+  #   data = mujoco.MjData(model)
+  #   data.qpos[0] = 0.5
+  #   for _ in range(int(3.0 / dt)):
+  #     mujoco.mj_step(model, data)
+  #     # MuJoCo は発散を検知すると警告を立てて状態を自動リセットする。
+  #     # このフラグを見ないと、下の isfinite では「安定」に見えてしまう
+  #     if data.warning[mujoco.mjtWarning.mjWARN_BADQACC].number > 0:
+  #       print(f"dt={dt}: 発散")
+  #       break
+  #   else:
+  #     print(f"dt={dt}: 安定  最終角度={data.qpos[0]:.4f}")
+
+
+# with mujoco.viewer.launch_passive(model, data) as viewer:
+#   # XMLにあるカメラをシーンカメラに設定
+#   if model.vis.global_.cameraid >= 0:
+#     viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+#     viewer.cam.fixedcamid = model.vis.global_.cameraid
+#   else:
+#     # フリーカメラをmodel(extent)由来の初期値で上書き
+#     viewer.cam.distance = cam.distance
+#     viewer.cam.azimuth = cam.azimuth
+#     viewer.cam.elevation = cam.elevation
+#     viewer.cam.lookat[:] = cam.lookat
+
+#   i = 0
+#   while viewer.is_running():
+#     t0 = time.time()
+
+#     if args.sim:
+#       mujoco.mj_step(model, data)
+#       viewer.sync()
+
+#       wait = model.opt.timestep / args.speed - (time.time() - t0)
+#       if wait > 0:
+#         time.sleep(wait)
+#     else:
+#       viewer.sync()
+#       time.sleep(1 / 60)  # 静止表示なら 60Hz で十分
 
 
 if __name__ == "__main__":

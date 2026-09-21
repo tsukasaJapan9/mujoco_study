@@ -1,0 +1,55 @@
+<mujoco>
+  <statistic extent="1.5" center="0 0 0.5"/>
+  <compiler angle="radian"/>
+  <option timestep="0.002" integrator="RK4"/>
+  <visual>
+    <headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/>
+    <rgba haze="0.87 0.90 0.92 1"/>
+    <quality shadowsize="4096"/>
+    <global azimuth="140" elevation="-20" cameraid="0"/>
+  </visual>
+  <asset>
+    <!-- 空。上から下へのグラデーション -->
+    <texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/>
+
+    <!-- 床のチェッカー模様。スケール感が掴めるので必ず入れる -->
+    <texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/>
+
+    <material name="grid" texture="grid" texrepeat="6 6" texuniform="true" reflectance="0.05"/>
+
+    <!-- リンク用のマテリアル。色をここで一元管理できる -->
+    <material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/>
+  </asset>
+  <worldbody>
+    <!-- シーンを見るカメラ -->
+    <camera name="main" pos="0 -3 1.5" mode="targetbody" target="pole"/>
+
+    <!-- キーライト: 影を落とす主光源 -->
+    <light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" specular="0.15 0.15 0.15" castshadow="true"/>
+
+    <!-- フィルライト: 反対側から弱く当てて影を潰しすぎない -->
+    <light name="fill" pos="-2 2 2.5" dir="0.5 -0.5 -1" directional="true" diffuse="0.15 0.15 0.15" castshadow="false"/>
+
+    <!-- 床 -->
+    <geom name="floor" type="plane" size="3 3 0.05" material="grid"/>
+
+    <!-- 三軸 -->
+    <site name="axis_x" type="cylinder" fromto="0 0 0.002  0.4 0 0.002" size="0.008" rgba="0.9 0.15 0.15 1"/>
+    <site name="axis_y" type="cylinder" fromto="0 0 0.002  0 0.4 0.002" size="0.008" rgba="0.15 0.7 0.2 1"/>
+    <site name="axis_z" type="cylinder" fromto="0 0 0      0 0 0.4" size="0.008" rgba="0.2 0.35 0.9 1"/>
+
+    <!-- ロボットの定義 -->
+    <body name="pole" pos="0 0 1">
+      <joint name="hinge" type="hinge" axis="0 1 0" damping="0.05"/>
+      <geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <!-- <motor name="torque" joint="hinge" gear="1" ctrlrange="-2 2"/> -->
+    <position name="servo" joint="hinge" kp="2000" kv="40" ctrlrange="-3.14 3.14"/>
+  </actuator>
+  <sensor>
+    <jointpos name="theta" joint="hinge"/>
+    <jointvel name="omega" joint="hinge"/>
+  </sensor>
+</mujoco>

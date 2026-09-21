@@ -159,9 +159,115 @@
   footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
            font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
            justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
   @media (max-width:820px) { .lab { grid-template-columns:1fr; }
     .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
 </style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">このステップで手に入るもの</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">mj_step が解いている式</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">timestep と積分器</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">アクチュエータ 3 種は、同じ 1 つの式</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">position アクチュエータの kp と kv</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">armature と frictionloss</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">接触モデル</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">よく出る症状と対処</span></a></li>
+    <li><a href="#s10"><span class="n">09</span><span class="t">完了条件</span></a></li>
+  </ol>
+</nav>
 
 <div class="wrap">
 
@@ -178,11 +284,21 @@
 </header>
 
 <!-- ===== 00 ===== -->
-<section>
+<section id="s01">
   <div class="sec-head">
     <div class="eyebrow">00</div>
     <h2>このステップで手に入るもの</h2>
   </div>
+
+  <div class="aim">
+    <span class="k">この Step が答える問い</span>
+    <p><strong>1. なぜシミュレーションは突然壊れるのか。</strong>
+       そして、壊れる条件を事前に計算できるのか。<br>
+       <strong>2. 方策が出した数値は、どうやって物理の力になるのか。</strong>
+       <code>motor</code> / <code>position</code> / <code>velocity</code> のどれを選ぶべきか。<br>
+       <strong>3. 実機と合わないとき、シミュ側のどのパラメータを疑うのか。</strong></p>
+  </div>
+
   <ul>
     <li><code>mj_step</code> が解いている方程式を、1 自由度の具体例から多自由度の一般形まで繋げて読める</li>
     <li><strong>何がシミュレーションを発散させるのか</strong>を説明でき、積分器を選べる</li>
@@ -196,21 +312,42 @@
        Phase D で扱う sim2real ギャップの発生源のうち、
        <strong>アクチュエータ・接触・未モデル化</strong>の 3 つはこの Step で正体が分かる。</p>
   </div>
+
+  <div class="aim">
+    <span class="k">なぜこの順番なのか</span>
+    <p>§01 で<strong>運動方程式という 1 枚の地図</strong>を配る。以降の節はすべて、
+       この式のどこを触っているのかという話に還元される。<br>
+       §02 は式を<strong>計算機で解く</strong>段階（積分器）。
+       §03〜04 は式の<strong>右辺に力を加える</strong>段階（アクチュエータ）。
+       §05〜06 は<strong>左辺の M と C を現実に寄せる</strong>段階（armature・摩擦・接触）。<br>
+       この 3 つの段階が、そのまま Phase D で扱う sim2real ギャップの発生源に対応している。
+       だから「どこがズレているか」を問われたとき、この順番で切り分けられるようになる。</p>
+  </div>
 </section>
 
 <!-- ===== 01 ===== -->
-<section>
+<section id="s02">
   <div class="sec-head">
     <div class="eyebrow">01</div>
     <h2>mj_step が解いている式</h2>
   </div>
 
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>個別の属性を覚える前に、<strong>全体の地図を 1 本の式として持つ</strong>こと。
+       この後に出てくる timestep・積分器・アクチュエータ・armature・接触は、
+       すべて「この式のどこを触るか」で位置づけられる。<br>
+       逆に地図が無いまま属性だけを覚えると、実機と合わないときに
+       <strong>どこを疑えばよいか分からなくなる</strong>。この節は暗記ではなく、
+       残りの節を貼り付ける台紙を用意する作業。</p>
+  </div>
+
   <p>Step 1 の振り子で立てた式はこれだった。</p>
-  <div class="code"><pre>I · θ̈  =  −m·g·d·sin θ  −  c·θ̇  +  τ
+  <div class="code"><pre>I · <span class="dd">θ</span>  =  −m·g·d·sin θ  −  c·θ̇  +  τ
            重力の復元トルク   減衰    アクチュエータ</pre></div>
 
   <p>多自由度になると、スカラーがベクトルと行列に変わるだけで構造は同じ。</p>
-  <div class="code"><pre>M(q) · q̈  +  C(q, q̇)  =  τ
+  <div class="code"><pre>M(q) · <span class="dd">q</span>  +  C(q, q̇)  =  τ
 
 M(q)     質量行列（nv × nv）。姿勢 q によって変わる
 C(q, q̇)  コリオリ力・遠心力・重力をまとめた項
@@ -221,7 +358,7 @@ C(q, q̇)  コリオリ力・遠心力・重力をまとめた項
       <thead><tr><th>1 自由度</th><th>多自由度</th><th>Python から見る</th></tr></thead>
       <tbody>
         <tr><td class="num">I（慣性モーメント）</td><td class="num">M(q)（質量行列 nv×nv）</td><td><code>mujoco.mj_fullM(model, data, M)</code></td></tr>
-        <tr><td class="num">θ, θ̇, θ̈</td><td class="num">q, q̇, q̈</td><td><code>data.qpos</code> / <code>qvel</code> / <code>qacc</code></td></tr>
+        <tr><td class="num">θ, θ̇, <span class="dd">θ</span></td><td class="num">q, q̇, <span class="dd">q</span></td><td><code>data.qpos</code> / <code>qvel</code> / <code>qacc</code></td></tr>
         <tr><td class="num">−m·g·d·sin θ − c·θ̇</td><td class="num">−C(q, q̇)</td><td><code>data.qfrc_bias</code></td></tr>
         <tr><td class="num">τ</td><td class="num">τ</td><td><code>data.qfrc_actuator</code></td></tr>
       </tbody>
@@ -241,12 +378,47 @@ print(data.qfrc_actuator)                <span class="cmt"># アクチュエー�
 </section>
 
 <!-- ===== 02 ===== -->
-<section>
+<section id="s03">
   <div class="sec-head">
     <div class="eyebrow">02</div>
     <h2>timestep と積分器 — 何が発散を招くのか</h2>
     <p><code>timestep</code> を大きくすると壊れる、とよく言われる。だが
        <strong>ただ大きいだけでは壊れない</strong>。壊れるのは「硬い」要素があるときだけ。</p>
+  </div>
+
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§01 の式が読めても、それを<strong>計算機で解いた瞬間に別の問題が生まれる</strong>。
+       連続の式を有限の時間刻みで近似する以上、誤差は必ず出る。
+       その誤差が毎ステップ増幅される条件に入ると、シミュは壊れる。<br>
+       ここでの到達点は「発散したら timestep を下げる」という対症療法ではなく、
+       <strong>壊れる条件を事前に計算し、下げるべきパラメータを指させる</strong>ようになること。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">積分器（integrator）</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>運動方程式が与えてくれるのは<strong>加速度</strong>だけ。そこから位置を得るには
+          積分が要るが、手では解けない。そこで時間を <code>timestep</code> 幅で刻み、
+          「1 ステップ先の状態をどう見積もるか」を決める手続き——それが積分器。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd><code>mj_step</code> の中身そのものだから。§01 で式を読めるようになった直後に、
+          その式が<strong>どう解かれているか</strong>を知らないと、この後の課題 1 で起きる発散を
+          「エンジンの気まぐれ」としか説明できない。
+          <strong>式を立てる</strong>ことと<strong>式を解く</strong>ことは別の技術で、
+          後者にしか存在しない失敗がある。それがここ。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 4 で物理周期と制御周期を分けて設計するとき、その土台になる。
+          Step 10 の MJX 並列学習では <strong>timestep がそのまま学習時間に直結</strong>するため、
+          安定性の限界を知っていれば必要以上に小さい値を選ばずに済む。
+          「なんとなく 0.001」で回すのと、限界を計算した上で 0.002 を選ぶのとでは
+          学習にかかる時間が倍違う。</dd>
+      <dt>もっと詳しく</dt>
+      <dd>更新式の中身、増幅率による発散の予測、スライダで壊せる実験は
+          <a href="integrator_explained.html">補助教材「timestep と積分器」</a>にまとめてある。
+          この節の表がなぜそうなるのかは、そちらで手を動かすのが早い。</dd>
+    </dl>
   </div>
 
   <h3>実測 1: 素の振り子は timestep 0.1 でも壊れない</h3>
@@ -319,12 +491,22 @@ print(data.qfrc_actuator)                <span class="cmt"># アクチュエー�
 </section>
 
 <!-- ===== 03 ===== -->
-<section>
+<section id="s04">
   <div class="sec-head">
     <div class="eyebrow">03 · 本題</div>
     <h2>アクチュエータ 3 種は、同じ 1 つの式</h2>
     <p><code>motor</code> / <code>position</code> / <code>velocity</code> は別物に見えるが、
        MuJoCo の内部では<strong>まったく同じ式のパラメータ違い</strong>にすぎない。</p>
+  </div>
+
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここが Step 3 の本題。<strong>アクチュエータは、方策が出した数値が物理の力に変わる唯一の場所</strong>であり、
+       同時にシミュと実機が接する面でもある。<br>
+       狙いは 3 種類を別々の機能として暗記することではなく、
+       <strong>1 つの式のパラメータ違いとして見えるようになる</strong>こと。
+       そこまで来ると「手元の実機のサーボはどれに対応するか」を、表を引かずに自分で判断できる。
+       Step 6 で行動空間を設計するとき、この判断がそのまま設計の中身になる。</p>
   </div>
 
   <div class="code"><pre>力 = gain × ctrl  +  bias₀  +  bias₁ × q  +  bias₂ × q̇</pre></div>
@@ -397,13 +579,21 @@ print(data.qfrc_actuator)                <span class="cmt"># アクチュエー�
 </section>
 
 <!-- ===== 04 インタラクティブ ===== -->
-<section>
+<section id="s05">
   <div class="sec-head">
     <div class="eyebrow">04 · 触って確かめる</div>
     <h2>position アクチュエータの kp と kv</h2>
     <p>Step 1 の振り子（<code>I = 0.0567</code>, <code>m·g·d = 1.623</code>, <code>damping = 0.05</code>）に
        position アクチュエータを付け、<strong>目標角度 1.0 rad へのステップ応答</strong>を見る。
        スライダを動かす前に、まず何が起きるか予想すること。</p>
+  </div>
+
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§03 で読んだ式を、手で触って<strong>体感に変える</strong>。
+       とくに<strong>定常偏差は kp をいくら上げても消えない</strong>という事実は、
+       式を眺めているだけでは腹に落ちない。スライダを振り切ってもゼロにならないのを見ておくこと。<br>
+       ここで得た kp / kv の手触りは、Step 4 で PD 制御を自分の手で書くときにそのまま使う。</p>
   </div>
 
   <div class="lab">
@@ -465,12 +655,38 @@ kp を大きくすると偏差は小さくなるが、決してゼロにはな�
 </section>
 
 <!-- ===== 05 ===== -->
-<section>
+<section id="s06">
   <div class="sec-head">
     <div class="eyebrow">05</div>
     <h2>armature と frictionloss — 減速機の正体</h2>
     <p>この 2 つは<strong>Sim2Real ギャップの主要因</strong>でありながら、
        書き忘れられることが最も多い属性。</p>
+  </div>
+
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここまでは「書いたとおりに動く」話だった。この節は<strong>書き忘れると静かに間違う</strong>話。<br>
+       シミュは正常に動き、学習も収束し、それでも実機に載せると動かない——
+       その原因の上位に来るのがこの 2 つ。<strong>エラーが出ないぶん最も見つけにくい</strong>ので、
+       症状のほうを先に覚えておく。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">armature / frictionloss</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>どちらも<strong>関節の内部（減速機とモータ）</strong>を表す属性。
+          <code>armature</code> は回転子の慣性、<code>frictionloss</code> はギヤの噛み合いやシールの抵抗。
+          <strong>形状からは導けない</strong>ので、明示的に書かない限りゼロのまま計算される。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>§01 の式で言えば、<code>armature</code> は<strong>左辺の M</strong> を、
+          <code>frictionloss</code> は<strong>C の項</strong>を書き換える。
+          §03〜04 で右辺（τ）を実機に合わせ込んでも、左辺がズレていれば実機とは合わない。
+          アクチュエータとセットで扱って初めて「関節が実機に似る」ので、直後のここに置いている。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 11 のドメインランダム化で、<strong>範囲を振るべきパラメータの筆頭</strong>がこの 2 つ。
+          Phase D で実機に載せて「シミュより鈍い」と感じたら、まずここを疑うことになる。</dd>
+    </dl>
   </div>
 
   <h3>armature: 回転子の慣性が減速比の 2 乗で効く</h3>
@@ -517,12 +733,41 @@ kp を大きくすると偏差は小さくなるが、決してゼロにはな�
 </section>
 
 <!-- ===== 06 ===== -->
-<section>
+<section id="s07">
   <div class="sec-head">
     <div class="eyebrow">06</div>
     <h2>接触モデル</h2>
     <p>Step 1〜3 の振り子は宙に浮いていて接触が無かった。
        歩行や把持に進むと、ここが最大の難所になる。</p>
+  </div>
+
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>いま扱っている振り子に接触は無い。それでもここで触れておくのは、
+       <strong>§02 で見た「硬さ × timestep」が、接触では桁違いの規模で再現する</strong>から。
+       接触は MuJoCo で最も硬い要素であり、Step 5 以降で発散したとき真っ先に疑う場所になる。<br>
+       いま覚えるべきは個々の既定値ではなく、<strong>どのパラメータが何の硬さに対応するか</strong>という
+       対応表のほう。値は必要になったときに引けばいい。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">solref / solimp / friction</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>MuJoCo は接触を「めり込みを解消するばね・ダンパ」として扱う。
+          <code>solref</code> がその<strong>硬さと減衰</strong>、
+          <code>solimp</code> が<strong>拘束が効き始める深さ</strong>、
+          <code>friction</code> が<strong>すべりにくさ</strong>。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>§02 の結論「硬い要素 × 大きい timestep = 発散」の、最も強烈な実例だから。
+          <code>solref[0]</code> を小さくするのは、position アクチュエータの kp を上げるのと
+          同じ意味を持つ。<strong>§02 の理解が生きているうちに接続しておく</strong>と、
+          後で歩行モデルが壊れたときに同じ話だと気づける。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 5 以降のすべて。摩擦係数は実機で測っても場所や湿度で変わるため、
+          1 つの値に合わせ込むのではなく<strong>範囲でランダム化する</strong>（Step 11 の DR）
+          という戦略に繋がる。</dd>
+    </dl>
   </div>
 
   <div class="code"><pre class="sh">solref  の既定 = [0.02  1.0]        [時定数 s, 減衰比]
@@ -560,7 +805,7 @@ friction の既定 = [1.0  0.005  0.0001]   [すべり, ころがり, ひねり]
 </section>
 
 <!-- ===== 07 課題 ===== -->
-<section>
+<section id="s08">
   <div class="sec-head">
     <div class="eyebrow">07 · 課題</div>
     <h2>手を動かす</h2>
@@ -572,10 +817,24 @@ friction の既定 = [1.0  0.005  0.0001]   [すべり, ころがり, ひねり]
     <span class="tno">課題 1</span>
     <h3>シミュレーションを発散させる</h3>
 
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><strong>壊し方を先に覚える。</strong>うまくいく設定だけを触っていると、
+         あとで多関節のロボットモデルが発散したときに原因を切り分けられない。
+         1 自由度の振り子なら、原因が 2 つ（硬さと timestep）しか無い状態で観察できる。<br>
+         <b>やり終えたとき言えること</b>——発散を見たら「硬さ（kp・kv・接触）× timestep」を疑えばよいこと。
+         そして <code>integrator</code> を変えるだけで生き返る場合と、変えても無駄な場合の区別。
+         後者を知らないと、RK4 にすれば直ると思い込んで時間を溶かす。</p>
+    </div>
+
     <div class="stage">
       <div class="sh"><span class="sn">1-1</span><h4>硬いサーボのモデルを作る</h4></div>
       <p><code>models/stiff_pendulum.xml</code> を作る。Step 2 の <code>pendulum.xml</code> をコピーし、
          アクチュエータを <code>position</code> に差し替える。</p>
+      <p class="why"><b>この段階の狙い</b> 次の 1-2 で<strong>確実に壊れる土台</strong>を用意すること。
+         まだ何も観察しない。ここで硬いサーボを選ぶのは、
+         実機のサーボが実際に硬く、<strong>現実に寄せるほどシミュが壊れやすくなる</strong>という
+         トレードオフを最初に体験してもらうため。</p>
       <div class="code"><pre>&lt;option timestep="0.002" integrator="Euler"/&gt;
 
 &lt;actuator&gt;
@@ -593,15 +852,31 @@ friction の既定 = [1.0  0.005  0.0001]   [すべり, ころがり, ひねり]
     data.qpos[0] = 0.5
     for _ in range(int(3.0 / dt)):
         mujoco.mj_step(model, data)
-        if not np.isfinite(data.qpos).all():
+        <span class="cmt"># MuJoCo は発散を検知すると警告を立てて状態を自動リセットする。</span>
+        <span class="cmt"># このフラグを見ないと、下の isfinite では「安定」に見えてしまう</span>
+        if data.warning[mujoco.mjtWarning.mjWARN_BADQACC].number &gt; 0:
             print(f"dt={dt}: 発散")
             break
     else:
         print(f"dt={dt}: 安定  最終角度={data.qpos[0]:.4f}")</pre></div>
-      <p class="why"><b>発散の見つけ方</b> <code>np.isfinite</code> で NaN / inf を検出する。
-         実際には NaN になる前に <code>qvel</code> が異常な大きさになるので、
-         <code>abs(data.qvel[0]) &gt; 1e4</code> のような閾値でも捕まえられる。<br>
-         <b>期待される結果</b> <code>dt=0.005</code> 以上で発散する（検証済み）。</p>
+      <p class="why"><b>この段階の狙い</b> 「硬さを一定にして timestep だけを動かす」という
+         <strong>1 変数だけを振る実験</strong>をやること。原因が 2 つある現象は、
+         片方を固定しないと切り分けられない。1-3 ではこの逆をやる。</p>
+      <div class="callout">
+        <span class="k">ここは実際にハマるので先に書いておく</span>
+        <p><code>np.isfinite(data.qpos)</code> だけで発散を判定すると、
+           <strong>4 つとも「安定」と表示される</strong>。MuJoCo は発散を検知した時点で
+           警告を立てて<strong>状態を自動的にリセットする</strong>ので、
+           ループを抜けた後の <code>qpos</code> はいつも有限で、しかも 0 付近に戻っているから。<br>
+           判定には <code>data.warning[mujoco.mjtWarning.mjWARN_BADQACC].number</code> を使う。
+           <code>abs(data.qvel[0]) &gt; 1e4</code> のような閾値でも捕まえられる（リセット前の
+           大きな速度を拾うため）。<strong>実行して全部「安定」と出たら、この落とし穴</strong>。</p>
+      </div>
+      <p class="why"><b>期待される結果</b> <code>dt=0.005</code> と <code>dt=0.01</code> で発散する。
+         二分探索するとしきい値は <strong>2.67 ms</strong>（検証済み）。<br>
+         <b>考えること</b> このしきい値は <code>kp</code> と <code>kv</code> から
+         事前に計算できる。どちらが効いていると思うか。
+         答えは<a href="integrator_explained.html">補助教材</a>の §03 にある。</p>
     </div>
 
     <div class="stage">
@@ -618,10 +893,25 @@ friction の既定 = [1.0  0.005  0.0001]   [すべり, ころがり, ひねり]
     <span class="tno">課題 2 · 本題</span>
     <h3>アクチュエータ 3 種を比べる</h3>
 
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><strong><code>ctrl</code> に書く数値の意味が、アクチュエータ型によって変わることを実測で確かめる。</strong>
+         §03 の式は読めば分かる。だが同じ <code>1.0</code> が N·m にも rad にも rad/s にもなるという事実は、
+         3 本を並べて同時に動かすまで実感にならない。<br>
+         <b>やり終えたとき言えること</b>——実機のモータに何を指令できるかから逆算して、
+         シミュのアクチュエータ型を選べる。これは Step 6 で
+         <strong>行動空間を設計する</strong>作業そのもの。ここを曖昧にしたまま先に進むと、
+         学習は回るのに実機に載せられない方策ができあがる。</p>
+    </div>
+
     <div class="stage">
       <div class="sh"><span class="sn">2-1</span><h4>3 種類を 1 つのモデルに並べる</h4></div>
       <p><code>models/actuators.xml</code> を作り、<strong>同じ振り子を 3 本</strong>並べて
          それぞれ違うアクチュエータを付ける。横に並べると挙動の違いが一目で分かる。</p>
+      <p class="why"><b>この段階の狙い</b> 3 本を<strong>同じモデルの中に</strong>置くこと。
+         別々に実行して結果を見比べるのではなく、同じ <code>data.ctrl</code> に同じ値を書いて
+         同時に動かすからこそ、「同じ 1.0 なのに違う」という比較が成立する。
+         振り子の物理は 3 本とも完全に同一にしておく。</p>
       <div class="code"><pre>&lt;worldbody&gt;
   &lt;body name="a" pos="-0.6 0 1"&gt;
     &lt;joint name="j_motor" type="hinge" axis="0 1 0" damping="0.05"/&gt;
@@ -662,8 +952,27 @@ print(data.qvel)</pre></div>
             <b>position（目標角度 1.0 rad）</b> 1.0 rad の<strong>手前</strong>で止まる。
             重力とゲインの釣り合いで定常偏差が残るため。<code>kp=30</code> なら
             <code>30(1.0 − θ) = 1.623·sin θ</code> を満たす θ。<br>
-            <b>velocity（目標角速度 1.0 rad/s）</b> 一定速度で<strong>回り続けようとする</strong>が、
-            重力が邪魔をするので上りで遅く下りで速い、脈動した回転になる。</p>
+            <b>velocity（目標角速度 1.0 rad/s）</b> 回り続けようとするが、
+            <strong>登りきれずに 1.179 rad で止まる</strong>。
+            <code>f = 1.5(1.0 &minus; q&#775;)</code> が出せる最大トルクは <code>q&#775; = 0</code> のときの
+            <strong>1.5 N&middot;m</strong> で、これが最大重力トルク <code>m&middot;g&middot;l = 1.623 N&middot;m</code> に
+            届いていないため。釣り合いは <code>1.5 = 1.623 sin&theta;</code> &rarr; <strong>1.1788 rad</strong>（検証済み）。
+            <code>kv="2"</code> にすると 2.0 &gt; 1.623 になり、今度は本当に回り続ける。
+            <strong>トルク飽和で目標を達成できない</strong>という Step 4 の主題がここに出ている。</p>
+          <p class="why"><b>収束の速さの違いは kv が作っている</b>
+            3 本を同時に見ると position が真っ先に静止する（6 秒時点で <code>qvel</code> は 4e&minus;15、
+            つまり完全にゼロ）。motor は延々と揺れ続ける。これはアクチュエータの優劣ではなく、
+            統一式の <code>bias&#8322; &times; q&#775;</code> の項の有無。
+            motor は bias が全て 0 なので減衰源が <code>damping="0.05"</code> だけなのに対し、
+            position は <code>kv=2</code> が加わって実効減衰が <strong>41 倍</strong>になる。
+            <code>kv</code>（= PD の D）は速度に比例して逆向きに効くダンパそのもの。
+            Step 4 で <code>kd</code> を調整するとき、この「上げると収束は速いが応答が鈍る」
+            トレードオフが主戦場になる。</p>
+          <p class="why"><b>3000 ステップでは早すぎる</b>
+            既定の <code>timestep=0.002</code> なら 3000 ステップ＝6 秒で、
+            motor と velocity はまだ揺れている最中（motor は 0.713、20 秒まで回すと 0.664 に落ち着く）。
+            <strong>定常値を測るときは qvel が十分小さくなったことを確認してから読む</strong>こと。
+            平衡点の理論値と比べる実験では、これを怠ると「理論と合わない」と悩むことになる。</p>
           <p class="why"><b>ここが本質</b> <code>ctrl</code> という同じ配列に同じ 1.0 を書いても、
             <strong>アクチュエータ型によって単位も意味も違う</strong>。
             N·m なのか rad なのか rad/s なのか。
@@ -721,6 +1030,17 @@ plt.axhline(1.0, ls="--", color="gray")     <span class="cmt"># 目標</span></p
     <span class="tno">課題 3 · 発展</span>
     <h3>armature と frictionloss の効果を測る</h3>
 
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><strong>sim2real ギャップを、漠然とした不安ではなく数値として見る。</strong>
+         <code>armature</code> は質量行列の対角にちょうどその値だけ加算され、
+         <code>frictionloss</code> はある閾値を境に動きを完全に止める。
+         どちらも 1 行の変更で挙動が定量的に変わることを、自分の目で確認する。<br>
+         <b>やり終えたとき言えること</b>——実機が「シミュより鈍い」とき、
+         どの属性をどちら向きに動かせばよいか。Step 11 でランダム化の範囲を決めるとき、
+         この手触りが無いと値を選べない。</p>
+    </div>
+
     <div class="stage">
       <div class="sh"><span class="sn">3-1</span><h4>armature が質量行列に入るのを見る</h4></div>
       <div class="code"><pre>M = np.zeros((model.nv, model.nv))
@@ -747,7 +1067,7 @@ print(np.diag(M))</pre></div>
 </section>
 
 <!-- ===== 08 ===== -->
-<section>
+<section id="s09">
   <div class="sec-head">
     <div class="eyebrow">08</div>
     <h2>よく出る症状と対処</h2>
@@ -773,7 +1093,7 @@ print(np.diag(M))</pre></div>
 </section>
 
 <!-- ===== 09 ===== -->
-<section>
+<section id="s10">
   <div class="sec-head">
     <div class="eyebrow">09</div>
     <h2>完了条件</h2>
@@ -969,5 +1289,54 @@ print(np.diag(M))</pre></div>
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
   }
   draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
 })();
 </script>

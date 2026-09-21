@@ -166,7 +166,76 @@
     .lab { grid-template-columns:1fr; }
     .lab-controls { border-right:none; border-bottom:1px solid var(--rule); }
   }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
 </style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">このステップで手に入るもの</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">XML をファイルに分離する</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">MJCF の全体構造</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">角度の単位はデフォルトで「度」</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">body ツリーと親相対座標</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">joint</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">geom</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">見た目を整える</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">actuator</span></a></li>
+    <li><a href="#s10"><span class="n">09</span><span class="t">default</span></a></li>
+    <li><a href="#s11"><span class="n">10</span><span class="t">sensor</span></a></li>
+    <li><a href="#s12"><span class="n">11</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s13"><span class="n">12</span><span class="t">よく出るエラーと対処</span></a></li>
+    <li><a href="#s14"><span class="n">13</span><span class="t">完了条件</span></a></li>
+  </ol>
+</nav>
 
 <div class="wrap">
 
@@ -183,7 +252,7 @@
 </header>
 
 <!-- ===== 0 ===== -->
-<section>
+<section id="s01">
   <div class="sec-head">
     <div class="eyebrow">00</div>
     <h2>このステップで手に入るもの</h2>
@@ -204,7 +273,7 @@
 </section>
 
 <!-- ===== 1 ===== -->
-<section>
+<section id="s02">
   <div class="sec-head">
     <div class="eyebrow">01</div>
     <h2>XML をファイルに分離する</h2>
@@ -393,7 +462,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 2 ===== -->
-<section>
+<section id="s03">
   <div class="sec-head">
     <div class="eyebrow">02</div>
     <h2>MJCF の全体構造</h2>
@@ -478,7 +547,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 3 ===== -->
-<section>
+<section id="s04">
   <div class="sec-head">
     <div class="eyebrow">03 · 最初の罠</div>
     <h2>角度の単位はデフォルトで「度」</h2>
@@ -516,7 +585,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 4 ===== -->
-<section>
+<section id="s05">
   <div class="sec-head">
     <div class="eyebrow">04 · 核心</div>
     <h2>body ツリーと親相対座標</h2>
@@ -601,7 +670,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 5 ===== -->
-<section>
+<section id="s06">
   <div class="sec-head">
     <div class="eyebrow">05</div>
     <h2>joint — 自由度を作る</h2>
@@ -648,7 +717,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 6 ===== -->
-<section>
+<section id="s07">
   <div class="sec-head">
     <div class="eyebrow">06</div>
     <h2>geom — 形と質量</h2>
@@ -692,7 +761,7 @@ value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサ�
 </section>
 
 <!-- ===== 07 見た目 ===== -->
-<section>
+<section id="s08">
   <div class="sec-head">
     <div class="eyebrow">07</div>
     <h2>見た目を整える — 明るいシーンの作り方</h2>
@@ -1029,7 +1098,7 @@ model.geom_rgba[fid] = [0.85, 0.87, 0.85, 1]</pre></div>
 </section>
 
 <!-- ===== 7 ===== -->
-<section>
+<section id="s09">
   <div class="sec-head">
     <div class="eyebrow">08</div>
     <h2>actuator — ついに動かせるようになる</h2>
@@ -1071,7 +1140,7 @@ mujoco.mj_step(model, data)</pre></div>
 </section>
 
 <!-- ===== 8 ===== -->
-<section>
+<section id="s10">
   <div class="sec-head">
     <div class="eyebrow">09</div>
     <h2>default — 繰り返しをまとめる</h2>
@@ -1099,7 +1168,7 @@ mujoco.mj_step(model, data)</pre></div>
 </section>
 
 <!-- ===== 9 ===== -->
-<section>
+<section id="s11">
   <div class="sec-head">
     <div class="eyebrow">10</div>
     <h2>sensor — 実機センサとの接点</h2>
@@ -1138,7 +1207,7 @@ mujoco.mj_step(model, data)</pre></div>
 </section>
 
 <!-- ===== 10 ===== -->
-<section>
+<section id="s12">
   <div class="sec-head">
     <div class="eyebrow">11 · 課題</div>
     <h2>手を動かす</h2>
@@ -1451,7 +1520,7 @@ plt.plot(b[:, 0], b[:, 1], label="q0 = 1.0001", alpha=0.7)</pre></div>
 </section>
 
 <!-- ===== 11 ===== -->
-<section>
+<section id="s13">
   <div class="sec-head">
     <div class="eyebrow">12</div>
     <h2>よく出るエラーと対処</h2>
@@ -1508,7 +1577,7 @@ plt.plot(b[:, 0], b[:, 1], label="q0 = 1.0001", alpha=0.7)</pre></div>
 </section>
 
 <!-- ===== 12 ===== -->
-<section>
+<section id="s14">
   <div class="sec-head">
     <div class="eyebrow">13</div>
     <h2>完了条件</h2>
@@ -1710,5 +1779,54 @@ plt.plot(b[:, 0], b[:, 1], label="q0 = 1.0001", alpha=0.7)</pre></div>
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
   }
   draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
 })();
 </script>

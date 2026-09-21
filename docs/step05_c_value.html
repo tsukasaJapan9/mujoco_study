@@ -1,0 +1,880 @@
+<title>価値関数 V と Q</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">あなたの答えを全マスに広げる</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">それが価値関数 V</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">方策が変われば価値も変わる</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">行動まで込みで測る Q</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">差だけを見るアドバンテージ</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 5-c</span>
+  <h1>価値関数 V と Q</h1>
+  <p>「このマスは有望だ」を数字にする。
+     前回あなたが出した <code>0.59049</code> という値を、14 マス全部に広げるだけ。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 5 の 3/6</span>
+    <span class="chip">toy/gridworld.py に追記</span>
+    <span class="chip">前提: 5-b</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>収益 G</b> ＝ 1 エピソードでもらった報酬の合計。<strong>強化学習の目的は収益の平均を最大にすること</strong></li>
+      <li><b>割引率 &gamma;</b> は、遠い未来の報酬を軽く数える。&gamma;=0.9 なら実効地平は 10 歩</li>
+      <li>最短 6 歩でゴールする経路の収益は <b>0.59049</b>（= 0.9<sup>5</sup>）。ランダム方策の平均は <b>0.0535</b></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 収益を測るには最後まで歩くしかない。もっと手前で「この選択は良い」と判断できないか？</p>
+    <p><b>2.</b> 論文に出てくる <b>V</b> と <b>Q</b> と <b>A</b> の 3 つは、どう違うのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答え合わせから始めます。あなたが出した
+     「ゴールの隣のほうが有望」という答えを、<strong>14 マス全部に広げて表にする</strong>と、
+     それがそのまま <b>価値関数</b> になります。
+     <strong>新しい計算は出てきません。</strong>5-b の <code>G</code> をマスごとに集計するだけです。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>あなたの答えを全マスに広げる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>まず<strong>完成形の表を見ます</strong>。定義も式も後回しです。
+       表を見て「なるほどこういうものか」と思えれば、この節の目的は達成です。</p>
+  </div>
+
+  <p>宿題であなたが答えたのはこの 2 マスでした。</p>
+  <div class="tw"><table>
+    <thead><tr><th>地点</th><th class="num">ゴールまで</th><th class="num">そこからの収益（&gamma;=0.9）</th></tr></thead>
+    <tbody>
+      <tr><td>ゴールの隣</td><td class="num">1 歩</td><td class="num"><strong>1.000</strong></td></tr>
+      <tr><td>スタート地点</td><td class="num">6 歩</td><td class="num">0.590</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>同じことを <strong>14 マス全部</strong>についてやると、こうなります
+     （最短経路を選んだ場合。実測値）。</p>
+
+  <div class="gwrap">
+    <div class="grid4 vals" aria-label="各マスの価値">
+      <div class="cell">0.810</div><div class="cell">0.900</div><div class="cell">1.000</div><div class="cell goal">G</div>
+      <div class="cell">0.729</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+      <div class="cell">0.656</div><div class="cell">0.729</div><div class="cell">0.810</div><div class="cell">0.900</div>
+      <div class="cell start">0.590</div><div class="cell">0.656</div><div class="cell wall"></div><div class="cell">0.810</div>
+    </div>
+    <ul class="legend">
+      <li><span class="sw start"></span> スタート地点。<b>0.590</b> ＝ あなたが計算した 0.9<sup>5</sup></li>
+      <li><span class="sw goal"></span> ゴール。着いた時点で終わりなので 0</li>
+      <li>ゴールに近いほど数字が大きい</li>
+      <li>隣り合うマスの比はいつも <b>0.9</b>（＝ &gamma;）</li>
+    </ul>
+  </div>
+
+  <p class="why"><b>表の読み方</b>
+     どのマスも <code>0.9<sup>(ゴールまでの歩数 &minus; 1)</sup></code> になっています。
+     <code>0.810 = 0.9&sup2;</code>、<code>0.729 = 0.9&sup3;</code>、<code>0.656 = 0.9&#8308;</code>。
+     <strong>&gamma; を 1 回余計に掛けるぶんだけ、1 歩遠いマスの値が小さい</strong>。
+     あなたが宿題で使った考え方が、そのまま全マスに効いています。</p>
+
+  <div class="callout tip">
+    <span class="k">これで何が嬉しいのか</span>
+    <p>この表があると、<strong>最後まで歩かなくても行動を選べます</strong>。
+       スタート地点 <code>(3,0)</code> で上に動けば <code>0.656</code> のマス、
+       下に動けば動けず <code>0.590</code> のまま。
+       <strong>数字の大きいほうへ動けばいい</strong>——それだけで最短経路を歩けます。
+       64 歩かけて収益を 1 つ測るより、はるかに効率的です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>それが価値関数 V</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§01 の表に名前をつけます。<strong>新しい計算は出ません。</strong></p>
+  </div>
+
+  <p><b>価値関数</b>（value function）とは、
+     <strong>「この状態から始めたら、収益はいくらになりそうか」を状態ごとに持った表</strong>のことです。
+     <code>V(s)</code> と書きます。</p>
+
+  <div class="code"><pre>V(s) = その状態 s から始めたときの、収益 G の平均
+</pre></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">価値関数 V(s)</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>状態を受け取って「その先の見込み」を返す関数。
+        <strong>報酬が「今もらった点」、収益が「最後までの合計」なのに対し、
+        価値は「これからもらえそうな合計の予想」</strong>。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>収益 <code>G</code> は<strong>最後まで歩かないと分からない</strong>から。
+        64 歩あるいて数字が 1 つでは学習が進まない。
+        <strong>1 歩ごとに判断できる材料</strong>が要る。それが価値。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 8 の PPO では、この <code>V</code> をニューラルネットで近似します
+        （<b>Critic</b> と呼ばれる部分がそれ）。
+        <strong>マス目なら 14 個の表で済むものが、振り子では表にできないのでネットにする</strong>——
+        違いはそれだけ。</dd>
+    </dl>
+  </div>
+
+  <p class="why"><b>「平均」が入っていることに注意</b>
+     5-b と同じ理由です。方策が確率的なら収益は毎回変わるので、
+     価値は<strong>その平均</strong>として定義されます。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>方策が変われば価値も変わる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここが今回いちばん誤解しやすいところです。
+       <strong>価値はマスの性質ではありません。</strong>
+       「マスと方策の組」の性質です。同じマスでも方策が違えば値が違う、
+       というのを 2 枚の表を並べて確かめます。</p>
+  </div>
+
+  <p>§01 の表は<strong>最短経路を選ぶ方策</strong>での値でした。
+     同じマス目で<strong>ランダム方策</strong>の価値を計算すると、まったく別の表になります（実測値）。</p>
+
+  <div class="two-up">
+    <div class="vbox">
+      <span class="vt">ランダム方策の価値 <code>V<sup>&pi;</sup></code></span>
+      <div class="grid4 vals small">
+        <div class="cell">0.143</div><div class="cell">0.263</div><div class="cell">0.500</div><div class="cell goal">G</div>
+        <div class="cell">0.087</div><div class="cell wall"></div><div class="cell">0.349</div><div class="cell">0.498</div>
+        <div class="cell">0.069</div><div class="cell">0.097</div><div class="cell">0.203</div><div class="cell">0.255</div>
+        <div class="cell start">0.053</div><div class="cell">0.061</div><div class="cell wall"></div><div class="cell">0.176</div>
+      </div>
+    </div>
+    <div class="vbox">
+      <span class="vt">最適な方策の価値 <code>V*</code></span>
+      <div class="grid4 vals small">
+        <div class="cell">0.810</div><div class="cell">0.900</div><div class="cell">1.000</div><div class="cell goal">G</div>
+        <div class="cell">0.729</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+        <div class="cell">0.656</div><div class="cell">0.729</div><div class="cell">0.810</div><div class="cell">0.900</div>
+        <div class="cell start">0.590</div><div class="cell">0.656</div><div class="cell wall"></div><div class="cell">0.810</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>マス</th><th class="num">ランダム方策</th><th class="num">最適方策</th><th class="num">何倍</th></tr></thead>
+    <tbody>
+      <tr><td>スタート <code>(3,0)</code></td><td class="num">0.053</td><td class="num">0.590</td><td class="num"><strong>11 倍</strong></td></tr>
+      <tr><td>ゴールの隣 <code>(0,2)</code></td><td class="num">0.500</td><td class="num">1.000</td><td class="num">2 倍</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ゴールの隣ですら 0.5 しかない</b>
+     ランダム方策だと、ゴールの隣にいても<strong>正しい方向を選ぶ確率が 1/4</strong> しかありません。
+     残り 3/4 は別の方向へ行ってしまい、戻ってくるまでに &gamma; が何度も掛かる。
+     だから <code>1.000</code> ではなく <code>0.500</code> になります。
+     <strong>「良い場所にいること」と「良い行動を取れること」は別</strong>です。</p>
+
+  <div class="callout">
+    <span class="k">記号の読み方</span>
+    <p><code>V<sup>&pi;</sup>(s)</code> の肩の <code>&pi;</code> は<strong>「どの方策で測ったか」</strong>を表します。
+       <code>V<sup>&pi;</sup></code> と書いたら「方策 &pi; に従ったときの価値」。
+       <code>V*</code>（V スター）と書いたら<strong>「最善を尽くしたときの価値」</strong>で、
+       これが全方策の中で最大です。
+       <strong>肩の記号を落として書かれている文章を読むときは、どちらの話か自分で判断する必要があります。</strong></p>
+  </div>
+
+  <p class="why"><b>5-b との繋がり</b>
+     ランダム方策の表でスタート地点の値は <code>0.053</code>。
+     5-b であなたが 2 万エピソード回して出した <code>0.0535</code> と一致します。
+     <strong>あれは「スタート地点の価値をモンテカルロで測っていた」</strong>のです。</p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>行動まで込みで測る Q</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>V</code> だけだと「どう動くか」を決めるのに一手間かかります。
+       それを解消するのが <code>Q</code> です。
+       <strong>Q 学習（5-e で実装するもの）の Q がこれ</strong>なので、ここを押さえておきます。</p>
+  </div>
+
+  <p><code>V(s)</code> は<strong>状態だけ</strong>を受け取りました。
+     <b>行動価値関数</b> <code>Q(s, a)</code> は、<strong>状態と行動の組</strong>を受け取ります。</p>
+  <div class="code"><pre>V(s)     = 状態 s から始めたときの収益の平均
+Q(s, a)  = 状態 s で行動 a を取り、その後は同じ方策に従ったときの収益の平均
+</pre></div>
+
+  <p>スタート地点 <code>(3,0)</code> での <code>Q*</code> を 4 方向すべてについて計算した実測値です。</p>
+  <div class="tw"><table>
+    <thead><tr><th>行動</th><th class="num">Q*((3,0), a)</th><th>動いた先</th></tr></thead>
+    <tbody>
+      <tr><td><code>up</code></td><td class="num"><strong>0.59049</strong></td><td>(2,0) へ。ゴールまであと 5 歩</td></tr>
+      <tr><td><code>right</code></td><td class="num"><strong>0.59049</strong></td><td>(3,1) へ。こちらもあと 5 歩</td></tr>
+      <tr><td><code>down</code></td><td class="num">0.53144</td><td>外なので動けない。1 歩損した</td></tr>
+      <tr><td><code>left</code></td><td class="num">0.53144</td><td>外なので動けない。1 歩損した</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>最適な行動が 2 つあります</b>
+     <code>up</code> と <code>right</code> がまったく同じ値です。
+     マス目を見れば分かりますが、<strong>スタートからゴールへの最短経路は 2 通りある</strong>
+     （上回りと右回り）ので、どちらを選んでも同じ。
+     <strong>最適方策は 1 つとは限りません。</strong></p>
+
+  <p class="why"><b>動けなかった 2 つは 0.9 倍</b>
+     <code>0.53144 = 0.59049 &times; 0.9</code>。
+     壁にぶつかって同じマスに留まったので、<strong>1 歩ぶん余計に &gamma; が掛かっただけ</strong>です。</p>
+
+  <h3>V と Q の関係</h3>
+  <p>表を見てください。<code>Q*</code> の 4 つの値のうち<strong>いちばん大きいもの</strong>が
+     <code>0.59049</code>、これは §01 の表のスタート地点の値と同じです。</p>
+  <div class="code"><pre>V*(s) = max over a  of  Q*(s, a)      <span class="cmt"># 最善を尽くすなら、一番良い行動の値</span>
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k">なぜ Q のほうが使いやすいのか</span>
+    <p><code>V</code> しか持っていないと、行動を選ぶのに
+       <strong>「各行動でどこへ行くか」を知っている必要があります</strong>（＝ 遷移 P を知っている必要がある）。
+       <code>Q</code> を持っていれば、<strong>4 つの数字を見比べて大きいほうを選ぶだけ</strong>。
+       遷移を知らなくていい。
+       <strong>実機のロボットでは遷移（＝物理）を正確には知らない</strong>ので、これは大きな差です。
+       5-e で Q 学習を実装するのは、この性質があるからです。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>差だけを見るアドバンテージ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>3 つ目の <code>A</code> を出します。<strong>V と Q が分かっていれば引き算するだけ</strong>です。
+       Step 8 の PPO で主役になる量なので、名前と意味だけ押さえます。</p>
+  </div>
+
+  <p><b>アドバンテージ</b>（advantage）は、その名のとおり<strong>「どれだけ得か」</strong>です。</p>
+  <div class="code"><pre>A(s, a) = Q(s, a) - V(s)      <span class="cmt"># その行動は平均よりどれだけ良いか</span>
+</pre></div>
+
+  <p>スタート地点で計算すると（実測値）、</p>
+  <div class="tw"><table>
+    <thead><tr><th>行動</th><th class="num">Q*</th><th class="num">V*</th><th class="num">A* = Q* &minus; V*</th></tr></thead>
+    <tbody>
+      <tr><td><code>up</code></td><td class="num">0.59049</td><td class="num">0.59049</td><td class="num"><strong>0.00000</strong></td></tr>
+      <tr><td><code>right</code></td><td class="num">0.59049</td><td class="num">0.59049</td><td class="num"><strong>0.00000</strong></td></tr>
+      <tr><td><code>down</code></td><td class="num">0.53144</td><td class="num">0.59049</td><td class="num">&minus;0.05905</td></tr>
+      <tr><td><code>left</code></td><td class="num">0.53144</td><td class="num">0.59049</td><td class="num">&minus;0.05905</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>符号だけ見れば良し悪しが分かります</b>
+     <code>A &gt; 0</code> なら「平均より良い行動」、<code>A &lt; 0</code> なら「平均より悪い行動」。
+     <strong>最適方策では、最善の行動の A がちょうど 0</strong> になります
+     （それが平均そのものだから）。</p>
+
+  <div class="callout">
+    <span class="k">なぜわざわざ引き算するのか（Step 8 の伏線）</span>
+    <p><code>Q</code> の値は <code>0.59</code> と <code>0.53</code> で、<strong>1 割しか違いません</strong>。
+       この 2 つを見比べて「上のほうが良い」と学習するのは、数字が近すぎて難しい。
+       引き算して <code>0.00</code> と <code>&minus;0.06</code> にすると、
+       <strong>違いがそのまま浮き上がります</strong>。</p>
+    <p>ニューラルネットを使う学習では、この<strong>「どれだけ差があるか」の信号の鮮明さ</strong>が
+       学習の速さを直接左右します。PPO が <code>Q</code> ではなく <code>A</code> を使うのはこのためです。</p>
+  </div>
+
+  <div class="recap">
+    <span class="k">3 つの関係を 1 行で</span>
+    <ol>
+      <li><code>V(s)</code> — この<strong>場所</strong>はどれくらい良いか</li>
+      <li><code>Q(s,a)</code> — この場所で<strong>この行動</strong>を取るとどれくらい良いか</li>
+      <li><code>A(s,a) = Q(s,a) &minus; V(s)</code> — その行動は<strong>平均と比べて</strong>どれくらい良いか</li>
+    </ol>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      §03 の<strong>ランダム方策の表を、自分で作る</strong>ため。
+      5-b で書いた <code>G()</code> がそのまま使えるので、実質やることは
+      <strong>「スタート地点を変えて繰り返す」だけ</strong>です。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——価値は「歩いた結果の平均」として実際に測れる量だと分かる。
+      <strong>5-d で学ぶ別の求め方（歩かずに計算する）と比べる土台</strong>になります。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">考えてほしいのは 1 箇所だけです</span>
+    <p>段階 1 の穴埋めのみ。段階 2・3 は写経で構いません。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>1 つのマスの価値を測る</h3>
+    <p class="why"><b>この段階ですること</b>
+      5-b で書いたループを<strong>関数に包み、開始地点を選べるようにする</strong>だけです。</p>
+    <div class="code"><pre>def value_of(s0, gamma=0.9, n_ep=20000, seed=2):
+    rng = np.random.default_rng(seed)
+    if s0 == GOAL:
+        return 0.0                 <span class="cmt"># ゴールは着いた時点で終わりなので 0</span>
+    totals = []
+    for ep in range(n_ep):
+        state, rewards = ???, []   <span class="cmt"># ← ここだけ考える</span>
+        for t in range(500):
+            state, reward, done = step(state, rng.integers(4))
+            rewards.append(reward)
+            if done:
+                break
+        totals.append(G(rewards, gamma))
+    return np.mean(totals)
+</pre></div>
+    <p>5-b では <code>state, rewards = START, []</code> と書いていました。
+      <strong>今回は「好きなマスから始められる」ようにしたい</strong>のですが、どう変えますか。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>        state, rewards = s0, []
+</pre></div>
+      <p class="why"><b>変更はこれだけです</b>
+        <code>START</code> という固定の値を、引数 <code>s0</code> に置き換えるだけ。
+        <strong>価値関数が「状態を受け取る関数」だというのが、
+        コードの形としてここに現れています。</strong></p>
+      <p class="why"><b>なぜ <code>rewards = []</code> が内側のループの外にあるのか</b>
+        エピソードごとにリセットする必要があるからです。
+        外に出しすぎると全エピソードの報酬が混ざり、<code>G</code> が意味を失います。</p>
+    </div></details>
+    <p><b>確認方法</b> スタート地点とゴールの隣で試します。</p>
+    <div class="code"><pre>print(value_of(START))       <span class="cmt"># -> 0.0523  (理論値 0.0532)</span>
+print(value_of((0, 2)))      <span class="cmt"># -> 0.4993  ゴールの隣（理論値 0.5000）</span>
+</pre></div>
+    <p class="why"><b>ここで一度立ち止まってください</b>
+      <code>value_of(START)</code> は <strong>0.052 前後</strong>になります。
+      5-b であなたが出した <code>0.0535</code> と、<strong>3 桁目までは同じ</strong>。
+      <strong>あのとき測っていたものが、実は価値だった</strong>——それが確認できれば十分です。</p>
+    <p class="why"><b>ぴったり一致しないのは正常です</b>
+      どちらもモンテカルロ（＝たくさん試して平均を取る方法）による推定で、
+      乱数の引き方が違えば 3 桁目以降は動きます。
+      理論値は <code>0.0532</code>、5-b が <code>0.0535</code>、今回が <code>0.0523</code>。
+      <strong>「歩いて測る」方法には、この程度のぶれが必ず付きまといます。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>14 マス全部の表を作る</h3>
+    <p class="why"><b>この段階ですること</b> 段階 1 の関数を全マスに対して呼び、
+      マス目の形に並べて表示します。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>V = {}
+for r in range(N_ROW):
+    for c in range(N_COL):
+        if GRID[r][c] != "#":
+            V[(r, c)] = value_of((r, c))
+
+for r in range(N_ROW):
+    cells = []
+    for c in range(N_COL):
+        cells.append("  ##  " if GRID[r][c] == "#" else f"{V[(r, c)]:6.3f}")
+    print(" ".join(cells))
+</pre></div>
+    <p><b>確認方法</b> §03 左側の表と一致すれば成功です。目安の値を挙げておきます。</p>
+    <div class="code"><pre> 0.143  0.264  0.499  0.000
+ 0.087   ##    0.351  0.502
+ 0.068  0.098  0.204  0.256
+ 0.052  0.061   ##    0.176
+</pre></div>
+    <p class="why"><b>&sect;03 の表と 3 桁目が違います。それで正常です</b>
+      &sect;03 に載せた表は<strong>計算で求めた正確な値</strong>で、
+      いまあなたが作ったのは<strong>2 万回歩いて平均した推定値</strong>。
+      たとえばゴールの隣は、正確には <code>0.500</code> ちょうどですが、
+      推定では <code>0.499</code> になります。</p>
+    <p class="why"><b>精度を上げるには回数を増やすしかありません</b>
+      <code>n_ep</code> を 10 倍にすれば桁がもう 1 つ合いますが、<strong>時間も 10 倍</strong>かかります。
+      14 マス &times; 2 万回で既に 28 万エピソード走らせていることを思い出してください。
+      <strong>この非効率さが、5-d で別の求め方を学ぶ動機です。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>表を読む</h3>
+    <p class="why"><b>この段階ですること</b> コードは書きません。
+      <strong>作った表を見て 2 つの問いに答えてください。</strong>
+      これが今回いちばん大事な作業です。</p>
+    <p><b>問い 1.</b> ゴールの隣 <code>(0,2)</code> の値が <code>0.504</code> です。
+      最適方策なら <code>1.000</code> のはずなのに、なぜ半分になっているのでしょうか。</p>
+    <details><summary>答えを見る</summary><div class="dbody">
+      <p class="why">ランダム方策は<strong>ゴール方向（右）を選ぶ確率が 1/4 しかない</strong>から。
+        残り 3/4 は別方向へ行き、戻ってくるまでに &gamma; が何度も掛かって値が目減りします。
+        <strong>良い場所にいることと、良い行動を取れることは別</strong>です。</p>
+    </div></details>
+    <p><b>問い 2.</b> 左下のスタート地点 <code>0.053</code> と、
+      右下の <code>(3,3)</code> の <code>0.179</code>。<strong>3 倍以上の差</strong>があります。
+      どちらもゴールまで歩数は 6 歩と 3 歩です。この差は何を意味していますか。</p>
+    <details><summary>答えを見る</summary><div class="dbody">
+      <p class="why">歩数が近いほど価値が高い、というだけではありません。
+        <strong>ランダムに動いたときに「ゴールへ向かいやすいか」</strong>が効いています。
+        <code>(3,3)</code> は右端の列にいるので、上に動く行動がそのままゴール方向に繋がる。
+        スタート地点は反対の角にあり、<strong>壁 <code>(3,2)</code> にも進路を塞がれている</strong>。</p>
+      <p class="why"><b>ここが本質です</b>
+        価値の表は<strong>「マス目の地形」と「方策」の両方を反映しています</strong>。
+        同じ地形でも方策が変われば表は変わる（§03 の 2 枚の比較）。
+        <strong>価値関数は、環境と方策の相互作用を 1 枚に要約したもの</strong>だと考えてください。</p>
+    </div></details>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><b>V(s)</b> ＝ その状態から始めたときの収益の平均。<strong>最後まで歩かなくても行動を選べる</strong>ようにするための表</li>
+      <li><strong>価値はマスの性質ではない。</strong>「マスと方策の組」の性質。
+          同じマスでもランダム方策なら 0.053、最適方策なら 0.590</li>
+      <li><b>Q(s,a)</b> は行動まで込み。<strong>遷移を知らなくても行動を選べる</strong>ので実用上こちらが便利</li>
+      <li><b>A(s,a) = Q(s,a) &minus; V(s)</b>。<strong>差だけを取り出して信号を鮮明にする</strong>。PPO の主役</li>
+      <li><code>V*(s) = max<sub>a</sub> Q*(s,a)</code></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="c1"><span><code>value_of()</code> を書き、<code>value_of(START)</code> が 5-b の <code>0.0535</code> と一致することを確認した</span></label>
+    <label><input type="checkbox" data-ck="c2"><span>14 マスの価値の表を自分で作った</span></label>
+    <label><input type="checkbox" data-ck="c3"><span>ゴールの隣が <code>1.000</code> ではなく <code>0.504</code> になる理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="c4"><span>「価値は状態だけでは決まらない」を、2 枚の表を使って説明できる</span></label>
+    <label><input type="checkbox" data-ck="c5"><span><code>V</code> / <code>Q</code> / <code>A</code> の違いを 1 行ずつで言える</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（5-d）でやること</span>
+    <p>今回は価値を<strong>「2 万回歩いて平均を取る」</strong>ことで求めました。
+       14 マス × 2 万エピソードで、合計 28 万回のエピソードです。
+       <strong>これは明らかに無駄が多い。</strong></p>
+    <p>次回は<strong>一歩も歩かずに、同じ表を計算だけで埋めます</strong>。
+       道具は <b>ベルマン方程式</b> という名前がついていますが、中身は拍子抜けするほど単純です。</p>
+    <p>先に考えておいてください——
+       <strong>§01 の表で、隣り合うマスの値の比がいつもちょうど 0.9 でした。</strong>
+       ということは、あるマスの値は<strong>隣のマスの値から直接計算できる</strong>のではないでしょうか。
+       どういう式になると思いますか。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 5-c</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step05c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

@@ -1,0 +1,971 @@
+<title>ベルマン方程式</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">あなたの式を完成させる</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">それがベルマン方程式</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">表が波のように埋まる</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">28 万回 vs 4 回</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">max を平均に変えると</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08b"><span class="n">06.5</span><span class="t">なぜ片方だけが「正確」なのか</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 5-d</span>
+  <h1>ベルマン方程式</h1>
+  <p>一歩も歩かずに価値の表を埋める。
+     あなたが前回みつけた「隣の値に &gamma; を掛ける」を、そのまま式にするだけ。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 5 の 4/6</span>
+    <span class="chip">toy/gridworld.py に追記</span>
+    <span class="chip">前提: 5-c</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>V(s)</b> ＝ その状態から始めたときの収益の平均。<strong>方策が変われば値も変わる</strong></li>
+      <li><b>Q(s,a)</b> は行動まで込み。<code>V*(s) = max<sub>a</sub> Q*(s,a)</code></li>
+      <li>価値をモンテカルロで測った。14 マス &times; 2 万回 ＝ <strong>28 万エピソード</strong>かかり、それでも 3 桁目がぶれる</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 28 万回も歩かずに、同じ表を埋められないか？</p>
+    <p><b>2.</b> 強化学習の本に必ず出てくる <b>ベルマン方程式</b> は、結局何を言っているのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     前回の宿題であなたが出した式を完成させるところから始めます。
+     <strong>それがそのままベルマン方程式です。</strong>
+     新しい発想は出てきません。足りない部品を 2 つ足すだけです。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>あなたの式を完成させる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題の答え合わせです。<strong>あなたの式に何が足りないか</strong>を、
+       表の 3 マスを見比べながら埋めていきます。</p>
+  </div>
+
+  <p>宿題であなたが出した答えはこれでした。</p>
+  <div class="code"><pre>V*(s) = &gamma; &times; V*(ゴールに近い側のマス)
+</pre></div>
+  <p>最適方策の表で確かめると、確かに合っています。</p>
+
+  <div class="gwrap">
+    <div class="grid4 vals" aria-label="最適方策の価値">
+      <div class="cell">0.810</div><div class="cell">0.900</div><div class="cell hi">1.000</div><div class="cell goal">G</div>
+      <div class="cell hi2">0.729</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+      <div class="cell hi2">0.656</div><div class="cell">0.729</div><div class="cell">0.810</div><div class="cell">0.900</div>
+      <div class="cell start">0.590</div><div class="cell">0.656</div><div class="cell wall"></div><div class="cell">0.810</div>
+    </div>
+    <ul class="legend">
+      <li><span class="sw hi2"></span> <code>0.656 = 0.9 &times; 0.729</code> &nbsp;あなたの式どおり</li>
+      <li><span class="sw hi"></span> <code>1.000</code> &nbsp;ここだけ <code>0.9 &times; 何か</code> の形にならない</li>
+    </ul>
+  </div>
+
+  <h3>足りない部品 その 1：報酬</h3>
+  <p>ゴールの隣 <code>(0,2)</code> が例外なのは、<strong>そこで実際に報酬 +1 をもらうから</strong>です。
+     他のマスは移動しても報酬が 0 なので、<code>&gamma;</code> を掛けるだけで済んでいました。</p>
+  <div class="code"><pre>V*(s) = r + &gamma; &times; V*(次のマス)
+</pre></div>
+  <p>3 マスで確かめます。</p>
+  <div class="tw"><table>
+    <thead><tr><th>マス</th><th class="num">r</th><th>次のマス</th><th class="num">計算</th><th class="num">結果</th></tr></thead>
+    <tbody>
+      <tr><td><code>(2,0)</code></td><td class="num">0</td><td><code>(1,0)</code> の 0.729</td><td class="num">0 + 0.9 &times; 0.729</td><td class="num">0.656</td></tr>
+      <tr><td><code>(0,1)</code></td><td class="num">0</td><td><code>(0,2)</code> の 1.000</td><td class="num">0 + 0.9 &times; 1.000</td><td class="num">0.900</td></tr>
+      <tr><td><code>(0,2)</code></td><td class="num"><strong>1</strong></td><td>ゴール。着いたら終わりなので 0</td><td class="num">1 + 0.9 &times; 0</td><td class="num"><strong>1.000</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>例外は消えました</b>
+     報酬の項を足したことで、<strong>3 マスとも同じ 1 つの式で説明できます</strong>。
+     ゴールの隣が特別だったのではなく、<strong>あなたの式に報酬の項が無かっただけ</strong>でした。</p>
+
+  <h3>足りない部品 その 2：どの隣を見るか</h3>
+  <p>あなたは「ゴールに近い<strong>側</strong>の」と書きました。これは<strong>正しいけれど、
+     プログラムには書けません</strong>——「ゴールに近い側」を知るには、
+     そもそも答えが必要だからです。</p>
+  <p>代わりにこう言い換えます。<strong>4 方向すべてを試して、いちばん良かったものを採る。</strong></p>
+  <div class="code"><pre>V*(s) = max over a  of  [ r(s,a) + &gamma; &times; V*(次のマス) ]
+</pre></div>
+  <p class="why"><b>これで完成です</b>
+     「ゴールに近い側」という人間の判断が、<strong><code>max</code> という機械的な操作</strong>に置き換わりました。
+     <strong>どれが良いかを事前に知らなくても、全部試して比べればいい。</strong>
+     これが 5-c で見た <code>V*(s) = max<sub>a</sub> Q*(s,a)</code> と同じ式です。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>それがベルマン方程式</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§01 で完成した式に名前をつけます。<strong>新しい計算は出ません。</strong></p>
+  </div>
+
+  <p>§01 の式が <b>ベルマン最適方程式</b>（Bellman optimality equation）です。
+     強化学習の本で最初の山場として扱われますが、<strong>言っていることは 1 行です</strong>。</p>
+
+  <div class="callout tip">
+    <span class="k">ベルマン方程式が言っていること</span>
+    <p><strong>「ここの価値は、今もらう報酬と、次の場所の価値を割り引いたものの合計である」</strong></p>
+    <p>それだけです。難しいのは式ではなく、
+       <strong>「価値の定義の中に価値が出てくる」という自己参照の形に慣れること</strong>です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">ベルマン方程式</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd><strong>ある状態の価値を、隣の状態の価値で言い換える関係式</strong>。
+        収益の定義（最後まで足す）を、<strong>1 歩ぶんの関係に畳み込んだもの</strong>。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>5-c のモンテカルロは<strong>最後まで歩く必要があった</strong>。
+        ベルマン方程式は「1 歩先の情報」だけで価値を更新できるので、
+        <strong>エピソードが終わるのを待たなくていい</strong>。</dd>
+      <dt>どこに効くか</dt>
+      <dd>次回 5-e の <b>Q 学習</b> は、この式を 1 行に写しただけのもの。
+        Step 8 の PPO でも、Critic の学習目標はベルマン方程式から作られる。
+        <strong>ここから先の手法は、ほぼ全部これの変種</strong>。</dd>
+    </dl>
+  </div>
+
+  <p class="why"><b>自己参照は循環論法ではないのか</b>
+     <code>V</code> を求めるのに <code>V</code> を使っている、というのは一見おかしく見えます。
+     しかし<strong>ゴールの隣だけは、右辺に <code>V</code> が出てきません</strong>
+     （着いたら終わりなので次の価値が 0）。
+     <strong>そこだけは他に頼らず確定できる。</strong>
+     そこから 1 マスずつ外へ広がっていきます。次の節でそれを見ます。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>表が波のように埋まる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>式を 1 回ずつ全マスに当てはめていくと、何が起きるかを<strong>目で見ます</strong>。
+       ここが今回いちばん気持ちのいいところです。</p>
+  </div>
+
+  <p>やることは単純です。<strong>全マスを一巡して、それぞれに §01 の式を当てはめる。</strong>
+     これを 1 <b>スイープ</b>（sweep）と呼びます。最初は全マス <code>0</code> から始めます。</p>
+
+  <div class="two-up">
+    <div class="vbox">
+      <span class="vt">1 スイープ後</span>
+      <div class="grid4 vals small">
+        <div class="cell z">0.000</div><div class="cell z">0.000</div><div class="cell">1.000</div><div class="cell goal">G</div>
+        <div class="cell z">0.000</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+        <div class="cell z">0.000</div><div class="cell z">0.000</div><div class="cell">0.810</div><div class="cell">0.900</div>
+        <div class="cell z">0.000</div><div class="cell z">0.000</div><div class="cell wall"></div><div class="cell">0.810</div>
+      </div>
+    </div>
+    <div class="vbox">
+      <span class="vt">2 スイープ後</span>
+      <div class="grid4 vals small">
+        <div class="cell z">0.000</div><div class="cell">0.900</div><div class="cell">1.000</div><div class="cell goal">G</div>
+        <div class="cell z">0.000</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+        <div class="cell z">0.000</div><div class="cell">0.729</div><div class="cell">0.810</div><div class="cell">0.900</div>
+        <div class="cell z">0.000</div><div class="cell">0.656</div><div class="cell wall"></div><div class="cell">0.810</div>
+      </div>
+    </div>
+    <div class="vbox">
+      <span class="vt">3 スイープ後（完成）</span>
+      <div class="grid4 vals small">
+        <div class="cell">0.810</div><div class="cell">0.900</div><div class="cell">1.000</div><div class="cell goal">G</div>
+        <div class="cell">0.729</div><div class="cell wall"></div><div class="cell">0.900</div><div class="cell">1.000</div>
+        <div class="cell">0.656</div><div class="cell">0.729</div><div class="cell">0.810</div><div class="cell">0.900</div>
+        <div class="cell start">0.590</div><div class="cell">0.656</div><div class="cell wall"></div><div class="cell">0.810</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="why"><b>ゴールから波が広がっています</b>
+     1 回目で埋まったのは<strong>ゴールから辿れる右側だけ</strong>。
+     2 回目で真ん中の列まで。3 回目で左端のスタート地点に届いて完成です。
+     <strong>「確定しているところから、1 歩ずつ外へ」</strong>という §02 の説明が、
+     そのまま絵になっています。</p>
+
+  <p>4 回目のスイープでは値が<strong>1 つも変わりません</strong>。
+     変化しなくなったら終わりで、これを<b>収束</b>（convergence）と呼びます。</p>
+
+  <div class="callout">
+    <span class="k">3 回で終わるのは運もあります</span>
+    <p>マスを左上から順に更新しているので、
+       <strong>更新した値が同じスイープの中で下流に伝わります</strong>。
+       順番を逆にすると、伝わるのに余計にスイープが要ります。
+       <strong>収束することは保証されていますが、何回で終わるかは順番次第</strong>です。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>28 万回 vs 4 回</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>5-c のやり方と今回のやり方を、<strong>数字で比べます</strong>。
+       なぜベルマン方程式をわざわざ学ぶのか、その答えがここにあります。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>5-c（モンテカルロ）</th><th>5-d（ベルマン）</th></tr></thead>
+    <tbody>
+      <tr><td>やること</td><td>実際に歩いて収益を平均する</td><td>歩かずに式を繰り返し当てはめる</td></tr>
+      <tr><td class="num">回数</td><td class="num">28 万エピソード</td><td class="num"><strong>4 スイープ</strong></td></tr>
+      <tr><td class="num">実行時間</td><td class="num">16.9 秒</td><td class="num"><strong>0.1 ミリ秒</strong></td></tr>
+      <tr><td>得られる値</td><td>推定値（3 桁目がぶれる）</td><td><strong>正確な値</strong></td></tr>
+      <tr><td>必要な前提</td><td>環境を動かせればよい</td><td><strong>遷移 P と報酬 r を知っている必要がある</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>速さの差は 10 万倍以上です</b>
+     しかも得られる値は正確。<strong>使えるなら、こちらを使わない理由はありません。</strong></p>
+
+  <div class="callout">
+    <span class="k">では、なぜ世の中の強化学習はこれを使わないのか</span>
+    <p>表のいちばん下の行が理由です。ベルマン方程式を直接解くには、
+       <strong>「この状態でこの行動を取ると、次はどうなるか」を全部知っている必要があります</strong>。
+       マス目なら知っています。<strong>実機のロボットでは知りません。</strong></p>
+    <p>振り子ですら、MuJoCo の外にいる立場からは
+       「トルク 0.3 を入れたら次の角度がいくつになるか」を式で持っていません。
+       <strong>だから実際には「歩いてみて、その結果でベルマン方程式を近似的に当てはめる」</strong>
+       という折衷案を使います。それが次回の <b>Q 学習</b> です。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>max を平均に変えると</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここまでは<strong>最適方策</strong>の価値 <code>V*</code> を求めてきました。
+       5-c で作ったもう 1 枚の表——<strong>ランダム方策</strong>の <code>V<sup>&pi;</sup></code>——も
+       ベルマン方程式で求まります。違いは <strong>1 箇所だけ</strong>です。</p>
+  </div>
+
+  <div class="code"><pre>V*(s)   = max over a of [ r + &gamma;&middot;V*(次) ]        <span class="cmt"># 最善を選ぶ</span>
+V&pi;(s)   = sum over a of  P(a)&times;[ r + &gamma;&middot;V&pi;(次) ]   <span class="cmt"># 方策の確率で平均する</span>
+</pre></div>
+
+  <p><code>max</code> が<strong>重み付き平均</strong>に変わっただけです。
+     ランダム方策なら 4 方向とも確率 1/4 なので、単純な平均になります。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">スイープ数</th><th class="num">時間</th><th class="num">V(START)</th></tr></thead>
+    <tbody>
+      <tr><td><code>V*</code>（max）</td><td class="num">4</td><td class="num">0.1 ms</td><td class="num">0.590490</td></tr>
+      <tr><td><code>V<sup>&pi;</sup></code>（平均）</td><td class="num">141</td><td class="num">4.0 ms</td><td class="num"><strong>0.053213</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>5-c の答え合わせになっています</b>
+     <code>0.053213</code> が<strong>正確な値</strong>です。
+     あなたがモンテカルロで出した <code>0.0523</code>、5-b で出した <code>0.0535</code>——
+     <strong>どちらも正解の周りでぶれていた</strong>ことが確認できます。</p>
+
+  <p class="why"><b>ランダム方策のほうが 141 スイープもかかるのはなぜか</b>
+     <code>max</code> は<strong>いちばん良い経路だけ</strong>を通して情報を流すので、波が速く広がります。
+     平均だと壁にぶつかる行動も 1/4 の重みで混ざるため、値がじわじわとしか動きません。
+     <strong>「良い方だけ見る」ほうが収束が速い</strong>——直感に合うはずです。</p>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      ベルマン方程式を<strong>コードとして 1 行書く</strong>ため。
+      式を読んで納得することと、その 1 行を自分で書けることの間には差があります。
+      <strong>次回の Q 学習は、この 1 行を書き換えるだけ</strong>なので、ここが土台になります。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——「歩いて測る」と「計算で求める」の違いを、自分が出した 2 つの数字で説明できる。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">考えてほしいのは 1 箇所だけです</span>
+    <p>段階 1 の穴埋めのみ。段階 2・3 は写経で構いません。
+      <strong>5-c で書いた <code>value_of()</code> は消さないでください</strong>——段階 3 で比較に使います。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>1 マスぶんの更新を書く</h3>
+    <p class="why"><b>この段階ですること</b>
+      「あるマスの新しい値を計算する」関数を 1 つ書きます。<strong>スイープはまだしません。</strong></p>
+    <div class="code"><pre>def backup(s, V, gamma=0.9):
+    <span class="cmt"># s の新しい値を、4 方向すべて試して計算する</span>
+    candidates = []
+    for a in range(4):
+        nxt, reward, done = step(s, a)
+        candidates.append(???)        <span class="cmt"># ← ここだけ考える</span>
+    return max(candidates)
+</pre></div>
+    <p>&sect;01 で完成させた式は <code>r + &gamma; &times; V(次のマス)</code> でした。
+      <strong>ただし 1 つ注意があります</strong>——
+      ゴールに着いた場合（<code>done</code> が <code>True</code>）は、
+      そこで終わりなので<strong>次のマスの価値を足してはいけません</strong>。
+      これを <code>if</code> で場合分けして 1 行にしてください。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>        candidates.append(reward + (0.0 if done else gamma * V[nxt]))
+</pre></div>
+      <p class="why"><b>なぜ <code>done</code> の場合分けが要るのか</b>
+        ゴールに着いた瞬間に報酬 +1 をもらってエピソードが終わります。
+        <strong>その先は存在しない</strong>ので、未来の価値は 0。
+        これを忘れて <code>reward + gamma * V[nxt]</code> と書くと、
+        <code>V[GOAL]</code> を足してしまいます。今回は <code>V[GOAL] = 0</code> のままなので
+        <strong>たまたま同じ答えになりますが</strong>、
+        ゴールで終わらない設定に変えた瞬間に壊れます。</p>
+      <p class="why"><b>この場合分けは実装でよく忘れられます</b>
+        Step 7 で SB3 を使うと <code>terminated</code> と <code>truncated</code> という
+        2 つのフラグが出てきますが、<strong>区別が要るのはまさにこの行のため</strong>です。
+        「ゴールした（先が無い）」のか「時間切れで打ち切った（先はあった）」のかで、
+        <strong>未来の価値を足すかどうかが変わります</strong>。</p>
+    </div></details>
+    <p><b>確認方法</b> 全マス 0 の状態から、ゴールの隣だけ計算してみます。</p>
+    <div class="code"><pre>V = {(r, c): 0.0 for r in range(N_ROW) for c in range(N_COL) if GRID[r][c] != "#"}
+print(backup((0, 2), V))    <span class="cmt"># -> 1.0   ゴールに入れるので報酬がもらえる</span>
+print(backup((3, 0), V))    <span class="cmt"># -> 0.0   周りが全部 0 なのでまだ何も分からない</span>
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>スイープを繰り返して収束させる</h3>
+    <p class="why"><b>この段階ですること</b> 段階 1 の関数を全マスに当てはめ、
+      変化がなくなるまで繰り返します。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>def value_iteration(gamma=0.9, tol=1e-10):
+    V = {(r, c): 0.0 for r in range(N_ROW) for c in range(N_COL) if GRID[r][c] != "#"}
+    for sweep in range(1, 1000):
+        delta = 0.0
+        for s in V:
+            if s == GOAL:
+                continue                   <span class="cmt"># ゴールの価値は 0 のまま動かさない</span>
+            new = backup(s, V, gamma)
+            delta = max(delta, abs(new - V[s]))
+            V[s] = new                     <span class="cmt"># その場で書き換える（次のマスにすぐ伝わる）</span>
+        print(f"{sweep} スイープ後  V(START)={V[START]:.5f}  最大変化={delta:.2e}")
+        if delta &lt; tol:
+            break
+    return V
+
+V_star = value_iteration()
+</pre></div>
+    <p><b>確認方法</b> 4 スイープで止まり、途中経過が次のようになります。</p>
+    <div class="code"><pre>1 スイープ後  V(START)=0.00000  最大変化=1.00e+00
+2 スイープ後  V(START)=0.00000  最大変化=9.00e-01
+3 スイープ後  V(START)=0.59049  最大変化=8.10e-01
+4 スイープ後  V(START)=0.59049  最大変化=0.00e+00
+</pre></div>
+    <p class="why"><b>3 スイープ目で突然 0.59049 になります</b>
+      &sect;03 の絵のとおり、波がスタート地点に到達した瞬間です。
+      <strong>しかも一気に最終値になります</strong>——
+      途中の半端な値を経由しません。マス目のように遷移が決まりきっている場合、
+      <strong>値は「まだ届いていない 0」か「正しい値」のどちらか</strong>になるためです。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>ランダム方策版を作って 5-c と比べる</h3>
+    <p class="why"><b>この段階ですること</b> <code>max</code> を<strong>平均</strong>に変えるだけです。
+      そして 5-c のモンテカルロの結果と突き合わせます。</p>
+    <div class="code"><pre>def policy_evaluation(gamma=0.9, tol=1e-12):
+    V = {(r, c): 0.0 for r in range(N_ROW) for c in range(N_COL) if GRID[r][c] != "#"}
+    for sweep in range(1, 100000):
+        delta = 0.0
+        for s in V:
+            if s == GOAL:
+                continue
+            total = 0.0
+            for a in range(4):
+                nxt, reward, done = step(s, a)
+                total += 0.25 * (reward + (0.0 if done else gamma * V[nxt]))
+            delta = max(delta, abs(total - V[s]))
+            V[s] = total
+        if delta &lt; tol:
+            break
+    print(f"{sweep} スイープで収束")
+    return V
+
+V_pi = policy_evaluation()
+print(f"正確な値       V(START) = {V_pi[START]:.6f}")
+print(f"モンテカルロ推定 V(START) = {value_of(START):.6f}")
+</pre></div>
+    <p><b>確認方法</b> 次のような出力になります。</p>
+    <div class="code"><pre>141 スイープで収束
+正確な値       V(START) = 0.053213
+モンテカルロ推定 V(START) = 0.052294
+</pre></div>
+    <p class="why"><b>この 2 行が今回の結論です</b>
+      同じ値を 2 通りの方法で求めました。
+      上は<strong>一歩も歩かずに 4.0 ミリ秒</strong>、下は<strong>2 万回歩いて数秒</strong>。
+      しかも上のほうが正確。
+      <strong>遷移を知っているなら、歩く必要はない</strong>ということです。</p>
+  </div>
+</section>
+
+<section id="s08b">
+  <div class="sec-head">
+    <span class="eyebrow">06.5</span>
+    <h2>なぜ片方だけが「正確」なのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;06 段階 3 の 2 行は、今回いちばん大事な結果です。
+       <strong>なぜそうなるのか</strong>を 3 つに分けて掘り下げます。
+       ここを理解しておくと、<strong>次回以降に出てくる手法が「どの壁を回避しているのか」で整理できます</strong>。</p>
+  </div>
+
+  <h3>その 1: 「測る」と「解く」は質が違う</h3>
+  <p>モンテカルロがやっているのは<strong>測定</strong>です。サイコロを 2 万回振って出目の平均を測るのと同じで、
+     <strong>何回やっても真の値にぴったりは届きません</strong>。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">試行回数</th><th class="num">推定値</th><th class="num">真の値との誤差</th></tr></thead>
+    <tbody>
+      <tr><td class="num">200</td><td class="num">0.057795</td><td class="num">0.004582</td></tr>
+      <tr><td class="num">2,000</td><td class="num">0.055070</td><td class="num">0.001857</td></tr>
+      <tr><td class="num">20,000</td><td class="num">0.052294</td><td class="num">0.000919</td></tr>
+      <tr><td class="num">200,000</td><td class="num">0.053267</td><td class="num">0.000055</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>誤差は試行回数の平方根に反比例してしか減りません</b>
+     10 倍がんばって誤差が約 1/3。<strong>桁を 1 つ増やしたければ 100 倍</strong>必要です。
+     一方ベルマンがやっているのは<strong>方程式を解くこと</strong>。
+     <code>0.053213</code> は測った値ではなく<strong>満たすべき条件から導いた値</strong>で、
+     誤差という概念がそもそもありません。</p>
+
+  <h3>その 2: ベルマン方程式は連立一次方程式</h3>
+  <p>ランダム方策のベルマン方程式を 14 マス分すべて書き並べると、
+     <strong>未知数 14 個の連立一次方程式</strong>になります。</p>
+  <div class="code"><pre>V(3,0) = 0.25&times;[0 + 0.9&times;V(2,0)] + 0.25&times;[0 + 0.9&times;V(3,1)] + ...
+V(3,1) = ...
+（14 本）
+</pre></div>
+  <p>つまり <code>np.linalg.solve</code> で<strong>一発で解けます</strong>。実測すると <strong>1.1 ms</strong> で
+     <code>V(START) = 0.053212770</code> が出ます。<strong>141 スイープの繰り返しすら不要</strong>でした。</p>
+  <p class="why"><b>ではなぜ反復法を使ったのか</b>
+     次回の Q 学習がこの反復の形をしているからです。
+     また連立方程式として解く方法は、<strong>状態が増えると行列が巨大になって使えなくなります</strong>
+     （14 マスなら 14&times;14 ですが、状態が 100 万個なら 100 万&times;100 万）。</p>
+
+  <h3>その 3: 「遷移を知っている」の正確な意味</h3>
+  <p>両方とも同じ <code>step()</code> を呼んでいますが、<strong>呼び方が決定的に違います</strong>。</p>
+  <div class="code"><pre><span class="cmt"># モンテカルロ</span>
+state = s0
+for t in range(500):
+    state, reward, done = step(state, rng.integers(4))
+    <span class="cmt">#                       ^^^^^ 今いる場所。前の結果で決まる</span>
+
+<span class="cmt"># ベルマン</span>
+for s in V:                <span class="cmt"># 14 マス全部について</span>
+    for a in range(4):     <span class="cmt"># 4 方向全部について</span>
+        nxt, reward, done = step(s, a)
+        <span class="cmt">#                         ^ 任意の場所を指定できる</span>
+</pre></div>
+  <p class="why"><b>ここが本質です</b>
+     モンテカルロは<strong>「今いる場所」からしか次に進めません</strong>。
+     ベルマンは<strong>「もしここにいたら」を自由に問い合わせられます</strong>。
+     一度も訪れていないマスについても「ここで上に行ったらどうなる？」と聞ける。
+     <strong>これが「遷移を知っている」ということ</strong>です。</p>
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">step() の呼び出し回数</th></tr></thead>
+    <tbody>
+      <tr><td>モンテカルロ（14 マス &times; 2 万回）</td><td class="num">12,313,457 回</td></tr>
+      <tr><td>ベルマン（141 スイープ &times; 13 マス &times; 4 方向）</td><td class="num"><strong>7,332 回</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><strong>1,600 倍の差</strong>です。しかも少ないほうが正確。</p>
+
+  <h3>振り子で使えない理由は 2 つあり、別物です</h3>
+  <div class="tw"><table>
+    <thead><tr><th>壁</th><th>内容</th><th>対処</th></tr></thead>
+    <tbody>
+      <tr><td><b>A. 遷移を知らない</b></td>
+          <td>本物の振り子に「もし角度 1.2 rad・角速度 3.0 で
+              トルク 0.3 を入れたら？」と問い合わせることはできない。
+              <strong>実際にその状態を作って試すしかない</strong></td>
+          <td><strong>歩いた結果からベルマン方程式を当てはめる</strong><br>&rarr; 次回の Q 学習</td></tr>
+      <tr><td><b>B. 状態が無限にある</b></td>
+          <td>MuJoCo なら <code>qpos</code> / <code>qvel</code> に好きな値を入れて
+              <code>mj_step</code> を呼べるので<strong>遷移は知っている</strong>。
+              だが<strong>角度は連続値なので状態が無限個</strong>あり、14 行の表に相当するものが作れない</td>
+          <td><strong>ニューラルネットで表を近似する</strong><br>&rarr; Step 8 の Critic</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>強化学習という分野の見取り図</b>
+     大雑把に言えば、<strong>この 2 つの壁を回避するための工夫の集積</strong>です。
+     5-d でやった「遷移を知っていて、状態が有限」という状況は
+     <strong>壁が 1 枚もない理想郷</strong>でした。だからあれほど速くて正確だったわけです。
+     <strong>これから出てくる手法は「どちらの壁に対処しているのか」で整理できます。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">次回の出発点</span>
+    <p>次回の Q 学習が扱うのは<strong>壁 A だけ</strong>です。
+       状態は 14 個のままなので、表はそのまま使えます。
+       <strong>「遷移を知らないのに、ベルマン方程式の恩恵を受けたい」</strong>——
+       この欲張りな要求に答えます。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><b>ベルマン方程式</b>＝「<strong>ここの価値 ＝ 今もらう報酬 ＋ &gamma; &times; 次の場所の価値</strong>」。それだけ</li>
+      <li>価値の定義の中に価値が出てくるが、<strong>ゴールの隣だけは他に頼らず確定できる</strong>。
+          そこから波のように外へ広がる</li>
+      <li><code>max</code> を使えば<strong>最適方策</strong>の価値、確率で平均すれば<strong>その方策</strong>の価値</li>
+      <li>モンテカルロの <strong>28 万エピソード・16.9 秒</strong>が、<strong>4 スイープ・0.1 ミリ秒</strong>になった。
+          ただし<strong>遷移 P を知っている必要がある</strong></li>
+      <li>強化学習の手法は<strong>2 つの壁</strong>——<b>A: 遷移を知らない</b>／<b>B: 状態が無限</b>——の
+          どちらに対処しているかで整理できる。今回は<strong>壁が 1 枚も無い理想的な状況</strong>だった</li>
+      <li><code>done</code> のとき未来の価値を足さない。<strong>Step 7 の <code>terminated</code> / <code>truncated</code> の区別はこのため</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="d1"><span><code>backup()</code> を書き、<code>backup((0,2), V) = 1.0</code> を確認した</span></label>
+    <label><input type="checkbox" data-ck="d2"><span>価値反復が 4 スイープで収束し、<code>V(START) = 0.59049</code> になることを確認した</span></label>
+    <label><input type="checkbox" data-ck="d3"><span>3 スイープ目でスタート地点の値が突然確定する理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="d4"><span>ランダム方策版で <code>0.053213</code> を出し、5-c の推定値と比べた</span></label>
+    <label><input type="checkbox" data-ck="d5"><span>ベルマン方程式が実機で直接使えない理由を説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（5-e）でやること</span>
+    <p>ついに <b>Q 学習</b> を実装します。Step 5 の山場で、分量も倍（90 分）を見ておいてください。</p>
+    <p>やることは<strong>今回の式から「遷移を知っている」という前提を外す</strong>ことです。
+       次の状態が分からないなら——<strong>実際に 1 歩あるいて確かめればいい</strong>。
+       歩いた結果を使ってベルマン方程式を少しずつ当てはめていきます。</p>
+    <p>先に考えておいてください——
+       <strong>1 歩あるいて得られるのは、たった 1 つのサンプルです。</strong>
+       それを使って表の値をいきなり書き換えてしまって良いでしょうか。
+       問題があるとしたら何で、どう対処しますか。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 5-d</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step05d-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

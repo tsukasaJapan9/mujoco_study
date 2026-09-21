@@ -11,6 +11,14 @@
   "xml.format.spaceBeforeEmptyCloseTag": false,
   "xml.format.enforceQuoteStyle": "preserve",
 
+  // Python は ruff に合わせてインデント 2 スペース (pyproject.toml の indent-width = 2)
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+
   // Cursor の Python 型チェックは Pylance ではなく cursorpyright。
   // mujoco は型スタブを同梱していないので該当の誤検出だけ黙らせる
   "cursorpyright.analysis.typeCheckingMode": "standard",

@@ -12,6 +12,11 @@ dependencies = [
 
 [tool.ruff]
 indent-width = 2
+# 教材の md は手で桁を揃えたコードブロックがあるので ruff に触らせない
+extend-exclude = ["docs"]
+
+[tool.ruff.format]
+indent-style = "space"
 
 [tool.pyright]
 venvPath = "."

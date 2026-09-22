@@ -11,3 +11,6 @@ MUJOCO_LOG.TXT
 # MuJoCo ビューアのダンプ出力
 MJDATA.TXT
 MJMODEL.TXT
+
+# TensorBoard のログ（実験ごとに増えてすぐ数百 MB になる）
+tb_logs/

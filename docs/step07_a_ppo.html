@@ -1,0 +1,868 @@
+<title>PPO で学習を回す</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">SB3 は 3 行で学習が回る</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">なぜ PPO を選ぶのか</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">環境を 4 つ並べる</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 7-a</span>
+  <h1>PPO で学習を回す</h1>
+  <p>Step 6 で作った環境に、ついに学習を繋ぐ。
+     あなたが書くのは 10 行ほどで、中身は Step 8 で全部開ける。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 7 の 1/4</span>
+    <span class="chip">train/train_ppo.py</span>
+    <span class="chip">前提: Step 6</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><code>envs/pendulum_env.py</code> が完成し、<code>check_env</code> を通っている</li>
+      <li>報酬は <code>-cos&theta; - 0.01&omega;&sup2; - 0.001&tau;&sup2;</code></li>
+      <li><strong>基準線が 2 本ある</strong>。ランダム <b>&minus;499.50</b> ／ 古典制御 <b>+28.31</b>（上端滞在 216/500）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 学習がうまくいかないとき、何から疑うべきか？</p>
+    <p><b>2.</b> なぜ PPO なのか。SAC ではだめなのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答え合わせで<strong>チェックリストを作ってから</strong>学習を回します。
+     順番が逆に見えるかもしれませんが、<strong>回す前に「何を見るか」を決めておく</strong>のが
+     実験の基本です。</p>
+
+  <div class="callout tip">
+    <span class="k">先に準備</span>
+    <div class="code"><pre>uv add stable-baselines3
+</pre></div>
+    <p>PyTorch も一緒に入るので、初回は数分かかります。
+       検証に使ったのは <code>stable-baselines3 2.9.0</code> / <code>torch 2.14.0</code> です。
+       <strong>GPU は不要です</strong>——この規模なら CPU のほうが速いくらいです（理由は &sect;04）。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>学習を回す前に<strong>チェックする順番</strong>を決めます。
+       ここを決めずに回すと、うまくいかなかったときに<strong>手当たり次第に触ることになります</strong>。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>学習がうまくいかなかったとき、何から疑いますか。
+       Step 6 で見た落とし穴を思い出して、チェックする順番を決めておいてください。</p>
+  </div>
+
+  <p><b>答え：環境から疑います。アルゴリズムは最後です。</b></p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">順</th><th>疑うもの</th><th>確かめ方</th><th>根拠</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><strong>報酬の符号</strong></td><td>真下と真上で <code>reward</code> を print</td><td>逆でもエラーは出ない（6-d）</td></tr>
+      <tr><td class="num">2</td><td><strong>報酬が疎すぎないか</strong></td><td>ランダム方策で報酬が動くか見る</td><td>疎だと文字通り 0 点（6-d）</td></tr>
+      <tr><td class="num">3</td><td><strong>観測の範囲</strong></td><td><code>check_env</code> を通す</td><td>超えても黙って通る（6-b）</td></tr>
+      <tr><td class="num">4</td><td><strong>エピソードが終わるか</strong></td><td><code>TimeLimit</code> が付いているか</td><td>終わらないと <code>reset</code> されない（6-c）</td></tr>
+      <tr><td class="num">5</td><td><strong>terminated の扱い</strong></td><td>常に <code>False</code> になっているか</td><td>混同で最大 65% 過小評価（6-c）</td></tr>
+      <tr><td class="num">6</td><td>学習量が足りているか</td><td>ステップ数を 10 倍にしてみる</td><td>下の &sect;03 参照</td></tr>
+      <tr><td class="num">7</td><td>ハイパーパラメータ</td><td>7-b で扱う</td><td>ここまで潰してから</td></tr>
+      <tr><td class="num">8</td><td>アルゴリズムの選択</td><td>PPO &rarr; SAC に変える</td><td><strong>最後の手段</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>なぜこの順番なのか</b>
+     上にあるものほど<strong>「静かに壊れる」度合いが高く、確認が安い</strong>からです。
+     報酬の符号は 5 行のコードで確かめられますが、
+     アルゴリズムの比較には数十分かかります。
+     <strong>安くて致命的なものから潰す</strong>のが鉄則です。</p>
+
+  <div class="callout">
+    <span class="k">Step 6 の落とし穴が 1〜5 を占めています</span>
+    <p>偶然ではありません。<strong>強化学習で「学習しない」原因の大半は環境側にあります</strong>。
+       アルゴリズムは世界中で検証されていますが、
+       <strong>あなたの環境を検証したのはあなただけ</strong>です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>SB3 は 3 行で学習が回る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>まず<strong>最小構成</strong>を見ます。拍子抜けするほど短いので、
+       「何が隠れているか」を意識しながら読んでください。</p>
+  </div>
+
+  <div class="code"><pre>from stable_baselines3 import PPO
+
+model = PPO("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=300_000)
+</pre></div>
+
+  <p>これだけです。<strong>Step 5 で 6 本かけて学んだことが、全部この中に入っています。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Step 5 で学んだこと</th><th>SB3 のどこ</th></tr></thead>
+    <tbody>
+      <tr><td>収益 <code>G</code> と割引率 <code>&gamma;</code></td><td><code>PPO(..., gamma=0.99)</code> の既定値</td></tr>
+      <tr><td>価値関数 <code>V</code></td><td><code>"MlpPolicy"</code> の中の <b>Critic</b></td></tr>
+      <tr><td>方策 <code>&pi;</code></td><td>同じく <b>Actor</b></td></tr>
+      <tr><td>アドバンテージ <code>A</code></td><td>内部で毎回計算されている</td></tr>
+      <tr><td>on-policy（データ使い捨て）</td><td><strong>PPO がそう</strong>。集めては捨てを繰り返す</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b><code>"MlpPolicy"</code> が壁 B への答えです</b>
+     5-d で「状態が無限にあると 14 マスの表が作れない」という壁 B を見ました。
+     <strong>MLP（多層パーセプトロン）＝ニューラルネットで表を近似する</strong>——それがこの文字列の意味です。
+     観測 3 次元を受け取り、行動 1 次元と価値 1 個を出すネットが自動で組まれます。
+     <strong>サイズは <code>observation_space</code> と <code>action_space</code> から決まります</strong>
+     （6-b で宣言が必要だった理由がこれです）。</p>
+
+  <div class="callout">
+    <span class="k">短いことと簡単であることは違います</span>
+    <p>3 行で回りますが、<strong>うまくいかないときに開けるべき蓋が大量にあります</strong>。
+       Step 8 で PPO を自分で実装するのは、その蓋を全部開けるためです。
+       <strong>今は「回る」ことを確認するのが目的</strong>で、
+       中身の理解は Step 8 に置いてあります。</p>
+  </div>
+</section>
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>なぜ PPO を選ぶのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>SB3 には 10 種類ほどアルゴリズムがありますが、
+       <strong>連続的な行動を扱う実務では実質 2 つ</strong>です。
+       5-f で学んだ on/off-policy が、そのまま選択の軸になります。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th><b>PPO</b></th><th><b>SAC</b></th></tr></thead>
+    <tbody>
+      <tr><td>方式</td><td><strong>on-policy</strong></td><td><strong>off-policy</strong></td></tr>
+      <tr><td>データ</td><td>集めたら使い捨て</td><td>リプレイバッファに溜めて再利用</td></tr>
+      <tr><td>必要なステップ数</td><td><strong>多い</strong></td><td>少ない（10 倍近く効率的なことも）</td></tr>
+      <tr><td>並列化</td><td><strong>得意</strong>。環境を並べれば速くなる</td><td>苦手。学習側がボトルネック</td></tr>
+      <tr><td>安定性</td><td><strong>高い</strong>。既定値でだいたい動く</td><td>調整が要ることがある</td></tr>
+      <tr><td>向く場面</td><td><strong>シミュレータがある</strong></td><td><strong>実機データが貴重</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>5-f の表がそのまま出ています</b>
+     「データを使い回せるか」の違いが、<strong>必要なステップ数と並列化のしやすさ</strong>に化けます。
+     PPO は使い捨てなので大量のデータが要りますが、
+     <strong>大量に作れるなら問題になりません</strong>。</p>
+
+  <p><b>今回 PPO を選ぶ理由は 1 つです。</b>
+     <strong>シミュレータがあるから。</strong>
+     振り子は 1 秒間に数千ステップ生成できるので、
+     データの安さを活かせる PPO が向いています。</p>
+
+  <div class="callout">
+    <span class="k">GPU が要らない理由</span>
+    <p>この規模のネット（隠れ層 64 が 2 層）では、<strong>GPU に送る手間のほうが計算より高くつきます</strong>。
+       実測すると CPU で <strong>約 3,000 ステップ/秒</strong> 出ました。</p>
+    <p>ボトルネックは<strong>ネットの計算ではなく MuJoCo の物理計算</strong>です。
+       だから速くしたければ GPU ではなく、<strong>環境を並列に増やす</strong>のが正解になります（&sect;04）。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実機に移すときは選択が変わるかもしれません</span>
+    <p>Step 12 で実機の振り子を学習させるなら、<strong>1 ステップが実時間 0.01 秒</strong>です。
+       30 万ステップ ＝ <strong>50 分の連続運転</strong>。しかも人が初期姿勢に戻す必要があります。
+       <strong>そこでは SAC のデータ効率が効いてきます。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>環境を 4 つ並べる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>PPO を速くする唯一の現実的な方法を扱います。
+       <strong>コードは 1 行増えるだけ</strong>ですが、考え方は押さえておく価値があります。</p>
+  </div>
+
+  <p>PPO は「一定量のデータを集める &rarr; それで学習する &rarr; 捨てる」を繰り返します。
+     <strong>集める部分は完全に独立</strong>なので、環境を複数並べれば同時に走らせられます。</p>
+
+  <div class="code"><pre>from stable_baselines3.common.env_util import make_vec_env
+
+venv = make_vec_env(make_env, n_envs=4, seed=0)
+model = PPO("MlpPolicy", venv, ...)
+</pre></div>
+
+  <p class="why"><b>これを <b>ベクトル化環境</b> と呼びます</b>
+     4 つの振り子が<strong>それぞれ別の初期状態から同時に動き</strong>、
+     方策は 4 つ分の観測をまとめて受け取って 4 つ分の行動を返します。
+     <strong>ニューラルネットの計算がまとめて行えるので、そこでも得をします。</strong></p>
+
+  <div class="callout">
+    <span class="k">何個にすればいいか</span>
+    <p>目安は<strong>CPU の物理コア数</strong>です。増やしすぎると
+       プロセス間のやりとりが増えて逆に遅くなります。</p>
+    <p>なお <code>make_vec_env</code> の既定は <code>DummyVecEnv</code>——
+       <strong>実は並列ではなく順番に回しています</strong>。
+       本当に並列にするには <code>SubprocVecEnv</code> を指定します。
+       <strong>振り子のように 1 ステップが軽い環境では、
+       プロセスを分けるコストのほうが高くつくこともあります</strong>ので、
+       まずは既定のまま試してください。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">エピソードの区切りは自動で処理されます</span>
+    <p>4 つの環境は<strong>バラバラのタイミングで終わります</strong>。
+       ベクトル化環境は終わった環境を自動で <code>reset()</code> し、
+       <strong><code>truncated</code> のときは正しく未来の価値を足してくれます</strong>（6-c の話）。</p>
+    <p>ただしこれは<strong>あなたの環境が正しく <code>truncated</code> を返している前提</strong>です。
+       6-c で <code>TimeLimit</code> を付けたのはこのためでもあります。</p>
+  </div>
+</section>
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>学習を最後まで 1 回通す</strong>ため。
+      結果が良いか悪いかは今回は問いません。
+      <strong>回し方と、結果の読み方を固める</strong>のが目的です。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——学習した方策を、Step 6 で作った <code>evaluate()</code> で採点し、
+      <strong>2 本の基準線と比べて位置づけられる</strong>。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      <code>train/</code> フォルダを作り、<code>train/train_ppo.py</code> を書きます。
+      学習には <strong>2 分ほど</strong>かかります。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">実行方法に注意: 直接実行すると失敗します</span>
+    <div class="code"><pre>$ uv run train/train_ppo.py
+ModuleNotFoundError: No module named 'envs'
+</pre></div>
+    <p>6-a で見たのと同じ問題です。Python は<strong>実行したスクリプトのあるディレクトリ</strong>を
+      検索パスの先頭に置くので、<code>train/</code> から見ると <code>envs</code> が見つかりません。
+      <strong>モジュールとして実行してください。</strong></p>
+    <div class="code"><pre>uv run python -m train.train_ppo
+</pre></div>
+    <p><code>-m</code> なら<strong>カレントディレクトリ（プロジェクトルート）</strong>が
+      検索パスに入るので解決します。</p>
+    <p class="why"><b>6-a と扱いが違う理由</b>
+      <code>try_env.py</code> は<strong>確認用</strong>なのでルートに置きました。
+      <code>train/train_ppo.py</code> は<strong>学習スクリプトという役割を持つファイル</strong>なので、
+      <code>train/</code> に置いたまま <code>-m</code> で呼ぶのが正しい分担です。</p>
+    <p class="why"><b><code>sys.path.insert()</code> で解決しないでください</b>
+      ネットでよく見る解法ですが、<strong>7-b 以降で <code>SubprocVecEnv</code> を使うと
+      子プロセスが生まれます</strong>。子プロセスは親の <code>sys.path</code> 操作を
+      引き継がないことがあり、そこで再発します。
+      <code>-m</code> なら子プロセスも同じカレントディレクトリを継承するので問題ありません
+      （実測で確認済み）。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>環境を並べる</h3>
+    <p class="why"><b>この段階ですること</b> まだ学習しません。
+      ベクトル化環境が作れることだけ確かめます。</p>
+    <div class="code"><pre>import numpy as np
+from gymnasium.wrappers import TimeLimit
+from stable_baselines3.common.env_util import make_vec_env
+
+from envs.pendulum_env import PendulumEnv
+
+
+def make_env():
+    return TimeLimit(PendulumEnv(), max_episode_steps=500)
+
+
+venv = make_vec_env(make_env, n_envs=4, seed=0)
+print("環境の数:", venv.num_envs)
+print("観測の形:", venv.observation_space.shape)
+print("行動の形:", venv.action_space.shape)
+</pre></div>
+    <p><b>確認方法</b> <code>環境の数: 4</code>、<code>観測の形: (3,)</code>、
+      <code>行動の形: (1,)</code> と出れば成功です。</p>
+    <p class="why"><b><code>make_env</code> を関数にしている理由</b>
+      <code>make_vec_env</code> は<strong>環境を 4 個作る</strong>必要があるので、
+      「作り方」を渡します。インスタンスを 1 個渡すと、
+      <strong>4 つが同じオブジェクトを共有してしまいます</strong>。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>学習を回す</h3>
+    <p class="why"><b>この段階ですること</b> PPO を作って学習させます。</p>
+    <div class="code"><pre>from stable_baselines3 import PPO
+
+model = PPO("MlpPolicy", venv, verbose=1, seed=0, device="cpu")
+model.learn(total_timesteps=???)        <span class="cmt"># ← ここだけ考える</span>
+model.save("train/ppo_pendulum")
+</pre></div>
+    <p>ステップ数を決めてください。判断材料はこれです。</p>
+    <ul>
+      <li>実測で <strong>約 3,000 ステップ/秒</strong></li>
+      <li>1 エピソードは <strong>500 ステップ</strong></li>
+      <li>初回は<strong>数分で終わる量</strong>にしたい</li>
+      <li>&sect;02 のチェックリストの 6 番「学習量が足りているか」を後で試せるよう、
+          <strong>10 倍にする余地</strong>を残したい</li>
+    </ul>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>model.learn(total_timesteps=300_000)
+</pre></div>
+      <p class="why"><b>約 100 秒、600 エピソード分</b>
+        <code>300,000 / 500 = 600</code> エピソード。
+        5-e の gridworld で Q 学習が 500 エピソードで収束したことを思うと妥当に見えますが、
+        <strong>あちらは状態が 14 個、こちらは無限</strong>です。比較になりません。</p>
+      <p class="why"><b>桁の感覚</b>
+        連続制御のタスクでは <strong>10 万〜1000 万ステップ</strong>が普通のレンジです。
+        30 万はその下限あたり——<strong>「まず回ることを確かめる」量</strong>だと思ってください。</p>
+      <p class="why"><b>アンダースコアは桁区切りです</b>
+        <code>300_000</code> は <code>300000</code> と同じ。
+        <strong>桁を数え間違えないための Python の記法</strong>で、
+        ステップ数のように 0 が並ぶ場面で有効です。</p>
+    </div></details>
+    <p><b>確認方法</b> <code>verbose=1</code> にしてあるので、学習中に表が流れます。
+      <strong><code>ep_rew_mean</code> の行だけ見てください</strong>——
+      1 エピソードあたりの平均報酬です。</p>
+    <div class="code"><pre>---------------------------------
+| rollout/           |          |
+|    ep_len_mean     | 500      |
+|    ep_rew_mean     | -499     |   &lt;- これ
+| time/              |          |
+|    fps             | 3074     |
+---------------------------------
+</pre></div>
+    <p class="why"><b>最初は &minus;499 付近から始まります</b>
+      Step 6 で測ったランダム方策の基準線と同じです。
+      <strong>学習前の方策はランダムとほぼ同じ</strong>なので当然で、
+      <strong>ここが動き始めるかどうかが最初の関門</strong>です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>学習した方策を採点する</h3>
+    <p class="why"><b>この段階ですること</b> Step 6 の <code>evaluate()</code> を再利用します。
+      <strong>採点方法を変えないこと</strong>が大事です——
+      そうしないと基準線と比べられません。</p>
+    <div class="code"><pre>from stable_baselines3 import PPO
+
+model = PPO.load("train/ppo_pendulum")
+
+
+def trained_policy(env, obs):
+    action, _ = model.predict(obs, deterministic=True)
+    return action
+
+
+total, up = evaluate(trained_policy)      <span class="cmt"># try_env.py の関数をそのまま使う</span>
+print(f"学習した方策: 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
+print(f"  ランダム方策 : -499.50   (0.0/500)")
+print(f"  古典制御     :   28.31   (216.2/500)")
+</pre></div>
+    <p class="why"><b><code>deterministic=True</code> を忘れないでください</b>
+      学習中の方策は<strong>確率的</strong>です——5-e の <code>&epsilon;-greedy</code> にあたる探索が入っています。
+      評価のときは探索を切るのが正しい（6-d で「本番では探索を切る」と書いたとおり）。
+      <strong>付け忘れると、本来の実力より低く出ます。</strong></p>
+    <p><b>確認方法</b> 3 つの数字が並べば成功です。参考までに、手元の実測はこうなりました。</p>
+    <div class="code"><pre>学習した方策: 合計報酬 -227.51   上端にいたステップ 51.1/500
+  ランダム方策 : -499.50   (0.0/500)
+  古典制御     :   28.31   (216.2/500)
+</pre></div>
+    <p class="why"><b>学習はしています。でも届いていません</b>
+      &minus;499.50 から <strong>&minus;227.51</strong> まで上がったので、
+      <strong>方策は確実に何かを学びました</strong>。
+      上端にも 51 ステップ（全体の 10%）は滞在しています。</p>
+    <p class="why">しかし古典制御の <strong>+28.31 / 216 ステップ</strong>には遠い。
+      <strong>振り上げきれずに途中で落ちている</strong>状態です。
+      <strong>これが 7-b の出発点になります。</strong></p>
+    <div class="callout">
+      <span class="k">同じ数字にはなりません</span>
+      <p>ニューラルネットの初期値、環境の乱数、学習の順序——
+        <strong>同じ seed を指定しても、環境が違えば結果は変わります</strong>。
+        <strong>&minus;200 前後、上端 数十ステップ</strong>のあたりに来ていれば同じ状況です。</p>
+      <p>逆に <strong>&minus;490 付近から動いていない</strong>なら、
+        &sect;02 のチェックリストを上から確認してください。</p>
+    </div>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>学習が失敗したら<strong>環境から疑う</strong>。順番は
+          <strong>報酬の符号 &rarr; 疎さ &rarr; 観測範囲 &rarr; 終了処理 &rarr; 学習量 &rarr; ハイパラ &rarr; アルゴリズム</strong></li>
+      <li>SB3 の学習は <strong>3 行</strong>。<code>"MlpPolicy"</code> が壁 B（状態が無限）への答え</li>
+      <li><b>PPO</b>（on-policy）は<strong>シミュレータがあるとき</strong>、
+          <b>SAC</b>（off-policy）は<strong>実機データが貴重なとき</strong></li>
+      <li>速くしたければ GPU ではなく<strong>環境を並列に増やす</strong>。
+          ボトルネックは MuJoCo の物理計算</li>
+      <li>評価するときは <code>deterministic=True</code> で<strong>探索を切る</strong></li>
+      <li><code>train/</code> 配下は <code>uv run python -m train.train_ppo</code> と
+          <strong>モジュールとして実行する</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="k1"><span><code>uv add stable-baselines3</code> を実行した</span></label>
+    <label><input type="checkbox" data-ck="k2"><span>失敗したときにチェックする順番を、見ないで言える</span></label>
+    <label><input type="checkbox" data-ck="k3"><span>ベクトル化環境を作り、<code>num_envs = 4</code> を確認した</span></label>
+    <label><input type="checkbox" data-ck="k4"><span>30 万ステップの学習を最後まで回した</span></label>
+    <label><input type="checkbox" data-ck="k5"><span>学習した方策を <code>evaluate()</code> で採点し、2 本の基準線と並べた</span></label>
+    <label><input type="checkbox" data-ck="k6"><span>PPO と SAC の使い分けを、5-f の on/off-policy の言葉で説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（7-b）でやること</span>
+    <p>今回の結果は<strong>おそらく古典制御に届いていない</strong>はずです。
+       では何を直せばいいのか——<strong>その前に、学習の中で何が起きているかを読めるようになります</strong>。</p>
+    <p><b>TensorBoard</b> で <code>ep_rew_mean</code> / <code>explained_variance</code> /
+       <code>entropy_loss</code> / <code>approx_kl</code> の 4 つを読みます。
+       <strong>調整より先に診断</strong>です——測れないものは直せません。</p>
+    <p>先に考えておいてください——
+       <strong>学習曲線（報酬）が上がらないとき、それだけでは原因が分かりません。</strong>
+       方策が悪いのか、価値の見積もりが外れているのか、探索が足りないのか。
+       <strong>この 3 つを切り分けるには、報酬以外に何を見ればいいでしょうか。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 7-a</span>
+  <span>stable-baselines3 2.9.0 / gymnasium 1.3.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step07a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

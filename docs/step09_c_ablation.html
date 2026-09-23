@@ -1,0 +1,875 @@
+<title>報酬項の ablation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">ablation とは</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">1 シードでやってみる</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">3 シードに増やす</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">平均が嘘をつく理由</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">何本走らせれば言えるのか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 9-c</span>
+  <h1>報酬項の ablation</h1>
+  <p>「この項は本当に要るのか」を測る方法。
+     <strong>そして、測ったつもりで正反対の結論に着地する方法。</strong></p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 9 の 3/5</span>
+    <span class="chip">前提: 9-b, 7-d</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">ここまでで分かっていること</span>
+    <ol>
+      <li>報酬の係数は<strong>各項が取る値を計算して決める</strong>（9-a）</li>
+      <li>報酬を書いたら<strong>「動き出す得」を計算</strong>してから学習させる（9-b）</li>
+      <li>7-d で<strong>「1 シードでは結論を出せない」</strong>と学んだ</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 報酬のこの項は、<strong>本当に効いているのか</strong>？</p>
+    <p><b>2.</b> 測った数字を、<strong>いつ信じていいのか</strong>？</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">この教材は、失敗の記録です</span>
+    <p>実際に ablation を走らせたところ、<strong>「全部入りの報酬がいちばん悪い」</strong>
+       という結果が出ました。</p>
+    <p>それが本当なのか、測り方が悪いのか。<strong>そこを見分けるのが今回の中身</strong>です。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>ablation とは</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>やり方そのものは<strong>とても単純</strong>です。まずそこを押さえます。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">今回の新しい語</span><span class="ct">ablation（アブレーション）</span></div>
+    <dl>
+      <dt>やること</dt>
+      <dd><strong>部品を 1 つずつ取り外して、性能がどう変わるかを測る。</strong>
+        報酬の項、観測の要素、ネットワークの層——何にでも使えます。</dd>
+      <dt>何が分かるか</dt>
+      <dd><strong>その部品が本当に仕事をしているか。</strong>
+        外しても変わらないなら、<strong>その部品は要りません</strong>。</dd>
+      <dt>なぜ必要か</dt>
+      <dd>報酬の項は<strong>足すのは簡単、外すのは怖い</strong>ので、
+        <strong>誰も使っていない項が残り続けます</strong>。
+        項が増えるほど 9-b の問題（桁合わせ）が悪化します。</dd>
+      <dt>鉄則</dt>
+      <dd><strong>採点は常に「全部入りの報酬」で行う。</strong>
+        学習に使う報酬は変えますが、<strong>ものさしは絶対に変えません</strong>（9-a &sect;05）。</dd>
+    </dl>
+  </div>
+
+  <h3>振り子で外せる項</h3>
+  <div class="code"><pre>reward = -cos(theta) - 0.01 * omega**2 - 0.001 * torque**2
+                       ^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^
+                       外せる 1          外せる 2
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>条件名</th><th>学習に使う報酬</th></tr></thead>
+    <tbody>
+      <tr><td><code>full</code></td><td><code>-cos&theta; - 0.01&omega;&sup2; - 0.001&tau;&sup2;</code>（全部入り）</td></tr>
+      <tr><td><code>noOmega</code></td><td><code>-cos&theta; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - 0.001&tau;&sup2;</code></td></tr>
+      <tr><td><code>noTau</code></td><td><code>-cos&theta; - 0.01&omega;&sup2;</code></td></tr>
+      <tr><td><code>onlyCos</code></td><td><code>-cos&theta;</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b><code>-cos&theta;</code> は外せません</b>
+     これを外すと<strong>目標そのものが消えます</strong>。
+     ablation は<strong>「あっても無くてもいいかもしれない部品」</strong>に対してやるものです。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>1 シードでやってみる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>まず<strong>普通にやります</strong>。4 条件を 1 回ずつ、40 万ステップ。<strong>合計 52 分。</strong></p>
+  </div>
+
+  <h3>結果（seed=0、実測）</h3>
+  <div class="tw"><table>
+    <thead><tr><th>条件</th><th class="num">全部入りの報酬で採点</th><th class="num">上端にいた歩数</th></tr></thead>
+    <tbody>
+      <tr><td><code>noOmega</code></td><td class="num ok"><strong>+48.86</strong></td><td class="num">232.3</td></tr>
+      <tr><td><code>onlyCos</code></td><td class="num">+41.66</td><td class="num">233.2</td></tr>
+      <tr><td><code>full</code>（全部入り）</td><td class="num">+32.11</td><td class="num">216.5</td></tr>
+      <tr><td><code>noTau</code></td><td class="num">+16.51</td><td class="num">206.3</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="k">きれいな結果に見えます</span>
+    <p>4 条件とも学習に成功し、<strong>順位がはっきり付きました</strong>。
+       ここから、こう読みたくなります。</p>
+    <ul>
+      <li><code>&omega;</code> の罰は<strong>むしろ害</strong>（外すと +16.75）</li>
+      <li><code>&tau;</code> の罰は<strong>役に立っている</strong>（外すと &minus;15.60）</li>
+      <li><strong>いちばん良いのは <code>&omega;</code> の罰を外した版</strong></li>
+    </ul>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">全部まちがいです</span>
+    <p>この読み方は<strong>1 つも正しくありません</strong>。
+       次の節で 3 シードに増やすと、<strong>順位も、符号も、全部変わります</strong>。</p>
+    <p><strong>それでもこの表は「きれいに見える」</strong>——ここが怖いところです。
+       <strong>数字が揃っていることと、正しいことは無関係です。</strong></p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>3 シードに増やす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>7-d の教えどおり、<strong>seed=0,1,2 の 3 本ずつ</strong>に増やします。
+       <strong>合計 12 本、約 2 時間半。</strong></p>
+  </div>
+
+  <h3>全 12 本の結果（実測）</h3>
+  <div class="tw"><table>
+    <thead><tr><th>条件</th><th class="num">seed 0</th><th class="num">seed 1</th><th class="num">seed 2</th>
+      <th class="num">平均</th><th class="num">標準偏差</th></tr></thead>
+    <tbody>
+      <tr><td><code>full</code></td><td class="num ok">+32.1</td><td class="num bad">&minus;473.0</td>
+          <td class="num bad">&minus;364.1</td><td class="num bad"><strong>&minus;268.33</strong></td><td class="num">217.05</td></tr>
+      <tr><td><code>noOmega</code></td><td class="num ok">+48.9</td><td class="num ok">+34.5</td>
+          <td class="num bad">&minus;347.4</td><td class="num"><strong>&minus;88.01</strong></td><td class="num">183.54</td></tr>
+      <tr><td><code>noTau</code></td><td class="num ok">+16.5</td><td class="num bad">&minus;473.0</td>
+          <td class="num bad">&minus;364.8</td><td class="num bad"><strong>&minus;273.76</strong></td><td class="num">209.96</td></tr>
+      <tr><td><code>onlyCos</code></td><td class="num ok">+41.7</td><td class="num ok">+36.6</td>
+          <td class="num bad">&minus;417.8</td><td class="num"><strong>&minus;113.16</strong></td><td class="num">215.41</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">全部入りが、最下位になりました</span>
+    <p><code>full</code> の平均 <strong>&minus;268.33</strong> は 4 条件で<strong>いちばん悪い</strong>。</p>
+    <p>素直に読むと<strong>「報酬の項は全部外したほうがいい」</strong>という結論になります。
+       <strong>&sect;02 の結論とも違います。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">その結論も、やはり間違いです</span>
+    <p><strong>標準偏差を見てください。どれも 180〜217 あります。</strong></p>
+    <p>比べたい差は <code>full</code> と <code>noOmega</code> で <strong>180 点</strong>。
+       <strong>ばらつきと同じ大きさです。</strong>
+       <strong>この 12 本から言えることは、何ひとつありません。</strong></p>
+  </div>
+
+  <p class="why"><b>seed=0 だけがきれいに見えた理由</b>
+     <strong>たまたま 4 条件とも成功した</strong>だけです。
+     seed=1 と 2 を見れば、<strong>そもそも学習が安定していない</strong>のが分かります。</p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>平均が嘘をつく理由</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>標準偏差が大きい、で終わらせません。
+       <strong>数字の中身を見ると、もっと大事なことが分かります。</strong></p>
+  </div>
+
+  <h3>12 個の数字を並べ直す</h3>
+  <div class="code"><pre>+48.9  +41.7  +36.6  +34.5  +32.1  +16.5     <- 成功した 6 本
+-347.4  -364.1  -364.8  -417.8  -473.0  -473.0   <- 失敗した 6 本
+</pre></div>
+
+  <div class="callout warn">
+    <span class="k">中間がありません</span>
+    <p><strong>+16.5 の次が &minus;347.4</strong>。その間には<strong>何もありません</strong>。</p>
+    <p>つまりこの学習は<strong>連続的に良し悪しが変わるのではなく、
+       「振り上げを覚えたか、覚えなかったか」の 2 つに割れています。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な気づき</span><span class="ct">二値の結果に平均を使ってはいけない</span></div>
+    <dl>
+      <dt>何が起きているか</dt>
+      <dd>結果が <strong>+30 付近</strong>か <strong>&minus;400 付近</strong>のどちらかしかありません。
+        <strong>平均 &minus;268 という方策は 1 つも存在しません。</strong></dd>
+      <dt>だから平均は何を表しているか</dt>
+      <dd>ほぼ<strong>成功率だけ</strong>です。
+        3 本中 1 本成功なら約 &minus;268、2 本成功なら約 &minus;88。
+        <strong>成功したときの出来の良さは、ほとんど反映されていません。</strong></dd>
+      <dt>測るべきもの</dt>
+      <dd><strong>成功率</strong>と<strong>成功したときの点数</strong>を<strong>分けて</strong>報告します。</dd>
+    </dl>
+  </div>
+
+  <h3>分けて書き直す</h3>
+  <div class="tw"><table>
+    <thead><tr><th>条件</th><th class="num">成功率</th><th class="num">成功時の平均</th>
+      <th class="num">失敗時の終盤 <code>|&omega;|</code> 最大</th></tr></thead>
+    <tbody>
+      <tr><td><code>full</code></td><td class="num">1/3</td><td class="num">+32.1</td><td class="num ok">3.86</td></tr>
+      <tr><td><code>noOmega</code></td><td class="num">2/3</td><td class="num">+41.7</td><td class="num bad">11.05</td></tr>
+      <tr><td><code>noTau</code></td><td class="num">1/3</td><td class="num">+16.5</td><td class="num ok">5.01</td></tr>
+      <tr><td><code>onlyCos</code></td><td class="num">2/3</td><td class="num">+39.2</td><td class="num bad">12.50</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ここで初めて、意味のありそうな形が見えます</b>
+     <strong>失敗したときの暴れ方</strong>には、はっきり差があります。
+     <code>&omega;</code> の罰がある条件は <strong>3.86 / 5.01</strong>、
+     無い条件は <strong>11.05 / 12.50</strong>。<strong>2〜3 倍違います。</strong></p>
+
+  <p class="why"><b>これは 9-a &sect;03 の答え合わせでもあります</b>
+     <code>&omega;</code> の罰は<strong>成功率を上げる道具ではなく、
+     こけ方をおとなしくする道具</strong>でした。
+     <strong>実機ではこちらのほうが重要かもしれません。</strong></p>
+
+  <div class="callout">
+    <span class="k">ただし、これも 3 本ずつです</span>
+    <p><strong>まだ結論ではありません。</strong>
+       「意味のありそうな形が見えた」段階です。&sect;05 で本数を計算します。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>何本走らせれば言えるのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>必要な本数を計算します。</strong>
+       感覚ではなく数字で決めれば、<strong>やる前に諦めるか覚悟するかを選べます</strong>。</p>
+  </div>
+
+  <h3>成功率 1/3 と 2/3 を見分けるには</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">1 条件あたりの本数</th><th class="num">見分けられる確率</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">3</td><td class="num bad">27.8%</td><td class="ng">今回やった本数</td></tr>
+      <tr><td class="num">5</td><td class="num bad">29.0%</td><td class="ng">まだ足りない</td></tr>
+      <tr><td class="num">10</td><td class="num">41.7%</td><td class="ng">半分以下</td></tr>
+      <tr><td class="num">20</td><td class="num">66.5%</td><td></td></tr>
+      <tr><td class="num">30</td><td class="num">76.0%</td><td></td></tr>
+      <tr><td class="num ok"><strong>50</strong></td><td class="num ok"><strong>93.3%</strong></td><td class="ok">ここでようやく</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 本では 27.8%</b>
+     <strong>4 回に 1 回ちょっとしか気づけません。</strong>
+     裏を返すと、<strong>今回「差がある」と言えなかったのは当たり前</strong>です。</p>
+
+  <div class="callout warn">
+    <span class="k">7-d と同じ結論に着きました</span>
+    <p>7-d で学習率を比べたときも、<strong>8 シードで足りず、約 50 本必要</strong>という計算でした。</p>
+    <p><strong>強化学習で「ちょっとの差」を主張するには、だいたい 50 本</strong>——
+       この相場を覚えておいてください。</p>
+  </div>
+
+  <h3>50 本のコスト</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">本数</th><th class="num">時間</th></tr></thead>
+    <tbody>
+      <tr><td>今回やった ablation</td><td class="num">12</td><td class="num">約 2.5 時間</td></tr>
+      <tr><td>4 条件 &times; 50 シード</td><td class="num">200</td><td class="num bad"><strong>約 43 時間</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">だから、やるべきことは別にあります</span>
+    <p>43 時間かけて「<code>&tau;</code> の罰は要るか」を調べるのは<strong>割に合いません</strong>。
+       <strong>先にばらつきそのものを減らします。</strong></p>
+    <div class="tw"><table>
+      <thead><tr><th>手</th><th>効果</th><th>どこで</th></tr></thead>
+      <tbody>
+        <tr><td><strong>学習を安定させる</strong></td>
+            <td>成功率が 1.0 に近づけば、<strong>成功時の点数だけ比べればよくなる</strong></td>
+            <td class="ok"><strong>9-e</strong></td></tr>
+        <tr><td>学習ステップを増やす</td><td>400k は<strong>成否の境目</strong>。1M なら安定する</td>
+            <td>7-c で実測済み</td></tr>
+        <tr><td>そもそも比べない</td><td>差が 180 点で標準偏差が 210 なら、<strong>どちらでもいい</strong></td>
+            <td>&mdash;</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>3 つ目は逃げではありません。</strong>
+       「区別できないほど差が小さい」も<strong>立派な結論</strong>です。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">今回いちばん重要な副産物</span>
+    <p>ablation をやろうとして分かったのは、
+       <strong>「ベースライン自身が 3 回に 1 回しか成功していない」</strong>ことでした。</p>
+    <p><strong>これは報酬の項の問題ではありません。</strong>
+       比べる前に直すべきものが見つかった、ということです。
+       <strong>9-e でこれを直します。</strong></p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>ablation を回す仕掛け</strong>と、<strong>結果を正しくまとめる関数</strong>を作ります。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 条件を係数で切り替える</span>
+    <p>9-a 課題 3 の <code>RewardVariant</code> を発展させます。
+       <strong>条件ごとに <code>if</code> を書くのではなく、係数の表にします。</strong></p>
+    <div class="code"><pre>W = {"full":    (1, 1),
+     "noOmega": (0, 1),
+     "noTau":   (1, 0),
+     "onlyCos": (0, 0)}
+
+class Ablate(gym.Wrapper):
+  def __init__(self, env, mode):
+    super().__init__(env)
+    self.w = W[mode]
+
+  def step(self, action):
+    obs, reward, terminated, truncated, info = self.env.step(action)
+    u = self.env.unwrapped
+    theta, omega = u.data.qpos[0], u.data.qvel[0]
+    torque = float(u.data.ctrl[0])
+    reward = ___                      # <- ここだけ考える（self.w を使う）
+    return obs, float(reward), terminated, truncated, info
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>条件を増やすときに 1 行足すだけ</strong>で済む形にします。
+       <code>if</code> を並べると、<strong>条件を足すたびにバグが入ります</strong>。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 成功と失敗を分けてまとめる</span>
+    <p>&sect;04 の表を作る関数です。<strong>平均だけを出す関数を書いてはいけません。</strong></p>
+    <div class="code"><pre>import numpy as np
+
+def summarize(results, threshold=100):
+  """results: [(seed, score, upright), ...]
+
+  上端にいた歩数が threshold を超えたら「成功」とみなす
+  """
+  ok = [r for r in results if r[2] > threshold]
+  ng = [r for r in results if r[2] <= threshold]
+  print(f"成功率      {len(ok)}/{len(results)}")
+  print(f"成功時の平均 {___}")           # <- ここだけ考える
+  print(f"全体の平均   {np.mean([r[1] for r in results]):+.2f}  "
+        f"(標準偏差 {np.std([r[1] for r in results]):.2f})")
+  if ng:
+    print(f"失敗したシード: {[r[0] for r in ng]}")
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>「全体の平均」も出しますが、必ず成功率と並べて出します。</strong>
+       平均だけ見ると &sect;03 の罠にはまります。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">答え合わせ</span>
+    <p><code>full</code> の 3 本
+       <code>[(0, 32.11, 216.5), (1, -473.03, 0.0), (2, -364.06, 0.0)]</code> を渡すと——</p>
+    <div class="code"><pre>成功率      1/3
+成功時の平均 +32.11
+全体の平均   -268.33  (標準偏差 217.05)
+失敗したシード: [1, 2]
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 自分で 12 本回す（時間があるとき）</span>
+    <p>4 条件 &times; 3 シード。<strong>2〜3 時間</strong>かかります。
+       CPU コアが余っていれば <strong>3 本ずつ並列</strong>に回せます。</p>
+    <div class="code"><pre># 1 本あたり 2 スレッドに制限して、3 本並列
+import os
+os.environ["OMP_NUM_THREADS"] = "2"
+import torch
+torch.set_num_threads(2)
+</pre></div>
+    <p class="why"><b>スレッド数を絞る理由</b>
+       PyTorch は<strong>既定で全コアを使おうとします</strong>。
+       3 本同時に走らせると<strong>奪い合って全部遅くなります</strong>。</p>
+    <p class="why"><b>注意</b>
+       スレッド数を変えると<strong>同じシードでも結果が変わります</strong>
+       （足し算の順序が変わるため）。
+       <strong>比較する実験は、必ず同じスレッド数で回してください。</strong></p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>ablation = 項を 1 つずつ外して測る</strong>。
+          <strong>採点は必ず全部入りの報酬で</strong>（&sect;01）</li>
+      <li><strong>1 シードの結果はきれいに見える</strong>。
+          順位も付く。<strong>そして全部間違っている</strong>（&sect;02）</li>
+      <li><strong>3 シードにすると、全部入りが最下位</strong>になった。
+          ただし標準偏差 217 なので<strong>何も言えない</strong>（&sect;03）</li>
+      <li><strong>結果は二値だった</strong>（+30 付近か &minus;400 付近か）。
+          <strong>平均 &minus;268 という方策は存在しない</strong>（&sect;04）</li>
+      <li><strong>成功率と成功時の点数を分けて報告する</strong>（&sect;04）</li>
+      <li><strong>1/3 と 2/3 を見分けるには約 50 本必要</strong>。3 本では 27.8%（&sect;05）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい二文</span>
+    <p><strong>1. 差を主張する前に、ばらつきを測る。</strong>
+       標準偏差より小さい差は、何本並べても差ではありません。</p>
+    <p><strong>2. ばらつきが大きいなら、比べるより先に減らす。</strong>
+       50 本走らせるより、学習を安定させるほうが圧倒的に安い。</p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="c1"> ablation の手順と「ものさしを固定する」理由を言える</label>
+    <label><input type="checkbox" data-ck="c2"> 1 シードの表が信用できない理由を説明できる</label>
+    <label><input type="checkbox" data-ck="c3"> 二値の結果に平均を使ってはいけない理由を言える</label>
+    <label><input type="checkbox" data-ck="c4"> 必要なシード数のおおよその相場（約 50）を知っている</label>
+    <label><input type="checkbox" data-ck="c5"> 課題 1・2 を実装し、&minus;268.33 / 217.05 を再現した</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 9-d</span>
+    <p>報酬の話はここまでです。次は<strong>行動空間</strong>——
+       方策に<strong>何を出させるか</strong>。
+       <strong>報酬より先に実機を壊すのは、たいてい行動の側</strong>です。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 9-c</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step09c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

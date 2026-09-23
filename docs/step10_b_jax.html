@@ -1,0 +1,952 @@
+<title>JAX の 5 つの約束事</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">JAX は何をする道具か</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">約束1 配列は書き換えない</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">約束2 jit でコンパイルする</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">約束3 vmap で N 体にする</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">約束4 if と for が書けない</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">約束5 乱数は鍵を持ち回す</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 10-b</span>
+  <h1>JAX の 5 つの約束事</h1>
+  <p>MJX を使うには JAX が要ります。
+     <strong>覚えることは 5 つだけ</strong>——ただし、そのどれもが
+     <strong>普通の Python の書き方を禁止します</strong>。</p>
+  <div class="meta">
+    <span class="chip">60 分</span>
+    <span class="chip">Step 10 の 2/4</span>
+    <span class="chip">前提: 10-a</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">10-a で分かったこと</span>
+    <ol>
+      <li>学習が遅いのは<strong>物理シミュレーションが CPU で 1 体ずつ動く</strong>から</li>
+      <li>CPU の並列（<code>SubprocVecEnv</code>）は<strong>コア数で頭打ち</strong></li>
+      <li>数千体を同時に回すには<strong>GPU に載せる</strong>しかない</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> なぜ MJX は<strong>普通の MuJoCo と書き方が違う</strong>のか？</p>
+    <p><b>2.</b> JAX で<strong>最低限これだけ知っていれば書ける</strong>ものは何か？</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">この教材の立ち位置</span>
+    <p>JAX を網羅的に学ぶ必要は<strong>ありません</strong>。
+       <strong>MJX を使うのに必要な分だけ</strong>に絞ります。</p>
+    <p>逆に言うと、<strong>ここを飛ばすと 10-c で必ず詰まります</strong>。
+       MJX のエラーは<strong>ほぼ全部 JAX の約束違反</strong>だからです。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>JAX は何をする道具か</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>一言で何なのか</strong>を掴みます。ここが分かれば残りは細部です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な一言</span><span class="ct">JAX</span></div>
+    <dl>
+      <dt>何をするか</dt>
+      <dd><strong>Python で書いた数値計算の関数を、GPU 用のプログラムに翻訳する</strong>道具。</dd>
+      <dt>NumPy との関係</dt>
+      <dd><code>jax.numpy</code> は<strong>NumPy とほぼ同じ名前・同じ使い方</strong>です。
+        <code>import jax.numpy as jp</code> と書いて <code>jp.sin</code>、<code>jp.array</code>。
+        <strong>見た目はほぼ NumPy です。</strong></dd>
+      <dt>ではなぜ難しいのか</dt>
+      <dd><strong>翻訳できる書き方に制限がある</strong>からです。
+        JAX は<strong>関数を一度「試し実行」して、やった計算を記録</strong>し、
+        それを GPU 用に変換します。
+        <strong>実行するたびに中身が変わる書き方は記録できません。</strong></dd>
+    </dl>
+  </div>
+
+  <div class="callout">
+    <span class="k">「試し実行して記録する」= トレース</span>
+    <p>JAX は関数に<strong>本物の数値ではなく「形だけの箱」</strong>を流し込みます。
+       箱が通った道筋を記録して、それを GPU 用にコンパイルします。</p>
+    <p>だから<strong>箱の中身（値）を見る操作は失敗</strong>します。
+       <strong>&sect;05 の <code>if</code> が書けない理由がこれです。</strong></p>
+  </div>
+
+  <p class="why"><b>これから出てくる 5 つの約束は、全部この 1 点から来ます</b>
+     <strong>「値そのものは、実行時までわからない」</strong>。
+     この一行を覚えておけば、5 つとも理由が分かります。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>約束 1 &mdash; 配列は書き換えない</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>NumPy で当たり前にやっていた <code>x[0] = 5</code> が<strong>使えません</strong>。
+       その代わりの書き方を覚えます。</p>
+  </div>
+
+  <div class="code"><pre>import jax.numpy as jp
+
+x = jp.array([1.0, 2.0, 3.0])
+x[0] = 99.0
+</pre></div>
+  <div class="code"><pre>TypeError: JAX arrays are immutable and do not support in-place item assignment
+</pre></div>
+
+  <p><strong>代わりにこう書きます。</strong></p>
+  <div class="code"><pre>y = x.at[0].set(99.0)
+
+print(y)   # -> [99.  2.  3.]
+print(x)   # -> [1. 2. 3.]     元の x は変わらない
+</pre></div>
+
+  <p class="why"><b>「書き換える」ではなく「書き換えた新しい配列を作る」</b>
+     <code>.at[i].set(v)</code> は<strong>コピーを返します</strong>。
+     <code>.add()</code> <code>.mul()</code> なども同じ形です。</p>
+
+  <div class="callout tip">
+    <span class="k">コピーだから遅い、とはなりません</span>
+    <p>コンパイルの段階で<strong>不要なコピーは消えます</strong>。
+       <code>.at[].set()</code> を使っても、<strong>実際の GPU コードでは直接書き換え</strong>になります。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">MJX で必ず出会います</span>
+    <p>MuJoCo では <code>d.ctrl[0] = 0.5</code> と書いていました。MJX では——</p>
+    <div class="code"><pre>dx = dx.replace(ctrl=jp.array([0.5]))
+</pre></div>
+    <p><code>replace</code> は<strong>その項目だけ差し替えた新しい dx を返します</strong>。
+       <strong>元の dx は変わりません。戻り値を必ず受け取ってください。</strong></p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>約束 2 &mdash; jit でコンパイルする</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>jax.jit</code> が<strong>何をして、どれだけ効くか</strong>を実測で見ます。</p>
+  </div>
+
+  <div class="code"><pre>import jax, jax.numpy as jp, time
+
+def f(x):
+  for _ in range(50):
+    x = jp.tanh(x) * 1.01
+  return x.sum()
+
+fj = jax.jit(f)              # これだけ
+
+a = jp.arange(100000, dtype=jp.float32)
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">1 回あたり</th><th class="num">倍率</th></tr></thead>
+    <tbody>
+      <tr><td><code>jit</code> なし</td><td class="num">5.974 ms</td><td class="num">1.0x</td></tr>
+      <tr><td><code>jit</code> あり</td><td class="num ok"><strong>0.064 ms</strong></td><td class="num ok"><strong>93x</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>なぜこんなに違うのか</b>
+     <code>jit</code> なしだと、<code>jp.tanh</code> 1 回ごとに
+     <strong>GPU に命令を送って結果を待つ</strong>のを 50 回繰り返します。
+     <code>jit</code> ありなら<strong>50 回分をまとめて 1 つの GPU プログラムに</strong>してから送ります。</p>
+
+  <div class="callout warn">
+    <span class="k">最初の 1 回だけ遅くなります</span>
+    <p>コンパイルは<strong>最初に呼ばれたときに走ります</strong>。
+       その 1 回は<strong>秒単位</strong>かかることもあります。</p>
+    <p>だから<strong>速度を測るときは、1 回空打ちしてから測ります</strong>。
+       上の表もそうしています。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">形が変わると作り直します</span>
+    <p><code>jit</code> は<strong>引数の形（shape）ごとに</strong>コンパイルします。
+       <code>(100,)</code> で呼んでから <code>(200,)</code> で呼ぶと、<strong>もう一度コンパイル</strong>されます。</p>
+    <p><strong>形をころころ変えるコードは、毎回コンパイルが走って遅くなります。</strong>
+       MJX で並列数を固定するのは、これも理由のひとつです。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">結果はすぐには返ってきません</span>
+    <p>JAX の計算は<strong>非同期</strong>です。呼んだ瞬間には
+       <strong>「計算を依頼した」だけ</strong>で、まだ終わっていません。</p>
+    <p>時間を測るときは <code>jax.block_until_ready(out)</code> か
+       <code>out.block_until_ready()</code> で<strong>待ってから止めます</strong>。
+       <strong>これを忘れると、ありえない速さが出ます。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>約束 3 &mdash; vmap で N 体にする</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Step 10 の主役です。</strong>
+       <code>vmap</code> があるから、<strong>1 体ぶんのコードだけ書けば数千体が動きます</strong>。</p>
+  </div>
+
+  <div class="code"><pre>I, MGL, DT = 0.0567, 1.6231, 0.01
+
+def step_one(state, torque):
+  """振り子を 1 歩進める。state = [theta, omega] の 1 体ぶん"""
+  theta, omega = state[0], state[1]
+  alpha = (torque - MGL * jp.sin(theta)) / I
+  omega = omega + alpha * DT
+  theta = theta + omega * DT
+  return jp.array([theta, omega])
+</pre></div>
+
+  <p><strong>1 体なら問題なく動きます。</strong></p>
+  <div class="code"><pre>step_one(jp.array([0.3, 0.0]), 0.1)
+# -> [ 0.29933 -0.06696]
+</pre></div>
+
+  <p><strong>3 体まとめて渡すと壊れます。</strong></p>
+  <div class="code"><pre>batch = jp.array([[0.3, 0.0], [1.0, 0.5], [2.0, -1.0]])   # (3, 2)
+tq    = jp.array([0.1, 0.2, 0.0])                          # (3,)
+
+step_one(batch, tq)
+# -> TypeError: sub got incompatible shapes for broadcasting: (3,), (2,).
+</pre></div>
+
+  <p class="why"><b>当然です</b>
+     <code>state[0]</code> が<strong>「1 体目の theta」ではなく「1 行目まるごと」</strong>
+     になってしまうからです。</p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">Step 10 の主役</span><span class="ct">vmap</span></div>
+    <dl>
+      <dt>何をするか</dt>
+      <dd><strong>1 体ぶんに書いた関数を、N 体ぶんに自動で作り変えます。</strong>
+        <code>jax.vmap(step_one)</code> と包むだけ。<strong>中身は 1 文字も変えません。</strong></dd>
+      <dt>for ループとの違い</dt>
+      <dd>for なら<strong>N 回順番に</strong>実行します。
+        <code>vmap</code> は<strong>N 体を 1 つの大きな計算にまとめます</strong>。
+        GPU は<strong>大きな計算 1 個</strong>が得意なので、これが効きます。</dd>
+    </dl>
+  </div>
+
+  <div class="code"><pre>jax.vmap(step_one)(batch, tq)
+# -> [[ 0.29933 -0.06696]
+#     [ 1.00294  0.29439]
+#     [ 1.9874  -1.2603 ]]
+</pre></div>
+
+  <p class="why"><b>1 体ずつ for で回した答えと完全に一致します</b>
+     <code>vmap</code> は<strong>計算を変えません。並べ方を変えるだけ</strong>です。
+     <strong>疑わしいときは for と突き合わせて確かめられます。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">どの軸を並べるかは指定できます</span>
+    <p><code>jax.vmap(f, in_axes=(0, None))</code> のように書くと、
+       <strong>1 つ目の引数だけ N 体ぶん、2 つ目は全員で共有</strong>になります。</p>
+    <p>MJX では<strong>モデル（<code>mx</code>）は全員共通、データ（<code>dx</code>）だけ N 体</strong>
+       なので、この形をよく使います。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>約束 4 &mdash; if と for が書けない</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>いちばん引っかかるところです。
+       <strong>&sect;01 の「値は実行時までわからない」</strong>がそのまま効いてきます。</p>
+  </div>
+
+  <div class="code"><pre>def bad(x):
+  if x > 0:
+    return x * 2
+  return x
+
+jax.jit(bad)(jp.array(1.0))
+# -> TracerBoolConversionError
+</pre></div>
+
+  <p class="why"><b>理由</b>
+     <code>jit</code> は<strong>形だけの箱</strong>を流します。
+     箱に対して <code>x &gt; 0</code> は<strong>True とも False とも決まりません</strong>。
+     <strong>どちらの枝を記録すればいいか決められない</strong>ので、エラーになります。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>やりたいこと</th><th>普通の Python</th><th>JAX</th></tr></thead>
+    <tbody>
+      <tr><td>条件分岐</td><td><code>if cond: a else: b</code></td>
+          <td><code>jp.where(cond, a, b)</code><br><code>jax.lax.cond(...)</code></td></tr>
+      <tr><td>決まった回数の繰り返し</td><td><code>for i in range(n)</code></td>
+          <td><code>jax.lax.fori_loop(0, n, body, init)</code></td></tr>
+      <tr><td>条件付きの繰り返し</td><td><code>while cond</code></td>
+          <td><code>jax.lax.while_loop(...)</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><pre>good = jax.jit(lambda x: jax.lax.cond(x > 0,
+                                      lambda v: v * 2,   # True のとき
+                                      lambda v: v,       # False のとき
+                                      x))
+good(jp.array( 1.0))   # ->  2.0
+good(jp.array(-1.0))   # -> -1.0
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k">形が決まっている for は、実は書けます</span>
+    <p><code>for _ in range(50):</code> のように<strong>回数が定数</strong>なら、
+       <strong>普通の for で書いて大丈夫</strong>です（&sect;03 の例がそうでした）。
+       <strong>50 回ぶんが展開されて記録されるだけ</strong>だからです。</p>
+    <p>ただし<strong>回数が大きいとコンパイルが非常に遅くなります</strong>。
+       <strong>数十回までなら for、それ以上は <code>fori_loop</code></strong> が目安です。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">MJX でいちばん効いてくる場面</span>
+    <p>「エピソードが終わったらリセットする」を <code>if done: reset()</code> と書けません。
+       <strong>N 体それぞれで done が違う</strong>からです。</p>
+    <p>代わりに<strong>全員ぶんのリセット後の状態を計算しておいて、
+       <code>jp.where(done, reset_state, state)</code> で選びます</strong>。
+       <strong>「やらない計算もやってから捨てる」</strong>——GPU ではこれが速いのです。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>約束 5 &mdash; 乱数は鍵を持ち回す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>np.random.randn()</code> のような書き方ができません。
+       <strong>なぜダメで、代わりにどうするか。</strong></p>
+  </div>
+
+  <div class="code"><pre>import jax
+
+key = jax.random.PRNGKey(0)          # 「鍵」を作る
+
+jax.random.normal(key, (3,))   # -> [ 1.6226422   2.0252647  -0.43359444]
+jax.random.normal(key, (3,))   # -> [ 1.6226422   2.0252647  -0.43359444]   同じ！
+</pre></div>
+
+  <p class="why"><b>同じ鍵からは必ず同じ値が出ます</b>
+     JAX の乱数は<strong>「内部に状態を持たない」</strong>設計です。
+     <code>key</code> を渡せば<strong>いつでも同じ結果</strong>。
+     <strong>これは仕様であって、バグではありません。</strong></p>
+
+  <p><strong>違う値が欲しいときは、鍵を分けます。</strong></p>
+  <div class="code"><pre>k1, k2 = jax.random.split(key)
+
+jax.random.normal(k1, (3,))   # -> [ 1.0040143  -0.9063372  -0.7481722 ]
+jax.random.normal(k2, (3,))   # -> [-2.4424558  -2.0356805   0.20554423]
+</pre></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">考え方が変わるところ</span><span class="ct">なぜ面倒な設計なのか</span></div>
+    <dl>
+      <dt>NumPy のやり方</dt>
+      <dd>ライブラリの中に<strong>隠れた状態</strong>があり、呼ぶたびに進みます。
+        <strong>呼ぶ順番が変わると結果が変わります。</strong></dd>
+      <dt>それが困る理由</dt>
+      <dd><code>vmap</code> で N 体を並列にすると<strong>「呼ぶ順番」が存在しません</strong>。
+        <code>jit</code> は<strong>計算の順番を勝手に入れ替えます</strong>。
+        <strong>隠れた状態とは両立しません。</strong></dd>
+      <dt>JAX の答え</dt>
+      <dd>状態を<strong>引数として明示的に持ち回る</strong>。
+        面倒な代わりに、<strong>並列でも再現性が完全に保証されます</strong>。</dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実際の書き方</span>
+    <p>毎回 <code>split</code> して<strong>片方を次に渡す</strong>のが定番です。</p>
+    <div class="code"><pre>key = jax.random.PRNGKey(0)
+for step in range(100):
+  key, subkey = jax.random.split(key)      # key を更新し、使い捨ての subkey を得る
+  noise = jax.random.normal(subkey, (4,))
+  ...
+</pre></div>
+    <p><strong><code>key</code> を上書きし、<code>subkey</code> を使い捨てる。</strong>この形を覚えてください。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>5 つの約束を一度に使う</strong>小さな例を作ります。
+       10-c の MJX 版は、この形をそのまま大きくしたものです。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">まず入れる</span>
+    <div class="code"><pre>uv add "jax[cuda12]"
+</pre></div>
+    <p>入ったら<strong>GPU が見えているか必ず確かめてください</strong>。</p>
+    <div class="code"><pre>uv run python -c "import jax; print(jax.devices())"
+# -> [CudaDevice(id=0)]     これが出れば成功
+# -> [CpuDevice(id=0)]      GPU が使えていない
+</pre></div>
+    <p><strong><code>CpuDevice</code> だと 10-c で意味がありません。</strong>
+       ここで止まってください。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 1 体ぶんの振り子を書く</span>
+    <p><code>jax_pendulum.py</code> を新しく作ります。</p>
+    <div class="code"><pre>import jax, jax.numpy as jp
+
+I, MGL, DT = 0.0567, 1.6231, 0.01
+
+def step_one(state, torque):
+  """state = [theta, omega] の 1 体ぶんを 1 歩進める"""
+  theta, omega = state[0], state[1]
+  alpha = ___                          # <- ここだけ考える（運動方程式）
+  omega = omega + alpha * DT
+  theta = theta + omega * DT
+  return jp.array([theta, omega])
+
+print(step_one(jp.array([0.3, 0.0]), 0.0))
+</pre></div>
+    <p class="why"><b>ヒント</b>
+       Step 4 で使った式です。<code>I&middot;&alpha; = &tau; - mgl&middot;sin&theta;</code>。
+       <strong>NumPy とまったく同じ書き方で通ります</strong>（<code>np</code> が <code>jp</code> になるだけ）。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 100 歩まとめて進める</span>
+    <p><code>for</code> ではなく <code>fori_loop</code> で書きます。</p>
+    <div class="code"><pre>@jax.jit
+def roll(state, torque, n=100):
+  return jax.lax.fori_loop(0, n, ___, state)    # <- ここだけ考える
+
+print(roll(jp.array([0.3, 0.0]), 0.0))
+# -> [0.17825 1.31012]
+</pre></div>
+    <p class="why"><b><code>fori_loop</code> に渡す関数の形</b>
+       <code>(i, 今の状態) -&gt; 次の状態</code> です。
+       <strong><code>i</code> を使わなくても、引数には必ず要ります。</strong></p>
+    <p class="why"><b>確かめ方</b>
+       素の <code>for</code> で 100 回回した答えと<strong>完全に一致</strong>するはずです。
+       <strong>一致しなければ書き方が違います。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 1000 体を同時に進める</span>
+    <p><strong><code>step_one</code> も <code>roll</code> も 1 文字も変えずに</strong>やります。</p>
+    <div class="code"><pre>B = 1000
+key = jax.random.PRNGKey(0)
+states = jp.stack([jax.random.uniform(key, (B,), minval=-0.5, maxval=0.5),
+                   jp.zeros(B)], axis=1)          # (1000, 2)
+torques = jp.zeros(B)                             # (1000,)
+
+vroll = ___                                       # <- ここだけ考える
+out = vroll(states, torques)
+print(out.shape)      # -> (1000, 2)
+print(out[:3])
+# -> [[ 0.25285  1.99093]
+#     [ 0.2666   2.13795]
+#     [-0.10235 -0.72444]]
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>これが Step 10 のすべてです。</strong>
+       1 体ぶんの物理を書いて、<code>vmap</code> で包む。
+       <strong>MJX がやっているのも、規模が違うだけで同じこと</strong>です。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">よくある詰まり</span>
+    <div class="tw"><table>
+      <thead><tr><th>エラー</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td><code>TracerBoolConversionError</code></td>
+            <td><code>if</code> でトレース値を判定した（&sect;05）</td></tr>
+        <tr><td><code>incompatible shapes for broadcasting</code></td>
+            <td><code>vmap</code> を忘れて N 体を直接渡した（&sect;04）</td></tr>
+        <tr><td>書き換えたのに変わらない</td>
+            <td><code>.at[].set()</code> の<strong>戻り値を受け取っていない</strong>（&sect;02）</td></tr>
+        <tr><td>ありえない速さが出る</td>
+            <td><code>block_until_ready()</code> を忘れた（&sect;03）</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="s09">
+  <div class="sec-head">
+    <span class="eyebrow">08</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">5 つの約束</span>
+    <ol>
+      <li><strong>配列は書き換えない</strong>。<code>.at[i].set(v)</code> で新しい配列を作る（&sect;02）</li>
+      <li><strong><code>jit</code> でまとめてコンパイル</strong>。実測 93 倍。最初の 1 回だけ遅い（&sect;03）</li>
+      <li><strong><code>vmap</code> で 1 体ぶんの関数を N 体に</strong>。中身は変えない（&sect;04）</li>
+      <li><strong><code>if</code>・可変長 <code>for</code> は書けない</strong>。
+          <code>jp.where</code> / <code>lax.cond</code> / <code>lax.fori_loop</code>（&sect;05）</li>
+      <li><strong>乱数は鍵を持ち回す</strong>。<code>key, subkey = split(key)</code>（&sect;06）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">5 つとも、理由はひとつです</span>
+    <p><strong>JAX は関数を「試し実行」して計算の道筋を記録し、GPU 用に翻訳する。</strong></p>
+    <p>だから<strong>値そのものは実行時までわからない</strong>。
+       だから <code>if</code> が書けず、隠れた状態が持てず、形が変わると作り直しになります。
+       <strong>迷ったらこの一行に戻ってください。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="j1"> <code>jax.devices()</code> で <code>CudaDevice</code> が出た</label>
+    <label><input type="checkbox" data-ck="j2"> <code>.at[].set()</code> が元の配列を変えないことを確かめた</label>
+    <label><input type="checkbox" data-ck="j3"> <code>jit</code> の有無で速度を測った</label>
+    <label><input type="checkbox" data-ck="j4"> 課題 2 で素の <code>for</code> と答えが一致した</label>
+    <label><input type="checkbox" data-ck="j5"> 課題 3 で 1000 体を同時に進めた</label>
+    <label><input type="checkbox" data-ck="j6"> <code>if</code> が書けない理由を説明できる</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 10-c</span>
+    <p>いよいよ <strong>MJX</strong> です。
+       課題 3 でやったこと——<strong>1 体ぶんを書いて <code>vmap</code> で包む</strong>——を、
+       <strong>自作の運動方程式ではなく MuJoCo の物理エンジンで</strong>やります。
+       <strong>16384 体まで並列に回して、CPU と比べます。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 10-b</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step10b-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

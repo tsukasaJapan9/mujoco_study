@@ -1,0 +1,1070 @@
+<title>報酬ハッキング</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">報酬ハッキング</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">予告を実測する</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">本物のハッキングを起こす</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">どうやって気づくか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 9-a</span>
+  <h1>報酬ハッキング</h1>
+  <p>方策は<strong>あなたが書いた報酬</strong>を最大化する。
+     <strong>あなたが望んだこと</strong>ではなく。その差が牙を剥く場面を、実際に起こす。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 9 の 1/5</span>
+    <span class="chip">Phase C 開始</span>
+    <span class="chip">前提: Step 8</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>PPO を自分で書き、振り子を立たせた（<b>+47.36</b>、古典制御 +28.31）</li>
+      <li>報酬は <code>-cos&theta; - 0.01&omega;&sup2; - 0.001&tau;&sup2;</code>。
+          <strong>係数は 6-d で「目分量」と書いた</strong></li>
+      <li>6-d で「<code>-cos&theta;</code> だけだと<strong>上端を高速で通過して稼ぐ</strong>」と予告した</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 報酬の係数は、どう決めるべきだったのか？</p>
+    <p><b>2.</b> 「報酬ハッキング」とは具体的に何が起きることか？</p>
+  </div>
+
+  <p><b>Phase C が始まります。</b>
+     Phase B までで「振り子を立てる」は解けました。
+     ここからは<strong>「実機に載せられるものにする」</strong>方向へ進みます。
+     <strong>Step 9 の主題は設計</strong>——報酬・観測・行動空間をどう決めるかです。</p>
+
+  <div class="callout tip">
+    <span class="k">ロードマップの言葉</span>
+    <p><strong>「学習が失敗する」の 8 割は設計ミス。</strong></p>
+    <p>Phase B で見たとおりです。7-a のチェックリストで<strong>上位 5 つが全部環境側</strong>でした。
+       Step 9 はその「設計」を正面から扱います。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「係数はどう決めるべきだったか」に答えます。
+       <strong>答えは「桁を揃える」</strong>ですが、その意味を数字で確かめます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>いまの報酬は <code>-cos&theta; - 0.01&omega;&sup2; - 0.001&tau;&sup2;</code> でした。
+       この係数はどうやって決めたでしょうか。
+       6-d で正直に「目分量です」と書きました。
+       <strong>では、どうやって決めるべきだったのでしょうか。</strong></p>
+  </div>
+
+  <p><b>答え：各項が実際に取る値を計算して、桁を揃えます。</b></p>
+
+  <p>いまの報酬が、代表的な場面でどういう値になるか出しました（実測）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>状況</th><th class="num">&minus;cos&theta;</th><th class="num">&minus;0.01&omega;&sup2;</th><th class="num">&minus;0.001&tau;&sup2;</th><th class="num">合計</th></tr></thead>
+    <tbody>
+      <tr><td>真下で静止</td><td class="num">&minus;1.000</td><td class="num">0.000</td><td class="num">0.000</td><td class="num">&minus;1.000</td></tr>
+      <tr><td><strong>真上で静止</strong>（目標）</td><td class="num">+1.000</td><td class="num">0.000</td><td class="num">0.000</td><td class="num ok"><strong>+1.000</strong></td></tr>
+      <tr><td><strong>真上を高速通過</strong></td><td class="num">+1.000</td><td class="num">&minus;1.000</td><td class="num">&minus;0.0003</td><td class="num"><strong>0.000</strong></td></tr>
+      <tr><td>振り上げ中</td><td class="num">&minus;0.071</td><td class="num">&minus;0.360</td><td class="num">&minus;0.0003</td><td class="num">&minus;0.431</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 行目が設計の意図です</b>
+     <strong>「真上を高速通過」が 0.000 になり、「真上で静止」の +1.000 と明確に差がつく</strong>。
+     <code>&omega;=10</code> のとき <code>0.01&times;100 = 1.0</code> で、
+     <strong>ちょうど <code>-cos&theta;</code> の最大値と同じ桁</strong>になっています。</p>
+
+  <p class="why"><b>これが「桁を揃える」の意味です</b>
+     <strong>止めたい行動が、報酬を稼げなくなる</strong>ように係数を選ぶ。
+     6-d では「目分量」と書きましたが、実は<strong>この計算をしていました</strong>——
+     ただ、その根拠を書いていませんでした。</p>
+
+  <div class="callout">
+    <span class="k">トルクの項だけ桁が違います</span>
+    <p><code>-0.001&tau;&sup2;</code> は最大でも <code>-0.00025</code>（<code>&tau;=0.5</code> のとき）。
+       他の項の <strong>1/4000</strong> しかありません。</p>
+    <p><strong>これは意図的です。</strong>トルクの罰は「同じくらいうまくいくなら省エネな方を選べ」
+       という<strong>優先順位の低い希望</strong>なので、主目的を邪魔しない大きさにしてあります。</p>
+    <p><strong>ただし実機では話が変わります</strong>——モータの発熱は現実の制約なので、
+       もっと重くする必要が出てきます。<strong>9-d で扱います。</strong></p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>報酬ハッキング</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;01 で「係数には意図があった」と分かりました。
+       <strong>では、その意図を外すとどうなるか。</strong>
+       ここが Step 9 の核心です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">報酬ハッキング</span></div>
+    <dl>
+      <dt>何が起きるか</dt>
+      <dd>方策が<strong>報酬を高くする方法を見つける</strong>が、
+        それが<strong>設計者の意図した振る舞いではない</strong>こと。
+        <strong>学習は成功している</strong>のに、望んだものが得られない。</dd>
+      <dt>なぜ起きるか</dt>
+      <dd>方策は<strong>あなたが書いた式</strong>を最大化します。
+        <strong>あなたが望んだこと</strong>ではありません。
+        式と意図の間に隙間があれば、<strong>必ずそこを突きます</strong>。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 12 の実機で最も危険です。
+        シミュレータなら「変な動きだな」で済みますが、
+        <strong>実機では機体が壊れます</strong>。</dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">「バグ」ではありません</span>
+    <p>コードは正しく、学習も正しく進んでいます。
+       <strong>報酬関数が、あなたの意図を正確に表していなかった</strong>だけです。</p>
+    <p>だから<strong>デバッガでは見つかりません</strong>。
+       <strong>方策の動きを見て、初めて気づきます。</strong></p>
+  </div>
+
+  <h3>6-d でした予告</h3>
+  <p>Step 6-d で、報酬の各項について<strong>「これが無いとどうなるか」</strong>の表を出しました。
+     その 2 行目がこれです。</p>
+  <div class="tw"><table>
+    <thead><tr><th>項</th><th>役割</th><th>これが無いと</th></tr></thead>
+    <tbody>
+      <tr><td><code>-0.01&middot;&omega;&sup2;</code></td><td>静止させる</td>
+          <td><strong>上端をぐるぐる高速で通過</strong>して稼ごうとする</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>教科書どおりの予言です</b>
+     回転し続ければ 1 周ごとに上端を通るので、
+     <code>-cos&theta;</code> を稼げてしまうのではないか——という理屈でした。</p>
+
+  <div class="callout warn">
+    <span class="k">この予言を、実際に測りました</span>
+    <p>結論から言うと<strong>半分しか当たっていませんでした。</strong></p>
+    <p>教材で予告したことを検証せずに済ませるのは良くないので、
+       &sect;03 で<strong>実際に &omega; の罰を外して学習させた結果</strong>を出します。
+       <strong>予言が外れた理由</strong>のほうが、報酬設計の本質に近い話でした。</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>予告を実測する</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>6-d の予告「<code>&omega;</code> の罰が無いと、上端をぐるぐる高速で通過して稼ぐ」を検証します。
+       <strong>予告は外れます。</strong>
+       <strong>そして、外れる理由は学習させる前から分かっていました。</strong></p>
+  </div>
+
+  <h3>まず算数で答えが出ます</h3>
+  <p>「回転して上端を通れば稼げる」が本当かどうか、<strong>1 歩あたりの平均</strong>を計算します。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>方策</th><th class="num"><code>-cos&theta;</code> の平均</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>上端で静止</td><td class="num ok"><strong>+1.00</strong></td>
+          <td><code>-cos&theta;</code> の<strong>最大値そのもの</strong></td></tr>
+      <tr><td>回り続ける</td><td class="num"><strong>0.00</strong></td>
+          <td>上半分の <strong>+</strong> と下半分の <strong>&minus;</strong> が打ち消し合う</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>回転は静止に絶対に勝てません</b>
+     「1 周ごとに上端を通るから稼げる」——通ります。
+     でも<strong>同じ時間だけ真下も通ります</strong>。そこを忘れていました。</p>
+
+  <div class="callout warn">
+    <span class="k">つまり <code>-cos&theta;</code> だけでも、上端で静止するのが最適です</span>
+    <p><strong>抜け道は最初から存在しませんでした。</strong>
+       <code>&omega;</code> の罰は<strong>穴を塞いでいたのではありません</strong>。</p>
+  </div>
+
+  <h3>それでも学習させてみる</h3>
+  <p><code>&omega;</code> の罰だけを外した報酬で 40 万ステップ学習し、
+     <strong>元の報酬で採点</strong>しました（罰を外せば点は当然上がるので、
+     <strong>ものさしは固定します</strong>）。</p>
+
+  <div class="code"><pre>元の報酬    : -cos(theta) - 0.01 * omega**2 - 0.001 * torque**2
+omega 罰なし: -cos(theta)                  - 0.001 * torque**2
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr>
+      <th>学習に使った報酬</th><th class="num">元の報酬で採点</th><th class="num">上端にいた歩数</th>
+      <th class="num">終盤 100 歩の <code>|&omega;|</code></th><th class="num">累積の回し量</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>元の報酬（<code>&omega;</code> の罰あり）</td><td class="num">+30.63</td>
+          <td class="num">211.3/500</td><td class="num">0.00</td><td class="num">1.7 周</td></tr>
+      <tr><td><code>&omega;</code> の罰なし</td><td class="num">&minus;21.47</td>
+          <td class="num">179.8/500</td><td class="num">1.82</td><td class="num">2.1 周</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="muted" style="font-size:.86rem">
+    「累積の回し量」は 1 エピソード中の <code>|&Delta;&theta;|</code> の合計 &divide; 2&pi;。
+    行ったり来たりも数えるので、<strong>振り上げの往復だけで 1〜2 周</strong>になります。</p>
+
+  <div class="callout warn">
+    <span class="k">この表の点差を信じてはいけません</span>
+    <p><strong>これは 1 回ずつしか走らせていません。</strong>
+       7-d で学んだとおり、<strong>1 シードでは何も結論できません</strong>。</p>
+    <p>実際、<strong>9-c で同じ比較を 3 シードに増やすと、この 52 点の差は完全に消えます</strong>
+       （それどころか<strong>符号が逆転します</strong>）。
+       <strong>この節で信用できるのは、上の算数のほうです。</strong></p>
+  </div>
+
+  <h3>予告のどこが当たって、どこが外れたか</h3>
+  <div class="tw"><table>
+    <thead><tr><th>予告</th><th>実測</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td>上端で止まらなくなる</td>
+          <td>終盤 <code>|&omega;|</code> が <strong>0.00 &rarr; 1.82</strong></td>
+          <td class="ok">当たり</td></tr>
+      <tr><td><strong>ぐるぐる高速で通過して稼ぐ</strong></td>
+          <td>回し量 <strong>1.7 &rarr; 2.1 周</strong>。<strong>回り続けてはいない</strong></td>
+          <td class="ng"><strong>外れ</strong></td></tr>
+      <tr><td>点数で明確に損をする</td>
+          <td><strong>シードのばらつきに埋もれる</strong>（9-c）</td>
+          <td class="ng"><strong>確かめられず</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">考え方が変わるところ</span><span class="ct">&omega; の罰の本当の役割</span></div>
+    <dl>
+      <dt>思っていた役割</dt>
+      <dd><strong>抜け道を塞ぐ壁</strong>。これが無いと方策が別の稼ぎ方に逃げる。</dd>
+      <dt>実際の役割 1</dt>
+      <dd><strong>最適点を鋭くする</strong>。
+        <code>-cos&theta;</code> だけだと「上端の<strong>すぐ近く</strong>をふらついている」でも
+        <strong>+0.99</strong> もらえてしまい、<strong>ぴったり止まる理由が弱い</strong>。
+        <code>&omega;</code> の罰が、<strong>ふらつきに値札を付けます</strong>。</dd>
+      <dt>実際の役割 2</dt>
+      <dd><strong>失敗したときの暴れ方を抑える</strong>。
+        9-c で<strong>学習に失敗した回</strong>を見ると、
+        終盤の <code>|&omega;|</code> は
+        <strong>罰ありで最大 5.0、罰なしで最大 12.5</strong>。
+        <strong>成功率は変えませんが、こけ方がおとなしくなります。</strong>
+        <strong>実機ではこちらのほうが大事かもしれません。</strong></dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">予告を出したまま検証しないのは良くないので</span>
+    <p>6-d の表の「これが無いと」欄は<strong>教科書的な説明としては普通</strong>ですが、
+       <strong>この振り子では言いすぎ</strong>でした。訂正します。</p>
+    <p>ただし<strong>「報酬に書いていないことはやってくれない」</strong>という結論は変わりません。
+       「止まれ」と書かなかったので、<strong>方策は止まりませんでした</strong>。</p>
+  </div>
+
+  <p class="why"><b>では本物のハッキングはどこで起きるのか</b>
+     ここまでは<strong>項を消す</strong>話でした。
+     <strong>本当に危ないのは、項を足すとき</strong>です。&sect;04 で実際に壊します。</p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>本物のハッキングを起こす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;03 で「項を<strong>消して</strong>も大事故にはならない」と分かりました。
+       <strong>本物の事故は、項を<strong>足した</strong>ときに起きます。</strong>
+       ここで実際に壊します。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">よくある動機</span>
+    <p>学習を眺めていると、こう思う瞬間が必ず来ます。</p>
+    <p><strong>「振り上げがなかなか始まらない。動くこと自体にご褒美をあげて、
+       振り上げを促してやろう」</strong></p>
+    <p>そこで角速度に<strong>プラスの</strong>報酬を足します。</p>
+  </div>
+
+  <div class="code"><pre>reward = -cos(theta) + 0.1 * abs(omega) - 0.001 * torque**2
+                      ^^^^^^^^^^^^^^^^^^
+                      「動いたら褒める」つもりで足した項
+</pre></div>
+
+  <p class="why"><b>悪意はありません</b>
+     <strong>報酬整形（reward shaping）</strong>と呼ばれる、ごく普通の手法です。
+     「探索を助けるヒントを報酬に混ぜる」——教科書にも載っています。</p>
+
+  <h3>40 万ステップ学習した結果（実測）</h3>
+  <div class="tw"><table>
+    <thead><tr>
+      <th>報酬</th><th class="num">本来の報酬で採点</th><th class="num">上端にいた歩数</th>
+      <th class="num">終盤 100 歩の平均 <code>|&omega;|</code></th><th class="num">回転数</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>元の報酬（&omega; の罰あり）</td><td class="num ok"><strong>+30.63</strong></td>
+          <td class="num ok"><strong>211.3</strong>/500</td><td class="num ok"><strong>0.00</strong></td><td class="num">1.7 周</td></tr>
+      <tr><td><strong><code>+0.1|&omega;|</code> を足した版</strong></td><td class="num bad"><strong>&minus;637.59</strong></td>
+          <td class="num bad"><strong>37.1</strong>/500</td><td class="num bad"><strong>16.34</strong></td><td class="num bad"><strong>6.9 周</strong></td></tr>
+      <tr><td><span class="muted">（参考）ランダム方策</span></td><td class="num">&minus;499.50</td>
+          <td class="num">0.0/500</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">ランダム方策より悪くなりました</span>
+    <p>&minus;637.59 は、<strong>何も学習していないランダム方策の &minus;499.50 を下回ります。</strong></p>
+    <p>ランダムはほとんど動かないので角速度の罰をほぼ受けません。
+       この方策は<strong>全力で回り続ける</strong>ので、罰を稼ぎ続けます。
+       <strong>「学習したせいで、何もしないより悪くなった」</strong>状態です。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">ここも 1 シードですが、結論は変わりません</span>
+    <p>&sect;03 と違い、<strong>差が桁違い</strong>だからです（668 点差／上端 174 歩差）。
+       それに<strong>下の算数がこの結果を先に予言しています</strong>——
+       シードの運ではなく<strong>報酬の形</strong>で決まっている、と言えます。</p>
+    <p><strong>差が小さいときだけ、シードを疑えばよい</strong>のです。</p>
+  </div>
+
+  <p class="why"><b>終盤 100 歩の <code>|&omega;|</code> が決定的です</b>
+     元の報酬では <strong>0.00</strong>——<strong>完全に止まっています</strong>。
+     足した版は <strong>16.34</strong>——<strong>最後まで全力で回り続けています</strong>。
+     500 歩で 6.9 周。これが 6-d で予告した「ぐるぐる」の本物です。</p>
+
+  <div class="callout tip">
+    <span class="k">学習は成功しています</span>
+    <p>この方策は<strong>自分の報酬をきちんと最大化しました</strong>。
+       学習曲線も右肩上がりです。<strong>PPO は何ひとつ間違っていません。</strong></p>
+    <p>間違っていたのは<strong>「動いたら褒める」と書いた人間</strong>です。</p>
+  </div>
+
+  <h3>これは学習前に予測できました</h3>
+  <p>足した項がどれくらいの大きさになるか、<strong>&sect;01 と同じ計算をするだけ</strong>です。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>方策</th><th class="num">&minus;cos&theta; の平均</th><th class="num">0.1|&omega;| の平均</th><th class="num">500 歩の合計</th></tr></thead>
+    <tbody>
+      <tr><td>上端で静止する</td><td class="num">+1.00</td><td class="num">0.00</td><td class="num">+500.0</td></tr>
+      <tr><td><strong>回り続ける</strong>（<code>|&omega;|</code>=16.34）</td><td class="num">0.00</td>
+          <td class="num">+1.634</td><td class="num bad"><strong>+817.0</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>回転が 317 点も有利です</b>
+     回り続けると <code>-cos&theta;</code> の平均は <strong>0</strong> になります
+     （上半分と下半分が打ち消すので）。
+     <strong>+1.00 を捨ててでも、+1.634 を取ったほうが得</strong>——これが方策の計算です。</p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">覚えておく式</span><span class="ct">回転が静止に勝つ境界</span></div>
+    <dl>
+      <dt>条件</dt>
+      <dd><code>0.1 &times; |&omega;| &gt; 1.0</code>、つまり <strong><code>|&omega;| &gt; 10 rad/s</code></strong>。
+        <strong>この振り子は 16 rad/s まで出せます</strong>——境界を越えています。</dd>
+      <dt>言い換えると</dt>
+      <dd>足した項の<strong>最大値</strong>が、主目的の項の<strong>最大値</strong>を超えた瞬間、
+        <strong>主目的が主目的でなくなります</strong>。</dd>
+      <dt>だから</dt>
+      <dd>報酬に項を足すときは、<strong>その項が取りうる最大値を必ず計算する</strong>。
+        <strong>3 行の算数</strong>で、15 分の学習を無駄にせずに済みます。</dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">係数を小さくすれば直るのか</span>
+    <p><code>0.1</code> を <code>0.01</code> にすれば <code>0.01&times;16 = 0.16 &lt; 1.0</code> なので、
+       境界は越えません。<strong>この事故は防げます。</strong></p>
+    <p>ただし<strong>「回転したほうが少し得」という歪みは残ります</strong>。
+       だから実務では<strong>「探索を助けたい」を報酬で解決しない</strong>のが定石です。
+       初期状態をばらけさせる（9-e）ほうが副作用がありません。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>どうやって気づくか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;03 &sect;04 で<strong>ハッキングは起きる</strong>と分かりました。
+       では<strong>どうやって気づくのか</strong>。ここが実務でいちばん効く話です。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">まず、いちばん大事なこと</span>
+    <p><strong>学習報酬のグラフを見ても、絶対に気づけません。</strong></p>
+    <p>ハッキングしている方策は、<strong>自分の報酬をちゃんと上げています</strong>。
+       学習曲線は<strong>きれいに右肩上がり</strong>です。それが問題なのです。</p>
+  </div>
+
+  <p>さらに厄介なのが、<strong>報酬関数を変えたら数字を比べられない</strong>ことです。</p>
+
+  <div class="callout">
+    <span class="k">&sect;04 でやった数字のトリック</span>
+    <p><code>+0.1|&omega;|</code> 版の「学習報酬」は当然高く出ます。
+       <strong>足し算の項が増えているのだから当たり前</strong>で、強さとは何の関係もありません。</p>
+    <p>だから &sect;03 &sect;04 の表では<strong>全部「本来の報酬」で採点し直しました</strong>。
+       <strong>報酬を変えた実験では、採点用のものさしを固定する</strong>——これが鉄則です。</p>
+  </div>
+
+  <h3>3 つの武器</h3>
+  <div class="tw"><table>
+    <thead><tr><th>武器</th><th>やること</th><th>見つかるもの</th></tr></thead>
+    <tbody>
+      <tr><td><b>1. 動きを見る</b></td><td>学習後の方策を必ず可視化する</td>
+          <td><strong>ほぼ全部</strong>。最強で最速</td></tr>
+      <tr><td><b>2. 別のものさしで採点</b></td><td>報酬とは別に「本当に欲しい量」を測る</td>
+          <td>上端にいる時間、終盤の <code>|&omega;|</code></td></tr>
+      <tr><td><b>3. 報酬の内訳をログ</b></td><td>各項を個別に足して記録する</td>
+          <td><strong>どの項が効いているか</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 番目は特に見落とされます</b>
+     報酬は合計しか記録しないのが普通なので、
+     <strong>内訳は誰も見ていません</strong>。見ると驚くことがあります。</p>
+
+  <h3>内訳を見て驚いた例</h3>
+  <p>Step 7 で学習した方策（<code>ppo_semi_long_s0</code>、合計 &minus;109.77）の
+     報酬を、項ごとに分けて足しました（実測）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>項</th><th class="num">学習済み PPO</th><th class="num">割合</th><th class="num">ランダム方策</th></tr></thead>
+    <tbody>
+      <tr><td><code>-cos&theta;</code>（角度）</td><td class="num">&minus;12.04</td>
+          <td class="num">11%</td><td class="num">&minus;498.76</td></tr>
+      <tr><td><code>-0.01&omega;&sup2;</code>（角速度）</td><td class="num bad"><strong>&minus;97.65</strong></td>
+          <td class="num bad"><strong>89%</strong></td><td class="num">&minus;0.70</td></tr>
+      <tr><td><code>-0.001&tau;&sup2;</code>（トルク）</td><td class="num">&minus;0.08</td>
+          <td class="num">0.1%</td><td class="num">&minus;0.04</td></tr>
+      <tr><td><strong>合計</strong></td><td class="num"><strong>&minus;109.77</strong></td>
+          <td class="num"></td><td class="num"><strong>&minus;499.50</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>主役が入れ替わっています</b>
+     <code>-cos&theta;</code> が主目的のはずなのに、
+     この方策の失点の<strong>89% は角速度の罰</strong>です。
+     <strong>「まだ動き回っている」ことが、この方策の弱点そのもの</strong>だと数字が言っています。</p>
+
+  <p class="why"><b>ランダム方策と比べると意味がはっきりします</b>
+     ランダムの失点は<strong>99.9% が角度</strong>（&minus;498.76）で、
+     角速度はたった &minus;0.70。<strong>ランダムはほとんど動かない</strong>からです。
+     つまりこの 2 列は<strong>「立てていない」と「立ったが揺れている」の違い</strong>を見せています。</p>
+
+  <div class="callout tip">
+    <span class="k">内訳が読めると、次の一手が決まります</span>
+    <p>角度で失点 &rarr; <strong>そもそも立てていない</strong>。学習量か報酬設計の問題。</p>
+    <p>角速度で失点 &rarr; <strong>立つが暴れている</strong>。&omega; の係数を上げるか、学習を延ばす。</p>
+    <p>トルクで失点 &rarr; <strong>力を使いすぎ</strong>。実機なら要対処（9-d）。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;05 の<strong>武器 3（内訳ログ）</strong>を自分の環境に組み込みます。
+       Step 9 の残り 4 本でずっと使う道具になります。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 報酬の内訳を <code>info</code> に入れる</span>
+    <p><code>envs/pendulum_env.py</code> の <code>step</code> を書き換えます。
+       <strong>いまは合計しか返していません。</strong>項ごとに分けて、
+       <code>info</code> 辞書に入れてください。</p>
+    <div class="code"><pre>  def step(self, action):
+    torque = self._scale(np.clip(action, -1.0, 1.0))[0]
+    self.data.ctrl[0] = torque
+    for _ in range(self.frame_skip):
+      mujoco.mj_step(self.model, self.data)
+
+    theta = self.data.qpos[0]
+    omega = self.data.qvel[0]
+
+    r_angle = -np.cos(theta)              # ここから 3 行、名前を付けて分ける
+    r_omega = -0.01 * omega**2
+    r_torque = -0.001 * torque**2
+    reward = float(r_angle + r_omega + r_torque)
+
+    upright = float(-np.cos(theta) > 0.95)
+    terminated = False
+    truncated = False
+    info = {
+      "upright": upright,
+      ___,                                # <- ここだけ考える（3 つ足す）
+    }
+    return self._obs(), reward, terminated, truncated, info
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>合計を分解しても、合計は変わらない</strong>ことを確かめます。
+       報酬の値は 1 ミリも変えずに、<strong>観測できる情報だけを増やしています</strong>。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">確認</span>
+    <p>書き換えたら<strong>まず採点し直してください</strong>。
+       <code>train/eval.py</code> の <code>evaluate()</code> で
+       <code>ppo_semi_long_s0</code> が <strong>&minus;109.77</strong> のままなら成功です。
+       <strong>値が動いたら、分解のどこかで式を変えてしまっています。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 内訳を集計する</span>
+    <p>&sect;05 の表を自分で作ります。<code>train/eval.py</code> に追加してください。</p>
+    <div class="code"><pre>def breakdown(policy, n_ep=10, steps=500):
+  """報酬を項ごとに分けて、1 エピソードあたりの平均を返す"""
+  keys = ("r_angle", "r_omega", "r_torque")
+  acc = {k: [] for k in keys}
+  for ep in range(n_ep):
+    env = TimeLimit(PendulumEnv(), max_episode_steps=steps)
+    obs, info = env.reset(seed=ep)
+    env.action_space.seed(ep)
+    sums = {k: 0.0 for k in keys}
+    for t in range(steps):
+      obs, reward, terminated, truncated, info = env.step(policy(env, obs))
+      for k in keys:
+        ___                               # <- ここだけ考える（info から足す）
+      if terminated or truncated:
+        break
+    for k in keys:
+      acc[k].append(sums[k])
+  return {k: float(np.mean(v)) for k, v in acc.items()}
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>評価は必ず <code>eval.py</code> に置く</strong>という 7-d のルールを守ります。
+       採点する道具が 1 か所にあるから、<strong>比較が信用できます</strong>。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">答え合わせ</span>
+    <p><code>ppo_semi_long_s0</code> で回すと
+       <code>r_angle</code> &minus;12.04 / <code>r_omega</code> &minus;97.65 /
+       <code>r_torque</code> &minus;0.08 になります。
+       <strong>合計が &minus;109.77</strong> になることも確かめてください。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 自分でハッキングを起こす</span>
+    <p>&sect;04 を再現します。<strong>報酬を書き換えるのではなく</strong>、
+       <code>gym.Wrapper</code> で<strong>上から差し替え</strong>てください。
+       元の環境を壊さずに実験できます。</p>
+    <div class="code"><pre>import gymnasium as gym
+
+class RewardVariant(gym.Wrapper):
+  """報酬だけ差し替える。観測も物理もそのまま"""
+  def __init__(self, env, mode):
+    super().__init__(env)
+    self.mode = mode
+
+  def step(self, action):
+    obs, reward, terminated, truncated, info = self.env.step(action)
+    theta = self.env.unwrapped.data.qpos[0]
+    omega = self.env.unwrapped.data.qvel[0]
+    torque = float(self.env.unwrapped.data.ctrl[0])
+    if self.mode == "swing":
+      reward = ___                        # <- ここだけ考える
+    return obs, float(reward), terminated, truncated, info
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>Wrapper は報酬を試す最短の道具</strong>です。
+       環境本体を毎回書き換えると、<strong>どれがどの設定だったか分からなくなります</strong>。
+       9-c の ablation でこの形をそのまま使います。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">学習は時間がかかります</span>
+    <p>&sect;04 の実験は 1 本あたり <strong>40 万ステップ・十数分</strong>です。
+       課題 3 は<strong>時間があるときに</strong>回してください。
+       <strong>課題 1 と 2 が Step 9 の残りで必要な部分</strong>です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>係数は「各項が実際に取る値」を計算して決める</strong>。
+          <code>&omega;=10</code> で <code>0.01&omega;&sup2;=1.0</code>、
+          <code>-cos&theta;</code> の最大値と同じ桁（&sect;01）</li>
+      <li><strong>報酬ハッキング = 書いた式は最大化されたが、望んだ動きではない</strong>。
+          バグではないのでデバッガでは見つからない（&sect;02）</li>
+      <li><strong>6-d の予告は半分外れていた</strong>。
+          <code>-cos&theta;</code> は上限 +1 なので静止がすでに最適で、
+          回転は抜け道にならない。&omega; の罰は<strong>穴を塞ぐのではなく最適点を鋭くする</strong>（&sect;03）</li>
+      <li><strong>本物のハッキングは「良かれと思って足した項」で起きる</strong>（&sect;04）</li>
+      <li><strong>学習報酬のグラフでは気づけない</strong>。
+          動きを見る・別のものさしで採点する・内訳をログする（&sect;05）</li>
+      <li><strong>小さな点差は 1 シードでは判定できない</strong>。
+          &sect;03 の 52 点差は 9-c で消えた。
+          <strong>差が桁違いのとき（&sect;04）だけ 1 回でも言える</strong></li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい一文</span>
+    <p><strong>報酬を変える実験では、採点用のものさしを固定する。</strong></p>
+    <p>報酬が違えば数字は比べられません。
+       <code>evaluate()</code> を<strong>絶対に触らない</strong>のはそのためです。</p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="a1"> 報酬の係数を「桁を揃える」考え方で説明できる</label>
+    <label><input type="checkbox" data-ck="a2"> 報酬ハッキングが「バグではない」理由を言える</label>
+    <label><input type="checkbox" data-ck="a3"> &omega; の罰の本当の役割を説明できる</label>
+    <label><input type="checkbox" data-ck="a4"> 報酬を変えた実験の採点方法を説明できる</label>
+    <label><input type="checkbox" data-ck="a5"> 課題 1・2 を実装し、&minus;109.77 を再現した</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 9-b</span>
+    <p>&sect;01 で「桁を揃える」と言いましたが、
+       <strong>項が 5 個 6 個になると手計算では追えません</strong>。
+       9-b では<strong>そもそも桁が揃っている報酬の書き方</strong>——
+       <code>exp(-k&middot;e&sup2;)</code> という形を扱います。
+       <strong>すべての項が 0〜1 に収まる</strong>ので、係数の悩みが激減します。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 9-a</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step09a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

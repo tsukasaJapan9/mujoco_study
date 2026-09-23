@@ -445,6 +445,19 @@
     </tbody>
   </table></div>
 
+  <div class="callout warn">
+    <span class="k">追記 &mdash; この表の 2 行目は、9-a で実測して訂正しました</span>
+    <p><strong>「ぐるぐる高速で通過して稼ぐ」は、この振り子では起きませんでした。</strong>
+       <code>-cos&theta;</code> は最大 +1 で、<strong>上端で静止するのがすでに最適</strong>だからです
+       （回り続けると真下も同じだけ通るので平均 0）。</p>
+    <p>実際に <code>&omega;</code> の罰を外して学習させると、
+       <strong>回転はほぼ増えず</strong>（1.7 &rarr; 2.1 周）、
+       <strong>上端でふらつくようになる</strong>（終盤の <code>|&omega;|</code> が 0.00 &rarr; 1.82）
+       という<strong>穏やかな劣化</strong>でした。</p>
+    <p><code>&omega;</code> の罰の本当の役割は<strong>「抜け道を塞ぐ」ではなく「最適点を鋭くする」</strong>です。
+       詳しくは <strong>9-a &sect;03</strong> を見てください。</p>
+  </div>
+
   <p class="why"><b>2 項目が特に重要です</b>
      <code>-cos&theta;</code> だけだと、<strong>上端を猛スピードで通り過ぎるだけでも点が入ります</strong>。
      「通過」ではなく「静止」させたいので、角速度に罰を与えます。

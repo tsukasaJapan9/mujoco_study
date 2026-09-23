@@ -547,6 +547,58 @@ lambda=1 の A = [0.4606, 0.4203, 0.3601, 0.2900, 0.2000]    <span class="cmt">#
       <strong>そこから先が無いので、混ぜるものがない</strong>から。</p>
   </div>
 
+  <h3>直感: &lambda; は「ニュースが遡る距離」</h3>
+  <p>別の見方をすると分かりやすくなります。
+     <strong>良いことが起きたとき、その手柄を何歩前の行動にまで配るか</strong>——それが &lambda; です。</p>
+
+  <p>20 歩の軌跡で、<strong>15 歩目にだけ驚き</strong>（<code>&delta;=1.0</code>）が起きた場合の
+     アドバンテージです（実測、<code>&gamma;=0.99</code>）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">t</th><th class="num">&lambda;=0.0</th><th class="num">&lambda;=0.5</th><th class="num">&lambda;=0.9</th><th class="num">&lambda;=0.95</th><th class="num">&lambda;=1.0</th></tr></thead>
+    <tbody>
+      <tr><td class="num">10</td><td class="num">0.0000</td><td class="num">0.0297</td><td class="num">0.5616</td><td class="num">0.7359</td><td class="num">0.9510</td></tr>
+      <tr><td class="num">12</td><td class="num">0.0000</td><td class="num">0.1213</td><td class="num">0.7073</td><td class="num">0.8319</td><td class="num">0.9703</td></tr>
+      <tr><td class="num">14</td><td class="num">0.0000</td><td class="num">0.4950</td><td class="num">0.8910</td><td class="num">0.9405</td><td class="num">0.9900</td></tr>
+      <tr><td class="num"><strong>15</strong></td><td class="num">1.0000</td><td class="num">1.0000</td><td class="num">1.0000</td><td class="num">1.0000</td><td class="num">1.0000</td></tr>
+      <tr><td class="num">16</td><td class="num">0.0000</td><td class="num">0.0000</td><td class="num">0.0000</td><td class="num">0.0000</td><td class="num">0.0000</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>&lambda; が大きいほど、ニュースが遠くまで届きます</b>
+     <code>&lambda;=0</code> では<strong>その瞬間だけ</strong>——14 歩目には一切伝わりません。
+     <code>&lambda;=1</code> では<strong>10 歩前でも 95% 残っています</strong>。</p>
+  <p class="why"><strong>後ろ（16 歩目以降）には伝わりません。</strong>
+     畳み込みは後ろから前へ進むので、<strong>未来の行動が過去の驚きで褒められることはありません</strong>——
+     当然ですが、方向があることを確認しておいてください。</p>
+
+  <h3>「半減距離」で覚える</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&lambda;</th><th class="num">&gamma;&lambda;</th><th class="num">半分まで薄れる距離</th><th class="num">実効的な距離</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.5</td><td class="num">0.4950</td><td class="num">1.0 歩</td><td class="num">2.0 歩</td></tr>
+      <tr><td class="num">0.9</td><td class="num">0.8910</td><td class="num">6.0 歩</td><td class="num">9.2 歩</td></tr>
+      <tr><td class="num"><strong>0.95</strong></td><td class="num">0.9405</td><td class="num"><strong>11.3 歩</strong></td><td class="num"><strong>16.8 歩</strong></td></tr>
+      <tr><td class="num">1.0</td><td class="num">0.9900</td><td class="num">69.0 歩</td><td class="num">100.0 歩</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>5-b の実効地平とまったく同じ計算です</b>
+     <code>1/(1 &minus; &gamma;&lambda;)</code>。あちらは <code>&gamma;</code> だけでしたが、
+     ここでは <code>&gamma;&lambda;</code> になります。</p>
+
+  <div class="callout tip">
+    <span class="k">振り子で考えると</span>
+    <p>スイングアップは<strong>上端に届くまで 289 ステップ</strong>かかります（Step 4）。</p>
+    <ul>
+      <li><code>&lambda;=0</code>: 上端に着いた瞬間の 1 歩しか褒められない。
+        <strong>振り上げ始めた行動には何も伝わらない</strong></li>
+      <li><code>&lambda;=0.95</code>: 11 歩前まで届く。少しずつ手前へ染み渡る</li>
+      <li><code>&lambda;=1</code>: 100 歩前まで届く。ただし<strong>途中の偶然も全部混ざる</strong>——
+        本当に貢献した行動と、たまたま同じ軌跡に居合わせただけの行動が区別できない</li>
+    </ul>
+    <p><strong>8-e でこの 3 つを実際に走らせます。</strong></p>
+  </div>
+
   <h3>実務での選び方</h3>
   <div class="tw"><table>
     <thead><tr><th class="num">&lambda;</th><th>性格</th><th>使いどころ</th></tr></thead>
@@ -573,8 +625,71 @@ lambda=1 の A = [0.4606, 0.4203, 0.3601, 0.2900, 0.2000]    <span class="cmt">#
        6-c の <code>terminated</code> / <code>truncated</code> がここで効いてきます。</p>
   </div>
 
-  <p>GAE は<strong>後ろから畳んでいく</strong>ので、エピソードの切れ目で止めないと
-     <strong>次のエピソードの情報が漏れ込みます</strong>。</p>
+  <h3>まず前提: バッファには複数のエピソードが入っています</h3>
+  <p><code>n_steps=8192</code> ぶん集めますが、<strong>エピソードは 500 歩で切れます</strong>。
+     つまりバッファの中身はこうなっています。</p>
+  <div class="code"><pre>バッファ（1 本の配列）
+[ エピソード1 ][ エピソード2 ][ エピソード3 ] ...
+  &uarr;リセット    &uarr;リセット     &uarr;リセット
+</pre></div>
+  <p class="why"><b>別々の試行が、ただ並べて詰め込まれているだけです</b>
+     エピソード 2 は <code>env.reset()</code> した<strong>別の世界</strong>で、
+     エピソード 1 とは<strong>何の因果関係もありません</strong>。</p>
+
+  <p>ところが GAE は<strong>配列を後ろから畳んでいく</strong>ので、
+     放っておくと<strong>この境界を平気で越えます</strong>。</p>
+
+  <h3>実例: 6 歩のバッファ（3 歩ずつ 2 エピソード）</h3>
+  <p><code>t=5</code> でだけ「良い驚き」（<code>&delta;=1.0</code>）が起きた場合です。</p>
+
+  <div class="two-up">
+    <div class="vbox">
+      <span class="vt">正しい（切れ目で止める）</span>
+      <div class="code"><pre>t=5: 1.0 + 0.9405&times;(1-<b>1</b>)&times;0.0000 = 1.0000
+t=4: 0.0 + 0.9405&times;(1-0)&times;1.0000 = 0.9405
+t=3: 0.0 + 0.9405&times;(1-0)&times;0.9405 = 0.8845
+t=2: 0.0 + 0.9405&times;(1-<b>1</b>)&times;0.8845 = <b>0.0000</b>
+t=1: 0.0 + 0.9405&times;(1-0)&times;0.0000 = 0.0000
+t=0: 0.0 + 0.9405&times;(1-0)&times;0.0000 = 0.0000
+</pre></div>
+    </div>
+    <div class="vbox">
+      <span class="vt">誤り（切れ目を無視）</span>
+      <div class="code"><pre>t=5: 1.0 + 0.9405&times;(1-0)&times;0.0000 = 1.0000
+t=4: 0.0 + 0.9405&times;(1-0)&times;1.0000 = 0.9405
+t=3: 0.0 + 0.9405&times;(1-0)&times;0.9405 = 0.8845
+t=2: 0.0 + 0.9405&times;(1-0)&times;0.8845 = <b>0.8319</b>
+t=1: 0.0 + 0.9405&times;(1-0)&times;0.8319 = 0.7824
+t=0: 0.0 + 0.9405&times;(1-0)&times;0.7359 = 0.7359
+</pre></div>
+    </div>
+  </div>
+
+  <p class="why"><b>違うのは <code>(1 - ends[t])</code> が 0 になるかどうかだけ</b>
+     <strong>0 を掛けると <code>running</code> がリセットされ</strong>、1 だとそのまま通過します。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">t</th><th class="num">正しい</th><th class="num">誤り</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td class="num ok"><strong>0.0000</strong></td><td class="num ng">0.7359</td></tr>
+      <tr><td class="num">1</td><td class="num ok"><strong>0.0000</strong></td><td class="num ng">0.7824</td></tr>
+      <tr><td class="num">2</td><td class="num ok"><strong>0.0000</strong></td><td class="num ng">0.8319</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>エピソード 1 では何も起きていないのに、高いアドバンテージが付いています</b>
+     アドバンテージは「その行動は平均よりどれだけ良かったか」でした。
+     誤ったほうでは<strong>エピソード 1 の行動が「良かった」と学習されます</strong>——
+     良いことが起きたのは<strong>リセット後の別の試行</strong>なのに。</p>
+
+  <div class="callout">
+    <span class="k">&sect;04 の「ニュースが遡る」で言うと</span>
+    <p>&lambda; は「良いことが起きたとき、その手柄を何歩前まで配るか」を決めていました。
+       <strong>切れ目を止めないと、その配布が別のエピソードまで届いてしまいます。</strong></p>
+    <p><strong>別の世界のニュースが、こちらの世界に遡ってきて、無関係な行動を褒めている</strong>——
+       そういう状態です。</p>
+  </div>
+
 
   <div class="code"><pre>a = 0.0
 for t in reversed(range(T)):

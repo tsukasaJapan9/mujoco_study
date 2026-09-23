@@ -630,42 +630,56 @@ omega 罰なし: -cos(theta)                  - 0.001 * torque**2
      <strong>報酬整形（reward shaping）</strong>と呼ばれる、ごく普通の手法です。
      「探索を助けるヒントを報酬に混ぜる」——教科書にも載っています。</p>
 
-  <h3>40 万ステップ学習した結果（実測）</h3>
+  <h3>40 万ステップ学習した結果（実測、3 シード）</h3>
+  <p>9-c で学んだとおり<strong>1 シードでは判定できない</strong>ので、
+     最初から <strong>seed=0,1,2 の 3 本ずつ</strong>走らせます。</p>
+
   <div class="tw"><table>
     <thead><tr>
-      <th>報酬</th><th class="num">本来の報酬で採点</th><th class="num">上端にいた歩数</th>
-      <th class="num">終盤 100 歩の平均 <code>|&omega;|</code></th><th class="num">回転数</th>
+      <th>報酬</th><th class="num">本来の報酬で採点（平均）</th><th class="num">標準偏差</th>
+      <th class="num">上端にいた歩数</th><th class="num">累積の回し量</th>
     </tr></thead>
     <tbody>
-      <tr><td>元の報酬（&omega; の罰あり）</td><td class="num ok"><strong>+30.63</strong></td>
-          <td class="num ok"><strong>211.3</strong>/500</td><td class="num ok"><strong>0.00</strong></td><td class="num">1.7 周</td></tr>
-      <tr><td><strong><code>+0.1|&omega;|</code> を足した版</strong></td><td class="num bad"><strong>&minus;637.59</strong></td>
-          <td class="num bad"><strong>37.1</strong>/500</td><td class="num bad"><strong>16.34</strong></td><td class="num bad"><strong>6.9 周</strong></td></tr>
+      <tr><td>元の報酬（比較用）</td><td class="num">&minus;268.33</td><td class="num">217.05</td>
+          <td class="num">72.2</td><td class="num">1.7 / 0.6 / 2.6 周</td></tr>
+      <tr><td><strong><code>+0.1|&omega;|</code> を足した版</strong></td>
+          <td class="num bad"><strong>&minus;632.94</strong></td><td class="num ok"><strong>4.45</strong></td>
+          <td class="num bad">37.9</td><td class="num bad"><strong>6.9 / 6.9 / 6.8 周</strong></td></tr>
       <tr><td><span class="muted">（参考）ランダム方策</span></td><td class="num">&minus;499.50</td>
-          <td class="num">0.0/500</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+          <td class="num">&mdash;</td><td class="num">0.0</td><td class="num">&mdash;</td></tr>
     </tbody>
   </table></div>
 
   <div class="callout warn">
+    <span class="k">ハッキングは 3 回とも同じように起きました</span>
+    <p>回し量が <strong>6.9 / 6.9 / 6.8 周</strong>。<strong>ばらつきがほぼありません。</strong>
+       標準偏差は <strong>4.45</strong>——元の報酬の <strong>217.05</strong> に対して<strong>50 分の 1</strong>です。</p>
+    <p><strong>運悪く起きたのではありません。</strong>
+       <strong>この報酬を書けば、必ずこうなります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">標準偏差が小さいのは、良いことではありません</span>
+    <p>普通、<strong>ばらつきが小さい = 安定していて良い</strong>と読みます。
+       <strong>ここでは逆です。</strong></p>
+    <p>元の報酬がばらつくのは<strong>「振り上げを覚えるかどうか」が運任せ</strong>だから。
+       ハッキング版がばらつかないのは<strong>「回り続ける」が簡単で、確実に見つかる</strong>から。</p>
+    <p><strong>再現性は「正しさ」の証明ではありません。</strong>
+       <strong>何が再現しているのかを見てください。</strong></p>
+  </div>
+
+  <div class="callout warn">
     <span class="k">ランダム方策より悪くなりました</span>
-    <p>&minus;637.59 は、<strong>何も学習していないランダム方策の &minus;499.50 を下回ります。</strong></p>
+    <p>&minus;632.94 は、<strong>何も学習していないランダム方策の &minus;499.50 を下回ります。</strong></p>
     <p>ランダムはほとんど動かないので角速度の罰をほぼ受けません。
        この方策は<strong>全力で回り続ける</strong>ので、罰を稼ぎ続けます。
        <strong>「学習したせいで、何もしないより悪くなった」</strong>状態です。</p>
   </div>
 
-  <div class="callout">
-    <span class="k">ここも 1 シードですが、結論は変わりません</span>
-    <p>&sect;03 と違い、<strong>差が桁違い</strong>だからです（668 点差／上端 174 歩差）。
-       それに<strong>下の算数がこの結果を先に予言しています</strong>——
-       シードの運ではなく<strong>報酬の形</strong>で決まっている、と言えます。</p>
-    <p><strong>差が小さいときだけ、シードを疑えばよい</strong>のです。</p>
-  </div>
-
   <p class="why"><b>終盤 100 歩の <code>|&omega;|</code> が決定的です</b>
-     元の報酬では <strong>0.00</strong>——<strong>完全に止まっています</strong>。
-     足した版は <strong>16.34</strong>——<strong>最後まで全力で回り続けています</strong>。
-     500 歩で 6.9 周。これが 6-d で予告した「ぐるぐる」の本物です。</p>
+     元の報酬が成功した回は <strong>0.06</strong>——<strong>ほぼ完全に止まっています</strong>。
+     足した版は <strong>16.35 / 16.31 / 16.27</strong>——<strong>3 回とも最後まで全力で回り続けています</strong>。
+     500 歩で約 6.9 周。これが 6-d で予告した「ぐるぐる」の本物です。</p>
 
   <div class="callout tip">
     <span class="k">学習は成功しています</span>
@@ -681,22 +695,22 @@ omega 罰なし: -cos(theta)                  - 0.001 * torque**2
     <thead><tr><th>方策</th><th class="num">&minus;cos&theta; の平均</th><th class="num">0.1|&omega;| の平均</th><th class="num">500 歩の合計</th></tr></thead>
     <tbody>
       <tr><td>上端で静止する</td><td class="num">+1.00</td><td class="num">0.00</td><td class="num">+500.0</td></tr>
-      <tr><td><strong>回り続ける</strong>（<code>|&omega;|</code>=16.34）</td><td class="num">0.00</td>
-          <td class="num">+1.634</td><td class="num bad"><strong>+817.0</strong></td></tr>
+      <tr><td><strong>回り続ける</strong>（<code>|&omega;|</code>=16.31）</td><td class="num">0.00</td>
+          <td class="num">+1.631</td><td class="num bad"><strong>+815.5</strong></td></tr>
     </tbody>
   </table></div>
 
-  <p class="why"><b>回転が 317 点も有利です</b>
+  <p class="why"><b>回転が 315 点も有利です</b>
      回り続けると <code>-cos&theta;</code> の平均は <strong>0</strong> になります
      （上半分と下半分が打ち消すので）。
-     <strong>+1.00 を捨ててでも、+1.634 を取ったほうが得</strong>——これが方策の計算です。</p>
+     <strong>+1.00 を捨ててでも、+1.631 を取ったほうが得</strong>——これが方策の計算です。</p>
 
   <div class="concept">
     <div class="ch"><span class="cn">覚えておく式</span><span class="ct">回転が静止に勝つ境界</span></div>
     <dl>
       <dt>条件</dt>
       <dd><code>0.1 &times; |&omega;| &gt; 1.0</code>、つまり <strong><code>|&omega;| &gt; 10 rad/s</code></strong>。
-        <strong>この振り子は 16 rad/s まで出せます</strong>——境界を越えています。</dd>
+        <strong>この振り子は 16.3 rad/s まで出せます</strong>——境界を越えています。</dd>
       <dt>言い換えると</dt>
       <dd>足した項の<strong>最大値</strong>が、主目的の項の<strong>最大値</strong>を超えた瞬間、
         <strong>主目的が主目的でなくなります</strong>。</dd>
@@ -708,7 +722,7 @@ omega 罰なし: -cos(theta)                  - 0.001 * torque**2
 
   <div class="callout tip">
     <span class="k">係数を小さくすれば直るのか</span>
-    <p><code>0.1</code> を <code>0.01</code> にすれば <code>0.01&times;16 = 0.16 &lt; 1.0</code> なので、
+    <p><code>0.1</code> を <code>0.01</code> にすれば <code>0.01&times;16.3 = 0.163 &lt; 1.0</code> なので、
        境界は越えません。<strong>この事故は防げます。</strong></p>
     <p>ただし<strong>「回転したほうが少し得」という歪みは残ります</strong>。
        だから実務では<strong>「探索を助けたい」を報酬で解決しない</strong>のが定石です。
@@ -941,8 +955,10 @@ class RewardVariant(gym.Wrapper):
       <li><strong>学習報酬のグラフでは気づけない</strong>。
           動きを見る・別のものさしで採点する・内訳をログする（&sect;05）</li>
       <li><strong>小さな点差は 1 シードでは判定できない</strong>。
-          &sect;03 の 52 点差は 9-c で消えた。
-          <strong>差が桁違いのとき（&sect;04）だけ 1 回でも言える</strong></li>
+          &sect;03 の 52 点差は 9-c で消えた（&sect;03）</li>
+      <li><strong>再現性が高いことは、正しさを意味しない</strong>。
+          ハッキング版の標準偏差は <b>4.45</b>、まともな報酬は <b>217.05</b>。
+          <strong>壊れた報酬のほうが安定して再現する</strong>（&sect;04）</li>
     </ol>
   </div>
 

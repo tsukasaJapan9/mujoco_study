@@ -640,21 +640,29 @@ reward = (0.6 * exp(-5.0  * e**2)       # 角度  e_half = 21 度
           + 0.3 * exp(-0.2  * omega**2) # 静止  e_half = 1.86 rad/s
           + 0.1 * exp(-11.0 * torque**2))
 </pre></div>
-  <p>40 万ステップ学習し、<strong>元の報酬で採点</strong>しました。</p>
+  <p>40 万ステップ学習し、<strong>元の報酬で採点</strong>しました。
+     9-c の教えに従い、最初から <strong>seed=0,1,2 の 3 本ずつ</strong>です。</p>
 
   <div class="tw"><table>
-    <thead><tr><th>報酬</th><th class="num">元の報酬で採点</th><th class="num">上端にいた歩数</th><th class="num">累積の回し量</th></tr></thead>
+    <thead><tr><th>報酬</th><th class="num">元の報酬で採点（平均）</th><th class="num">成功</th>
+      <th class="num">累積の回し量（3 シード）</th></tr></thead>
     <tbody>
-      <tr><td>元の報酬（比較用）</td><td class="num ok">+30.63</td><td class="num ok">211.3/500</td><td class="num">1.7 周</td></tr>
+      <tr><td>元の報酬（比較用）</td><td class="num">&minus;268.33</td><td class="num">1/3</td>
+          <td class="num">1.7 / 0.6 / 2.6 周</td></tr>
       <tr><td><strong>指数型 1 回目</strong></td><td class="num bad"><strong>&minus;499.96</strong></td>
-          <td class="num bad"><strong>0.0</strong>/500</td><td class="num bad"><strong>0.0 周</strong></td></tr>
+          <td class="num bad"><strong>0/3</strong></td>
+          <td class="num bad"><strong>0.0 / 0.0 / 0.0 周</strong></td></tr>
     </tbody>
   </table></div>
 
   <div class="callout warn">
-    <span class="k">完全な失敗です</span>
-    <p>上端に<strong>1 歩も</strong>到達していません。回し量 <strong>0.0 周</strong>——
-       <strong>真下にぶら下がったまま、まったく動きませんでした。</strong></p>
+    <span class="k">3 シードとも完全な失敗です</span>
+    <p>上端に<strong>1 歩も</strong>到達していません。
+       回し量が <strong>3 回とも 0.0 周</strong>——
+       <strong>真下にぶら下がったまま、一度も動きませんでした。</strong></p>
+    <p><strong>元の報酬も 3 回中 1 回しか成功していません</strong>（9-c）。
+       でも<strong>失敗した回でも 0.6〜2.6 周は動いています</strong>。
+       <strong>「失敗する」と「試しもしない」は別物です。</strong></p>
   </div>
 
   <h3>なぜ動かなかったのか</h3>
@@ -721,15 +729,17 @@ reward = (0.6 * exp(-5.0  * e**2)       # 角度  e_half = 21 度
      罠は消え、上端が一番高い。<strong>これで直ったはずです。</strong></p>
 
   <div class="tw"><table>
-    <thead><tr><th>報酬</th><th class="num">元の報酬で採点</th><th class="num">上端にいた歩数</th><th class="num">累積の回し量</th></tr></thead>
+    <thead><tr><th>報酬</th><th class="num">元の報酬で採点（平均）</th><th class="num">成功</th>
+      <th class="num">累積の回し量（3 シード）</th></tr></thead>
     <tbody>
       <tr><td><strong>指数型 2 回目</strong></td><td class="num bad"><strong>&minus;499.97</strong></td>
-          <td class="num bad"><strong>0.0</strong>/500</td><td class="num bad"><strong>0.0 周</strong></td></tr>
+          <td class="num bad"><strong>0/3</strong></td>
+          <td class="num bad"><strong>0.0 / 0.0 / 0.1 周</strong></td></tr>
     </tbody>
   </table></div>
 
   <div class="callout warn">
-    <span class="k">やはり動きませんでした</span>
+    <span class="k">やはり 3 回とも動きませんでした</span>
     <p>3 点は正しい順に並んでいるのに、<strong>結果はまったく同じ</strong>です。</p>
     <p><strong>「順番が正しい」だけでは足りません。</strong>見るべきは<strong>差の大きさ</strong>でした。</p>
   </div>
@@ -737,9 +747,9 @@ reward = (0.6 * exp(-5.0  * e**2)       # 角度  e_half = 21 度
   <div class="tw"><table>
     <thead><tr><th>報酬</th><th class="num">動き出す得</th><th class="num">結果</th></tr></thead>
     <tbody>
-      <tr><td>元の報酬</td><td class="num ok"><strong>+0.4125</strong></td><td class="ok">成功（211.3/500）</td></tr>
-      <tr><td>指数型 1 回目</td><td class="num bad"><strong>&minus;0.3934</strong></td><td class="ng">失敗（0.0/500）</td></tr>
-      <tr><td>指数型 2 回目</td><td class="num bad"><strong>+0.0078</strong></td><td class="ng">失敗（0.0/500）</td></tr>
+      <tr><td>元の報酬</td><td class="num ok"><strong>+0.4125</strong></td><td class="ok">3 回中 1 回成功。<strong>失敗時も動く</strong></td></tr>
+      <tr><td>指数型 1 回目</td><td class="num bad"><strong>&minus;0.3934</strong></td><td class="ng">3 回とも<strong>一度も動かない</strong></td></tr>
+      <tr><td>指数型 2 回目</td><td class="num bad"><strong>+0.0078</strong></td><td class="ng">3 回とも<strong>一度も動かない</strong></td></tr>
     </tbody>
   </table></div>
 
@@ -760,21 +770,46 @@ reward = (0.6 * exp(-5.0  * e**2)       # 角度  e_half = 21 度
 </pre></div>
 
   <div class="tw"><table>
-    <thead><tr><th>報酬</th><th class="num">動き出す得</th><th class="num">元の報酬で採点</th><th class="num">上端にいた歩数</th></tr></thead>
+    <thead><tr><th>報酬</th><th class="num">動き出す得</th><th class="num">成功</th>
+      <th class="num">成功時の点</th><th class="num">累積の回し量（3 シード）</th></tr></thead>
     <tbody>
-      <tr><td>元の報酬</td><td class="num">+0.4125</td><td class="num ok">+30.63</td><td class="num ok">211.3/500</td></tr>
+      <tr><td>元の報酬</td><td class="num">+0.4125</td><td class="num">1/3</td>
+          <td class="num">+32.11</td><td class="num">1.7 / 0.6 / 2.6 周</td></tr>
       <tr><td><strong>指数型 3 回目</strong></td><td class="num ok"><strong>+0.2311</strong></td>
-          <td class="num ok"><strong>+30.73</strong></td><td class="num ok"><strong>219.6</strong>/500</td></tr>
+          <td class="num ok"><strong>1/3</strong></td><td class="num ok"><strong>+30.73</strong></td>
+          <td class="num ok"><strong>1.8 / 2.8 / 0.6 周</strong></td></tr>
     </tbody>
   </table></div>
 
   <div class="callout tip">
     <span class="k">やっと学習しました</span>
-    <p>元の報酬と<strong>ほぼ同じ性能</strong>です
-       （+30.73 と +30.63 の差は<strong>実行ごとのばらつきの範囲内</strong>なので、
-       <strong>どちらが上とは言えません</strong>。9-c で扱います）。</p>
-    <p>重要なのは、<strong>指数型でもちゃんと学習できる</strong>ことと、
+    <p><strong>元の報酬とまったく同じ傾向</strong>です。成功率も 1/3 で同じ、
+       成功時の点も +30.73 と +32.11 でほぼ同じ、
+       <strong>失敗した回もちゃんと動いています</strong>（0.6〜2.8 周）。</p>
+    <p><strong>どちらが上とは言えません</strong>（9-c のとおり、
+       この差はばらつきに埋もれます）。
+       重要なのは<strong>指数型でも元の報酬と同等に学習できる</strong>ことと、
        <strong>その条件が「動き出す得」という 1 つの数字で決まっていた</strong>ことです。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">標準偏差を見ると、もっと面白いことが分かります</span>
+    <div class="tw"><table>
+      <thead><tr><th>報酬</th><th class="num">3 シードの標準偏差</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td>元の報酬</td><td class="num">217.05</td><td>成功したりしなかったり</td></tr>
+        <tr><td>指数型 3 回目</td><td class="num">206.13</td><td>同上</td></tr>
+        <tr><td><strong>指数型 1 回目</strong></td><td class="num ok"><strong>0.03</strong></td>
+            <td class="bad"><strong>確実に何もしない</strong></td></tr>
+        <tr><td><strong>指数型 2 回目</strong></td><td class="num ok"><strong>0.00</strong></td>
+            <td class="bad"><strong>確実に何もしない</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>失敗した報酬のほうが、はるかに再現性が高い</strong>のです。</p>
+    <p>「ばらつきが小さい = 安定していて良い」と読みたくなりますが、
+       <strong>ここでは逆です</strong>。
+       <strong>再現しているのが「何もしないこと」</strong>だからです。
+       <strong>標準偏差を見るときは、何が再現しているのかを必ず確かめてください。</strong></p>
   </div>
 
   <div class="callout">
@@ -883,9 +918,13 @@ def check3(reward_fn):
       <li><strong><code>k = ln2 / e_half&sup2;</code></strong>。
           決めるのは <code>k</code> ではなく<strong>「何度まで許すか」</strong>（&sect;03）</li>
       <li><strong>指数型は遠いと傾き 0</strong>。近づく力がない（&sect;04）</li>
-      <li><strong>その弱点で、学習が 2 回丸ごと失敗した</strong>（&sect;05）</li>
+      <li><strong>その弱点で、学習が 2 回丸ごと失敗した</strong>。
+          3 シードとも<strong>一度も動かなかった</strong>（&sect;05）</li>
       <li><strong>失敗は 1 つの数字で予測できた</strong>——
           <strong>「やってほしい動作」と「何もしない」の 1 歩あたりの報酬差</strong>（&sect;05）</li>
+      <li><strong>ばらつきが小さいことは、良いことを意味しない</strong>。
+          失敗した報酬の標準偏差は <b>0.00〜0.03</b>、
+          まともな報酬は <b>206〜217</b>（&sect;05）</li>
     </ol>
   </div>
 
@@ -912,6 +951,7 @@ def check3(reward_fn):
     <label><input type="checkbox" data-ck="b3"> 指数型の弱点（遠いと傾き 0）を説明できる</label>
     <label><input type="checkbox" data-ck="b4"> 「動き出す得」を計算して報酬を事前検査できる</label>
     <label><input type="checkbox" data-ck="b5"> 課題 1・2 を実装し、&minus;0.3934 と +0.0078 を再現した</label>
+    <label><input type="checkbox" data-ck="b6"> 標準偏差が小さくても安心してはいけない理由を言える</label>
   </div>
 
   <div class="aim">

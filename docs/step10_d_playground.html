@@ -1,0 +1,925 @@
+<title>MuJoCo Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">Playground とは</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">Go1 の報酬を読む</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">Step 9 の答え合わせ</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">制御周期と行動空間</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">Phase C のまとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 10-d</span>
+  <h1>MuJoCo Playground</h1>
+  <p>実際に動いている四足歩行の環境を<strong>読みます</strong>。
+     <strong>Step 9 で自分で導いたことが、そのまま書いてあります。</strong></p>
+  <div class="meta">
+    <span class="chip">60 分</span>
+    <span class="chip">Step 10 の 4/4</span>
+    <span class="chip">Phase C 最終</span>
+    <span class="chip">前提: 10-c, Step 9</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">ここまでで分かっていること</span>
+    <ol>
+      <li>報酬は<strong>各項が取る値を計算して</strong>組む。指数型なら 0〜1 に収まる（9-a, 9-b）</li>
+      <li><strong><code>k = ln2 / e_half&sup2;</code></strong>。決めるのは「何度・何 m/s まで許すか」（9-b）</li>
+      <li><strong>行動の変化に罰</strong>を与えると、実機で困るガタつきが減る（9-d）</li>
+      <li>MJX なら<strong>数千体を GPU で同時に</strong>回せる（10-c）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 本物の四足歩行の報酬は、<strong>実際どう書かれているのか</strong>？</p>
+    <p><b>2.</b> Step 9 で学んだことは、<strong>本当に現場で使われているのか</strong>？</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">この教材の狙い</span>
+    <p>Playground の使い方を覚えるのが目的ではありません。
+       <strong>Step 9 で自分が導いた原則が、実物のコードに書いてあることを確かめる</strong>のが目的です。</p>
+    <p><strong>ここで答え合わせができると、Phase D で自分の判断を信じられるようになります。</strong></p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>Playground とは</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>何が入っていて、何が入っていないか</strong>を把握します。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">今回の道具</span><span class="ct">MuJoCo Playground</span></div>
+    <dl>
+      <dt>何か</dt>
+      <dd><strong>MJX の上に作られた、既製のロボット環境集</strong>。
+        Google DeepMind が公開しています。
+        <strong>環境・報酬・学習設定が全部そろった状態</strong>で入っています。</dd>
+      <dt>なぜ読む価値があるか</dt>
+      <dd><strong>実機で動いた実績のある設定</strong>だからです。
+        報酬の重み 1 つ 1 つに<strong>理由があります</strong>。</dd>
+      <dt>入れ方</dt>
+      <dd><code>uv add playground</code>。
+        <strong>MJX と JAX は一緒に入ります。</strong></dd>
+    </dl>
+  </div>
+
+  <h3>入っている環境（全 54 個）</h3>
+  <div class="tw"><table>
+    <thead><tr><th>グループ</th><th class="num">数</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>dm_control_suite</code></td><td class="num">25</td>
+          <td>CartpoleSwingup、AcrobotSwingup、CheetahRun、HumanoidWalk など<strong>教科書的な課題</strong></td></tr>
+      <tr><td><code>locomotion</code></td><td class="num">19</td>
+          <td><strong>Go1</strong>（四足）、Spot、Barkour、<strong>G1 / H1</strong>（二足）、Apollo、Op3</td></tr>
+      <tr><td><code>manipulation</code></td><td class="num">10</td>
+          <td>Panda（アーム）、Aloha（双腕）、Leap（ハンド）</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><pre>from mujoco_playground import registry
+
+print(len(registry.ALL_ENVS))                 # -> 54
+env = registry.load("Go1JoystickFlatTerrain")
+cfg = registry.get_default_config("Go1JoystickFlatTerrain")
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k">今回読むのは Go1JoystickFlatTerrain</span>
+    <p><strong>Unitree Go1（四足）を、平地でジョイスティック指令どおりに歩かせる</strong>環境です。</p>
+    <p><strong>「ジョイスティック」= 前進速度・横速度・旋回速度の指令が与えられ、
+       それに追従する</strong>という課題。<strong>四足歩行の標準的な問題設定</strong>です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>Go1 の報酬を読む</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>16 項あります。</strong>
+       9-b &sect;01 で「実機では 10 項を超えるのが普通」と書きました。その実物です。</p>
+  </div>
+
+  <div class="code"><pre>cfg.reward_config.scales
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>項</th><th class="num">重み</th><th>何をさせたいか</th></tr></thead>
+    <tbody>
+      <tr><td><code>tracking_lin_vel</code></td><td class="num ok"><strong>+1.0000</strong></td>
+          <td class="ok"><strong>指令どおりの速度で進む（主目的）</strong></td></tr>
+      <tr><td><code>tracking_ang_vel</code></td><td class="num ok">+0.5000</td><td class="ok">指令どおりに旋回する</td></tr>
+      <tr><td><code>pose</code></td><td class="num ok">+0.5000</td><td class="ok">基本姿勢に近い関節角を保つ</td></tr>
+      <tr><td><code>feet_air_time</code></td><td class="num ok">+0.1000</td><td class="ok">足を十分に上げる（すり足を防ぐ）</td></tr>
+      <tr><td><code>orientation</code></td><td class="num bad">&minus;5.0000</td><td>胴体を傾けない</td></tr>
+      <tr><td><code>feet_clearance</code></td><td class="num bad">&minus;2.0000</td><td>足を地面に擦らない</td></tr>
+      <tr><td><code>dof_pos_limits</code></td><td class="num bad">&minus;1.0000</td><td>関節の可動限界に当てない</td></tr>
+      <tr><td><code>stand_still</code></td><td class="num bad">&minus;1.0000</td><td>指令が 0 のときは動かない</td></tr>
+      <tr><td><code>termination</code></td><td class="num bad">&minus;1.0000</td><td>転倒しない</td></tr>
+      <tr><td><code>lin_vel_z</code></td><td class="num bad">&minus;0.5000</td><td>上下に跳ねない</td></tr>
+      <tr><td><code>feet_height</code></td><td class="num bad">&minus;0.2000</td><td>足の高さを一定に</td></tr>
+      <tr><td><code>feet_slip</code></td><td class="num bad">&minus;0.1000</td><td>接地中に滑らない</td></tr>
+      <tr><td><code>ang_vel_xy</code></td><td class="num bad">&minus;0.0500</td><td>胴体を揺らさない</td></tr>
+      <tr><td><strong><code>action_rate</code></strong></td><td class="num bad"><strong>&minus;0.0100</strong></td>
+          <td class="bad"><strong>行動を急に変えない（9-d）</strong></td></tr>
+      <tr><td><code>energy</code></td><td class="num bad">&minus;0.0010</td><td>消費電力を抑える</td></tr>
+      <tr><td><code>torques</code></td><td class="num bad">&minus;0.0002</td><td>トルクを使いすぎない</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">まず重みの符号を見てください</span>
+    <p><strong>正が 4 つ、負が 12 つ。</strong>
+       <strong>正の項は「やってほしいこと」だけ</strong>で、
+       <strong>残りは全部「やってほしくないこと」への罰</strong>です。</p>
+    <p>9-b &sect;05 で学んだ<strong>「動かないことに正の点を与えない」</strong>が、
+       ここでは徹底されています。
+       <strong>じっとしていても、正の項からは 1 点ももらえません。</strong></p>
+  </div>
+
+  <h3>主目的の中身</h3>
+  <div class="code"><pre>def _reward_tracking_lin_vel(self, commands, local_vel):
+  lin_vel_error = jp.sum(jp.square(commands[:2] - local_vel[:2]))
+  return jp.exp(-lin_vel_error / self._config.reward_config.tracking_sigma)
+</pre></div>
+
+  <div class="callout warn">
+    <span class="k">9-b の式そのものです</span>
+    <p><code>tracking_sigma = 0.25</code> なので
+       <code>exp(-e&sup2; / 0.25) = exp(-4&middot;e&sup2;)</code>。
+       <strong>9-b で書いた <code>exp(-k&middot;e&sup2;)</code> の <code>k = 4</code> です。</strong></p>
+  </div>
+
+  <p>9-b の式で <code>e_half</code> を出してみます。
+     <code>e_half = sqrt(ln2 / k) = sqrt(0.6931 / 4)</code> &rarr; <strong>0.4163 m/s</strong>。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">速度の誤差</th><th class="num">もらえる点</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.0 m/s</td><td class="num ok"><strong>1.0000</strong></td></tr>
+      <tr><td class="num">0.1 m/s</td><td class="num">0.9608</td></tr>
+      <tr><td class="num">0.2 m/s</td><td class="num">0.8521</td></tr>
+      <tr><td class="num"><strong>0.4163 m/s</strong></td><td class="num"><strong>0.5000</strong></td></tr>
+      <tr><td class="num">1.0 m/s</td><td class="num">0.0183</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>この設計者が決めたのは「0.42 m/s ずれたら半分」</b>
+     <code>tracking_sigma = 0.25</code> という数字を直接いじったのではなく、
+     <strong>許容できる速度誤差から逆算した</strong>と読めます。
+     <strong>9-b &sect;03 でやったことと同じです。</strong></p>
+
+  <h3>行動の変化への罰</h3>
+  <div class="code"><pre>def _cost_action_rate(self, act, last_act, last_last_act):
+  return jp.sum(jp.square(act - last_act))
+</pre></div>
+
+  <p class="why"><b>9-d 課題 2 で書いたものと同じです</b>
+     重みは <strong>&minus;0.01</strong>。
+     <strong>主目的（+1.0）の 100 分の 1</strong> です。
+     9-d で <code>w=0.5</code> が強すぎたのは、<strong>50 倍も大きかった</strong>からです。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>Step 9 の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Step 9 で自分が導いた原則を、1 つずつ照合します。</strong></p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Step 9 で学んだこと</th><th>Go1 ではどうか</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><b>9-b</b> 項が増えると桁合わせは破綻する</td>
+          <td><strong>16 項</strong>ある</td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-b</b> 指数型で 0〜1 に収める</td>
+          <td>主目的が <code>exp(-4e&sup2;)</code></td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-b</b> <code>k</code> は許容誤差から逆算する</td>
+          <td><code>&sigma;=0.25</code> &rarr; 0.42 m/s で半分</td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-b</b> 正則化は上限 0 の罰にする</td>
+          <td>負の項が <strong>12/16</strong></td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-b</b> 接近係と精密係を分ける</td>
+          <td>速度追従（精密）＋ <code>feet_air_time</code>（動作を促す）</td><td class="ok">近い考え方</td></tr>
+      <tr><td><b>9-d</b> 行動の変化に罰を与える</td>
+          <td><code>action_rate</code> = &minus;0.01</td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-d</b> 目標角度で指令する</td>
+          <td><code>action_scale=0.5</code> の<strong>関節角オフセット</strong></td><td class="ok">そのとおり</td></tr>
+      <tr><td><b>9-a</b> 重みは主目的を超えさせない</td>
+          <td>主目的 +1.0 に対し <code>orientation</code> が &minus;5.0</td>
+          <td class="ng"><strong>超えている</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">最後の行だけ、原則から外れています</span>
+    <p><code>orientation</code>（胴体の傾き）の重みは <strong>&minus;5.0</strong>。
+       主目的の <strong>5 倍</strong>です。<strong>9-a の教えに反しています。</strong></p>
+    <p><strong>なぜこれでいいのか。</strong>
+       罰の中身が<strong>「傾いていないときは 0」</strong>だからです。
+       <strong>まっすぐ歩いている限り、この項は一切効きません。</strong>
+       効くのは<strong>転びかけたときだけ</strong>で、そのときは<strong>何より優先すべき</strong>です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">Step 9 への追加</span><span class="ct">重みの大きさは「いつ効くか」で決まる</span></div>
+    <dl>
+      <dt>9-a で学んだこと</dt>
+      <dd>各項が<strong>実際に取る値</strong>を計算して桁を揃える。</dd>
+      <dt>ここで足りていなかった視点</dt>
+      <dd><strong>ほとんどの時間 0 になる項は、重みを大きくしてよい</strong>。
+        <strong>平均ではなく、発動したときの大きさ</strong>で考えます。</dd>
+      <dt>見分け方</dt>
+      <dd><strong>「うまくいっているとき、この項はいくつか」</strong>と問う。
+        <strong>0 なら重くしてよい。0 でないなら主目的を超えさせてはいけない。</strong></dd>
+      <dt>振り子に当てはめると</dt>
+      <dd><code>-0.01&omega;&sup2;</code> は<strong>うまくいっていても 0 にならない</strong>
+        （上端で微小に揺れる）ので、重くできません。
+        <strong>9-a &sect;05 で「失点の 89%」だったのは、まさにこれです。</strong></dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>制御周期と行動空間</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>報酬以外の設定も、<strong>Step 9 の言葉で読めます</strong>。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>設定</th><th class="num">Go1</th><th class="num">あなたの振り子</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><code>sim_dt</code></td><td class="num">0.004</td><td class="num">0.001</td><td>物理の刻み（250 Hz / 1000 Hz）</td></tr>
+      <tr><td><code>ctrl_dt</code></td><td class="num">0.02</td><td class="num">0.01</td><td>方策が動く周期（50 Hz / 100 Hz）</td></tr>
+      <tr><td><strong>frame_skip</strong></td><td class="num"><strong>5</strong></td><td class="num"><strong>10</strong></td>
+          <td>1 指令あたりの物理ステップ数</td></tr>
+      <tr><td><code>episode_length</code></td><td class="num">1000</td><td class="num">500</td><td>20 秒 / 5 秒</td></tr>
+      <tr><td><code>action_scale</code></td><td class="num">0.5</td><td class="num">&mdash;</td><td>行動を関節角のオフセットに変える倍率</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>方策は 50 Hz でしか動きません</b>
+     四足歩行という<strong>あなたの振り子よりずっと難しい課題</strong>なのに、
+     <strong>制御周期は半分</strong>です。</p>
+
+  <p class="why"><b>それで足りる理由が 9-d &sect;05 です</b>
+     <strong>行動が「目標関節角」だから</strong>です。
+     内部の PD が <strong>250 Hz で補正</strong>し続けるので、
+     <strong>方策は 20 ms に 1 回、姿勢の目標を更新するだけで済みます。</strong></p>
+
+  <div class="callout tip">
+    <span class="k"><code>action_scale = 0.5</code> の意味</span>
+    <p>方策の出力 <code>a</code>（&plusmn;1）は、そのまま関節角にはなりません。</p>
+    <div class="code"><pre>目標関節角 = 基本姿勢 + action_scale * a
+</pre></div>
+    <p><strong>基本姿勢からのズレ</strong>として指令します。
+       <code>a=0</code> なら<strong>立っている姿勢</strong>。</p>
+    <p><strong>これは強力な事前知識です。</strong>
+       学習の最初、方策の出力はほぼ 0 なので、
+       <strong>いきなり「立った姿勢」から始まります</strong>。
+       <strong>でたらめなトルクで転げ回るところから始めるのとは、探索の難しさが違います。</strong></p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>四足歩行を実際に動かします。</strong>
+       学習まで回すと時間がかかるので、
+       <strong>まず環境を触って、報酬を読むところまで</strong>を確実にやります。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">入れる</span>
+    <div class="code"><pre>uv add playground
+</pre></div>
+    <p>MJX・JAX・ロボットのモデルが<strong>まとめて入ります</strong>。
+       <strong>1 GB 近くあるので時間がかかります。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 環境を読む</span>
+    <div class="code"><pre>from mujoco_playground import registry
+
+env = registry.load("Go1JoystickFlatTerrain")
+cfg = registry.get_default_config("Go1JoystickFlatTerrain")
+
+print(env.observation_size)   # -> {'privileged_state': (123,), 'state': (48,)}
+print(env.action_size)        # -> 12
+print(env.mjx_model.nq, env.mjx_model.nv)   # -> 19 18
+
+for name, w in sorted(cfg.reward_config.scales.items(), key=lambda kv: -abs(kv[1])):
+  print(f"{name:&lt;24} {float(w):+.4f}")
+</pre></div>
+    <p class="why"><b>まず <code>action_size = 12</code> を見てください</b>
+       <strong>脚 4 本 &times; 関節 3 個</strong>です。
+       <strong>あなたの振り子は 1 個</strong>でした。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">観測が 2 つに分かれています</span>
+    <p><code>state</code> が <strong>48 次元</strong>、<code>privileged_state</code> が <strong>123 次元</strong>。</p>
+    <p><strong><code>state</code> は方策が見るもの</strong>——実機のセンサで取れる量だけ。<br>
+       <strong><code>privileged_state</code> は Critic だけが見るもの</strong>——
+       摩擦係数や外力など、<strong>シミュレータでしか分からない量</strong>を含みます。</p>
+    <p><strong>なぜ分けるのか、実機で何が起きるのかは 9-e で扱いました。</strong>
+       <strong>これがその実物です。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 1 体だけ動かす</span>
+    <div class="code"><pre>import jax, jax.numpy as jp, time
+
+reset = jax.jit(env.reset)
+step = jax.jit(env.step)
+
+t0 = time.perf_counter()
+state = reset(jax.random.PRNGKey(0))
+jax.block_until_ready(state)
+print(f"reset の JIT: {time.perf_counter() - t0:.1f} s")
+
+action = jp.zeros(env.action_size)
+state = step(state, action)
+print(sorted(state.metrics.keys())[:4])
+</pre></div>
+    <div class="callout warn">
+      <span class="k">reset の 1 回目に 56 秒かかります</span>
+      <p><strong>フリーズしたように見えますが、コンパイル中です。</strong>
+         <code>step</code> はさらに 4 秒。<strong>合計 1 分ほど待ってください。</strong></p>
+      <p>Go1 は<strong>接触の計算</strong>があるので、振り子とは比べものにならない量の
+         GPU コードが生成されます。<strong>2 回目からは一瞬です。</strong></p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 1024 体を並列に動かす</span>
+    <p>10-c でやったことと<strong>まったく同じ形</strong>です。</p>
+    <div class="code"><pre>B = 1024
+keys = jax.random.split(jax.random.PRNGKey(0), B)
+vreset = jax.jit(jax.vmap(env.reset))
+vstep = jax.jit(jax.vmap(env.step))
+
+states = vreset(keys)
+actions = jp.zeros((B, env.action_size))
+states = vstep(states, actions)          # ウォームアップ
+
+N = 50
+t0 = time.perf_counter()
+for _ in range(N):
+  states = vstep(states, actions)
+jax.block_until_ready(states)
+dt = time.perf_counter() - t0
+print(f"{B * N / dt:,.0f} env-steps/s")
+</pre></div>
+    <div class="callout tip">
+      <span class="k">実測値（RTX 4050 Laptop 6GB）</span>
+      <div class="tw"><table>
+        <thead><tr><th></th><th class="num">値</th></tr></thead>
+        <tbody>
+          <tr><td>1024 体まとめて</td><td class="num ok"><strong>8,648 env-steps/s</strong></td></tr>
+          <tr><td>ロボット 1 体あたり</td><td class="num">8.4 env-steps/s</td></tr>
+          <tr><td>実時間の速さ（50 Hz 制御）</td><td class="num">0.17 倍速</td></tr>
+        </tbody>
+      </table></div>
+      <p class="why"><b>1 体ずつ見ると実時間より遅い</b>
+         でも<strong>1024 体が同時</strong>なので、
+         <strong>まとめると実時間の 173 倍のデータが集まります。</strong>
+         <strong>これが MJX を使う唯一の理由です。</strong></p>
+      <p class="why"><b>振り子のときより桁違いに遅いことにも注意</b>
+         10-c では数百万 physics-steps/s 出ました。
+         Go1 は <strong>43,240 physics-steps/s</strong>（8,648 &times; 5）。
+         <strong>関節 12 個と接触の計算</strong>があるからです。
+         <strong>「MJX なら速い」ではなく「モデル次第」</strong>です。</p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 4 &mdash; 報酬の内訳を確かめる（Step 9 の答え合わせ）</span>
+    <p>Playground は<strong>報酬の内訳を最初から出してくれます</strong>。
+       9-a 課題 1 で自分で作ったものと同じです。</p>
+    <div class="code"><pre>for k in sorted(state.metrics.keys()):
+  if k.startswith("reward/"):
+    print(f"{k:&lt;32} {float(state.metrics[k]):+.5f}")
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>9-a &sect;05 で「内訳は誰も見ていない」と書きました。</strong>
+       実務で使われている環境は<strong>最初から内訳を出す作りになっています</strong>。
+       <strong>自分の環境もそうしてください。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">学習まで回したい場合</span>
+    <p>Playground は <strong>Brax の PPO</strong> で学習する前提で作られています。
+       <code>Go1JoystickFlatTerrain</code> は<strong>この GPU で数時間</strong>かかります。</p>
+    <p><strong>まずは <code>CartpoleSwingup</code>（観測 5・行動 1）から試してください。</strong>
+       <strong>数分で終わります。</strong>自分の振り子と近い規模なので、
+       <strong>設定を読み比べるのにも向いています。</strong></p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>Phase C のまとめ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Step 9・10 でやったことを、<strong>Phase D で使う形</strong>にまとめます。</p>
+  </div>
+
+  <div class="recap">
+    <span class="k">Step 9 &mdash; 設計</span>
+    <ol>
+      <li><strong>方策は書いた式を最大化する。望んだことではない</strong>（9-a）</li>
+      <li><strong>学習報酬のグラフでは異常に気づけない</strong>。
+          動きを見る・別のものさしで採点する・内訳をログする（9-a）</li>
+      <li><strong>報酬を書いたら「動き出す得」を計算してから学習させる</strong>（9-b）</li>
+      <li><strong><code>exp(-k&middot;e&sup2;)</code>、<code>k = ln2/e_half&sup2;</code></strong>。
+          決めるのは許容誤差（9-b）</li>
+      <li><strong>標準偏差より小さい差は差ではない</strong>。約 50 シードが相場（9-c）</li>
+      <li><strong>二値の結果に平均を使わない</strong>。成功率と成功時の点数を分ける（9-c）</li>
+      <li><strong>実機で困る量は、実機で困る量として測る</strong>。
+          観測ノイズ 1% で符号反転が 8 倍になっても報酬は動かない（9-d）</li>
+      <li><strong>ばらつきが大きいなら、比べるより先に減らす</strong>（9-c &rarr; 9-e）</li>
+    </ol>
+  </div>
+
+  <div class="recap">
+    <span class="k">Step 10 &mdash; 速度</span>
+    <ol>
+      <li>CPU 並列は<strong>コア数で頭打ち</strong>（10-a）</li>
+      <li>JAX の 5 つの約束。全部<strong>「値は実行時までわからない」</strong>から来る（10-b）</li>
+      <li><strong>MJX は 1 体だと CPU より遅い</strong>。数百体から逆転する（10-c）</li>
+      <li>Playground の報酬は<strong>Step 9 で導いた原則どおり</strong>に書かれている（10-d）</li>
+      <li><strong>ほとんどの時間 0 になる項は、重みを大きくしてよい</strong>（10-d &sect;03）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Phase C でいちばん大事だったこと</span>
+    <p><strong>測っていないことは、知らないことです。</strong></p>
+    <p>Phase C では、教材の中で<strong>4 回、予想が外れました</strong>。</p>
+    <ul>
+      <li>6-d の「ぐるぐる回る」予告 &rarr; 起きなかった（9-a）</li>
+      <li>教科書どおりの指数型報酬 &rarr; 2 回とも学習しなかった（9-b）</li>
+      <li>1 シードのきれいな ablation &rarr; 3 シードで順位が逆転（9-c）</li>
+      <li>「目標角度方式は滑らかになる」 &rarr; むしろ荒れた（9-d）</li>
+    </ul>
+    <p><strong>4 回とも、測る前は自信がありました。</strong>
+       <strong>Phase D の実機では、外れたときの代償が跳ね上がります。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">Phase C 完了チェック</span>
+    <label><input type="checkbox" data-ck="p1"> 報酬を書いたら「動き出す得」を計算する習慣がついた</label>
+    <label><input type="checkbox" data-ck="p2"> 報酬の内訳をログできる</label>
+    <label><input type="checkbox" data-ck="p3"> 行動の滑らかさ（符号反転）を測れる</label>
+    <label><input type="checkbox" data-ck="p4"> 差を主張する前にばらつきを見る</label>
+    <label><input type="checkbox" data-ck="p5"> MJX で 1000 体以上を並列に回した</label>
+    <label><input type="checkbox" data-ck="p6"> CPU 版と速度を比べた</label>
+    <label><input type="checkbox" data-ck="p7"> Playground の環境を 1 つ動かした</label>
+    <label><input type="checkbox" data-ck="p8"> Go1 の報酬 16 項を読んで、Step 9 と照合した</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次は Phase D &mdash; Sim2Real</span>
+    <p>ここまでは<strong>シミュレータの中の話</strong>でした。
+       Phase D では<strong>実機との差</strong>を扱います。</p>
+    <p>9-d で観測ノイズを足しただけで方策の挙動が変わったのを見ました。
+       <strong>実機との差はあれだけでは済みません。</strong>
+       質量も、摩擦も、モータの応答も、通信の遅れも、全部違います。</p>
+    <p><strong>Step 11 でその差を測り、埋める方法（ドメインランダム化）を学びます。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 10-d</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step10d-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

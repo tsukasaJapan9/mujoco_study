@@ -339,7 +339,7 @@
   <div class="recap">
     <span class="k">前回までで分かっていること</span>
     <ol>
-      <li><b>Q 学習</b>は 2 行。<code>target = r + &gamma; max Q(s',a')</code> と
+      <li><b>Q 学習</b>は 2 行。<code>target = r + &gamma; max<sub>a'</sub> Q(s',a')</code> と
           <code>Q(s,a) += &alpha;(target &minus; Q(s,a))</code></li>
       <li><b>&alpha;</b> は「1 回の経験をどれだけ信じるか」、<b>&epsilon;-greedy</b> が無いと一切学習しない</li>
       <li>ランダム方策の 64.6 歩が <b>6 歩</b>になった</li>
@@ -376,7 +376,7 @@
   </div>
 
   <p><b>答え：<code>max</code> です。</b></p>
-  <div class="code"><pre>target = r + &gamma; &times; max Q(s', a')
+  <div class="code"><pre>target = r + &gamma; &times; max_{a'} Q(s', a')
                         ^^^^^^^^^^^^
                         ここに a は出てこない
 </pre></div>
@@ -413,7 +413,7 @@
   <p>ズレをなくすには、<strong>「最善を尽くしたら」ではなく「実際に次に選ぶ行動で」</strong>
      計算すればいい。</p>
 
-  <div class="code"><pre>Q 学習  target = r + &gamma; &times; max Q(s', a')     <span class="cmt"># 次に最善を尽くしたら</span>
+  <div class="code"><pre>Q 学習  target = r + &gamma; &times; max_{a'} Q(s', a')     <span class="cmt"># 次に最善を尽くしたら</span>
 SARSA   target = r + &gamma; &times;     Q(s', a')     <span class="cmt"># 次に実際こう動くなら</span>
                                         ^^
                               実際に選んだ次の行動
@@ -432,7 +432,7 @@ SARSA   target = r + &gamma; &times;     Q(s', a')     <span class="cmt"># 次�
   <div class="tw"><table>
     <thead><tr><th></th><th>Q 学習</th><th>SARSA</th></tr></thead>
     <tbody>
-      <tr><td>次の価値の見積もり</td><td><code>max Q(s',a')</code></td><td><code>Q(s',a')</code></td></tr>
+      <tr><td>次の価値の見積もり</td><td><code>max<sub>a'</sub> Q(s',a')</code></td><td><code>Q(s',a')</code></td></tr>
       <tr><td>学んでいる方策</td><td>完全に貪欲な方策</td><td><strong>&epsilon;-greedy な自分自身</strong></td></tr>
       <tr><td>歩く方策との関係</td><td><strong>別物</strong>（off-policy）</td><td><strong>同じ</strong>（on-policy）</td></tr>
       <tr><td>学ぶもの</td><td>理想的な最善</td><td><strong>失敗も込みの現実的な最善</strong></td></tr>
@@ -808,7 +808,7 @@ print(step((2, 0), 0))    <span class="cmt"># スタートから上へ -> ((1, 0
     return Q, returns
 </pre></div>
     <p>Q 学習の行がすぐ上にあります。&sect;02 の表を見ながら、
-      <strong><code>max Q(s_next)</code> を何に置き換えればいいか</strong>を書いてください。
+      <strong><code>max<sub>a'</sub> Q(s_next)</code> を何に置き換えればいいか</strong>を書いてください。
       使える変数は <code>a_next</code> です。</p>
     <details><summary>答えと解説を見る</summary><div class="dbody">
       <div class="code"><pre>                target = r + (0.0 if done else gamma * Q[s_next][a_next])
@@ -881,7 +881,7 @@ SARSA  (on-policy)
     <ol>
       <li>Q 学習が「でたらめに歩いても学べる」のは <code>max</code> のおかげ。
           <strong>右辺に実際の行動 <code>a</code> が出てこない</strong></li>
-      <li><code>max Q(s')</code> を <code>Q(s',a')</code> に変えると <b>SARSA</b>。
+      <li><code>max<sub>a'</sub> Q(s')</code> を <code>Q(s',a')</code> に変えると <b>SARSA</b>。
           <strong>「たまに失敗する自分」を織り込む</strong>ので崖を避ける</li>
       <li><b>off-policy</b> ＝ 集めた方策と学ぶ方策が違ってよい ＝ <strong>データを使い回せる</strong></li>
       <li><b>on-policy</b> ＝ 同じでなければならない ＝ <strong>更新したらデータは捨てる</strong>。

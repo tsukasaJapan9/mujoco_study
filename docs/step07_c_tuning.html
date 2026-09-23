@@ -1,0 +1,919 @@
+<title>ハイパーパラメータと正規化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">ハイパーパラメータの地図</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">VecNormalize</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">実測で比べる</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 7-c</span>
+  <h1>ハイパーパラメータと正規化</h1>
+  <p>7-b で読めるようになった指標を根拠に、ようやく調整に入る。
+     ただし<strong>いちばん効くのは調整ではない</strong>。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 7 の 3/4</span>
+    <span class="chip">train/train_ppo.py に追記</span>
+    <span class="chip">前提: 7-b</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>30 万ステップ時点で <code>explained_variance = 0.994</code>、<code>std = 0.602</code>、
+          <code>approx_kl = 0.0084</code>。<strong>4 指標とも健全</strong></li>
+      <li><code>ep_rew_mean</code> は <strong>&minus;222.9 でまだ上昇中</strong>。頭打ちではない</li>
+      <li>つまり<strong>何も壊れていない</strong>。7-a のチェックリストで残っているのは
+          <strong>6 番（学習量）と 7 番（ハイパーパラメータ）</strong></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 単にステップ数を増やすのと、パラメータを調整するのと、どちらが効くのか？</p>
+    <p><b>2.</b> 定番とされる <b>VecNormalize</b> は、この環境で効くのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     先に<strong>パラメータの地図</strong>を作り、7-b の指標との対応を押さえます。
+     そのうえで <strong>3 条件 &times; 3 シードの実測</strong>を見ます。
+     <strong>結論は「定番」を裏切ります</strong>——だからこそ測る意味があります。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題の後半——<strong>「まだ伸びる余地があるか」を指標のどれで判断するか</strong>——に答えます。
+       ここが今回いちばん実用的な部分です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>7-a で 30 万ステップでは届きませんでした。単にステップ数を 3 倍にしたらどうなると思いますか。
+       そしてそれを試す前に、<strong>指標のどれを見れば「まだ伸びる余地があるか」が分かるでしょうか。</strong></p>
+  </div>
+
+  <p><b>答え：3 つの指標が「まだ伸びる」と言っていました。</b></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>指標</th><th class="num">30 万時点</th><th>読み方</th></tr></thead>
+    <tbody>
+      <tr><td><code>ep_rew_mean</code></td><td class="num">&minus;222.9 で<strong>上昇中</strong></td>
+          <td>グラフの右端が上を向いている＝<strong>まだ登っている途中</strong></td></tr>
+      <tr><td><code>std</code></td><td class="num">0.602 で<strong>下降中</strong></td>
+          <td>探索が生きている＝<strong>方策がまだ変化する余地がある</strong></td></tr>
+      <tr><td><code>explained_variance</code></td><td class="num">0.994</td>
+          <td>Critic は完成している＝<strong>更新方向は信用できる</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 つが揃って初めて「増やせば伸びる」と言えます</b>
+     報酬が上昇中でも、<code>std</code> が <code>0.05</code> まで落ちていたら
+     <strong>探索をやめているので、そこから先は伸びません</strong>（&sect;05 の「早すぎる収束」）。
+     <code>explained_variance</code> が <code>0.2</code> なら、
+     <strong>更新方向が信用できないので、増やしても迷走するだけ</strong>です。</p>
+
+  <div class="callout tip">
+    <span class="k">そして実際そのとおりでした</span>
+    <p>100 万ステップまで伸ばすと <strong>報酬 +24.55 / 上端 207.5</strong>。
+       古典制御（+28.31 / 216.2）にほぼ並びます。
+       <strong>何も調整していません。ステップ数を 3.3 倍にしただけです。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">なぜこれを先に確認するのか</span>
+    <p>ハイパーパラメータの調整は<strong>組み合わせが無限にあります</strong>。
+       「学習量が足りないだけ」の状態で調整を始めると、
+       <strong>何を変えても少し良くなる</strong>ので、
+       <strong>効いたのがその変更なのか偶然なのか判断できません。</strong></p>
+    <p>7-a のチェックリストで<strong>6 番が 7 番より先</strong>なのは、この順序でしか切り分けられないからです。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>ハイパーパラメータの地図</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>PPO には 20 以上の引数がありますが、<strong>最初に触るのは 5 つだけ</strong>です。
+       7-b の指標と 1 対 1 で対応させます。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>パラメータ</th><th class="num">既定値</th><th>何を決めるか</th><th>触る根拠になる指標</th></tr></thead>
+    <tbody>
+      <tr><td><code>learning_rate</code></td><td class="num">3e-4</td><td>1 回の更新の大きさ</td>
+          <td><strong><code>approx_kl</code></strong> が大きすぎ／小さすぎ</td></tr>
+      <tr><td><code>ent_coef</code></td><td class="num">0.0</td><td>探索を続ける圧力</td>
+          <td><strong><code>std</code></strong> が早く落ちきる</td></tr>
+      <tr><td><code>n_steps</code></td><td class="num">2048</td><td>1 回の更新に使うデータ量</td>
+          <td><strong><code>explained_variance</code></strong> が低い</td></tr>
+      <tr><td><code>batch_size</code></td><td class="num">64</td><td>勾配 1 回あたりのサンプル数</td>
+          <td>学習が不安定</td></tr>
+      <tr><td><code>gamma</code></td><td class="num">0.99</td><td>どこまで先を見るか</td>
+          <td>——（5-b の実効地平で決める）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b><code>gamma</code> だけ性質が違います</b>
+     他の 4 つは<strong>学習のやり方</strong>の設定ですが、
+     <code>gamma</code> は<strong>何を最適化するか</strong>そのものを変えます。
+     5-b で計算したとおり <code>&gamma;=0.99</code> の実効地平は 100 ステップ＝<strong>1 秒</strong>。
+     スイングアップに 2.89 秒かかることを思うと、
+     <strong>&gamma; を上げる（0.995 など）ほうが理屈に合います</strong>。
+     <strong>ただし上げると学習は不安定になります</strong>——遠い未来まで見るぶん、価値の分散が増えるので。</p>
+
+  <div class="callout">
+    <span class="k">動かし方の作法</span>
+    <ul>
+      <li><strong>1 度に 1 つだけ変える。</strong>2 つ変えるとどちらが効いたか分かりません
+          （Step 3 の課題 1 で「1 変数だけを振る」と書いたのと同じ）</li>
+      <li><strong>2〜3 倍単位で動かす。</strong><code>3e-4 &rarr; 1e-3</code> のように。
+          10% の調整には意味がありません</li>
+      <li><strong>必ず複数シードで比べる。</strong>次回 7-d の主題ですが、
+          <strong>1 シードの差は偶然かもしれません</strong></li>
+    </ul>
+  </div>
+</section>
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>VecNormalize — 定番が効かない実例</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><b>VecNormalize</b> は連続制御の定番として、多くの解説で「まず入れろ」と書かれています。
+       <strong>この環境では効きません。</strong>
+       なぜ効かないのかを考えることが、<strong>他人の設定をそのまま使う危うさ</strong>の教材になります。</p>
+  </div>
+
+  <h3>何をするものか</h3>
+  <p>環境を包んで、<strong>観測と報酬を「平均 0・標準偏差 1」に揃え続ける</strong>ラッパーです。
+     学習中の値を使って平均と分散を推定し、随時更新します。</p>
+  <div class="code"><pre>from stable_baselines3.common.vec_env import VecNormalize
+
+venv = make_vec_env(make_env, n_envs=4, seed=0)
+venv = VecNormalize(venv, norm_obs=True, norm_reward=True)
+</pre></div>
+
+  <p class="why"><b>なぜ一般に効くとされるのか</b>
+     ニューラルネットは<strong>入力の桁が揃っているときに学習しやすい</strong>からです。
+     関節角が <code>&plusmn;3</code>、角速度が <code>&plusmn;50</code>、
+     力センサが <code>&plusmn;500</code> のように<strong>桁がばらばらの観測</strong>を
+     そのまま入れると、大きい成分に引きずられます。
+     <strong>多関節ロボットではこれが普通に起きるので、定番になっています。</strong></p>
+
+  <h3>3 シードで測った結果</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">seed 0</th><th class="num">seed 1</th><th class="num">seed 2</th><th class="num">平均</th><th class="num">上端滞在</th></tr></thead>
+    <tbody>
+      <tr><td><strong>既定値</strong></td><td class="num">&minus;227.51</td><td class="num">&minus;299.10</td><td class="num">&minus;236.45</td>
+          <td class="num ok"><strong>&minus;254.35</strong></td><td class="num">46.2</td></tr>
+      <tr><td>VecNormalize あり</td><td class="num">&minus;345.05</td><td class="num">&minus;334.32</td><td class="num">&minus;215.36</td>
+          <td class="num ng"><strong>&minus;298.24</strong></td><td class="num">45.2</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>平均で 44 ポイント悪化しています</b>
+     各シードはばらつきますが（<strong>seed 2 だけは正規化ありのほうが良い</strong>）、
+     <strong>平均では明確に負けています</strong>。
+     1 シードだけ見ていたら、seed 2 を引いた人は
+     「VecNormalize は効く」と結論したでしょう。</p>
+
+  <h3>なぜこの環境では効かないのか</h3>
+  <p>6-a で観測を設計したときのことを思い出してください。</p>
+  <div class="tw"><table>
+    <thead><tr><th>観測の要素</th><th class="num">実際に取る範囲</th><th>正規化で改善するか</th></tr></thead>
+    <tbody>
+      <tr><td><code>cos&theta;</code></td><td class="num">&plusmn;1</td><td class="ng">すでに揃っている</td></tr>
+      <tr><td><code>sin&theta;</code></td><td class="num">&plusmn;1</td><td class="ng">すでに揃っている</td></tr>
+      <tr><td><code>&omega;</code></td><td class="num">&plusmn;11（実測）</td><td>10 倍程度の差しかない</td></tr>
+      <tr><td>報酬</td><td class="num">&plusmn;1 程度</td><td class="ng">すでに揃っている</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>揃えるべきものが、もともと揃っていました</b>
+     <strong>6-a で角度を <code>cos</code> と <code>sin</code> に変換した時点で、
+     観測の 2/3 は &plusmn;1 に収まっています。</strong>
+     角速度だけ 10 倍ほど大きいですが、それは<strong>桁違いというほどではありません</strong>。
+     得るものが小さいのに、<strong>正規化には固有のコストがあります</strong>——次の段落。</p>
+
+  <div class="callout">
+    <span class="k">報酬の正規化には副作用があります</span>
+    <p><code>norm_reward=True</code> は報酬を<strong>動く標準偏差で割ります</strong>。
+       学習が進むと報酬の分布が変わるので、<strong>割る数も変わり続けます</strong>。
+       つまり<strong>同じ状態の価値が、学習の段階によって違う数字になります</strong>。</p>
+    <p>7-b で見たとおり、この環境の <code>explained_variance</code> は既に <code>0.994</code> でした。
+       <strong>Critic が完璧に当てている状態で、目標を動かす理由はありません。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">持ち帰ってほしい判断基準</span>
+    <p><strong>「観測の各成分の桁が揃っているか」を先に確かめる。</strong>
+       6-d の &sect;05 でやったように、
+       <strong>うまくいく方策で回して実測範囲を取る</strong>のが確実です。</p>
+    <p>揃っていなければ <code>VecNormalize</code> は効きます。
+       揃っているなら入れる理由がありません。
+       <strong>「定番だから」で入れるのが、いちばん判断を放棄した使い方です。</strong></p>
+    <p>なお <code>norm_obs</code> と <code>norm_reward</code> は<strong>別々に指定できます</strong>。
+       観測だけ正規化して報酬は生のまま、という選択も可能です。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">評価するときの落とし穴</span>
+    <p><code>VecNormalize</code> を使うと、<strong>評価時にも同じ正規化を通す必要があります</strong>。
+       生の観測を学習済み方策に渡すと、<strong>ネットが見たことのない桁の入力</strong>になり、
+       性能が出ません。</p>
+    <div class="code"><pre>venv.training = False        <span class="cmt"># 統計の更新を止める</span>
+venv.norm_reward = False     <span class="cmt"># 報酬は生で測る</span>
+obs_norm = venv.normalize_obs(obs)
+action, _ = model.predict(obs_norm, deterministic=True)
+</pre></div>
+    <p>さらに<strong>統計そのものを保存・復元する必要があります</strong>
+      （<code>venv.save()</code> / <code>VecNormalize.load()</code>）。
+      <strong>モデルだけ保存して統計を忘れると、読み込んだ方策は動きません。</strong>
+      <strong>これも「入れるコスト」の一部</strong>です。</p>
+  </div>
+</section>
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>実測で比べる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;02 の地図で挙げたパラメータを、実際に振った結果を並べます。
+       <strong>すべて 30 万ステップ &times; 3 シード</strong>。比べ方そのものが今回の学習内容です。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>設定</th><th class="num">seed 0</th><th class="num">seed 1</th><th class="num">seed 2</th>
+      <th class="num">平均</th><th class="num">ばらつき幅</th><th class="num">上端滞在</th></tr></thead>
+    <tbody>
+      <tr><td><strong>既定値</strong></td><td class="num">&minus;227.51</td><td class="num">&minus;299.10</td><td class="num">&minus;236.45</td>
+          <td class="num">&minus;254.35</td><td class="num">71.6</td><td class="num">46.2</td></tr>
+      <tr><td>VecNormalize あり</td><td class="num">&minus;345.05</td><td class="num">&minus;334.32</td><td class="num">&minus;215.36</td>
+          <td class="num ng">&minus;298.24</td><td class="num">129.7</td><td class="num">45.2</td></tr>
+      <tr><td><strong>lr=1e-3</strong></td><td class="num">&minus;358.67</td><td class="num">&minus;113.62</td><td class="num">&minus;122.19</td>
+          <td class="num ok"><strong>&minus;198.16</strong></td><td class="num ng"><strong>245.1</strong></td><td class="num ok"><strong>77.5</strong></td></tr>
+      <tr><td>ent_coef=0.01</td><td class="num">&minus;227.49</td><td class="num">&minus;299.07</td><td class="num">&minus;224.58</td>
+          <td class="num">&minus;250.38</td><td class="num">74.5</td><td class="num">45.3</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ばらつき幅の列を必ず見てください</b>
+     <code>lr=1e-3</code> は<strong>平均で 56 ポイント改善</strong>し、
+     上端滞在も <strong>46.2 &rarr; 77.5</strong> と 1.7 倍になりました。
+     7-b で <code>approx_kl</code> が <code>0.002〜0.008</code> と
+     健全範囲（0.005〜0.02）の<strong>下寄り</strong>だったので、
+     <strong>学習率を上げる余地がある</strong>と読んだとおりです。</p>
+
+  <p class="why"><b>しかし、ばらつきが 3.4 倍になっています</b>
+     <code>71.6 &rarr; 245.1</code>。seed 0 だけが <code>&minus;358.67</code> と大きく外れています。
+     <strong>平均は良くなったが、当たり外れが大きくなった</strong>——
+     実務で頻繁に遭遇する形です。</p>
+
+  <h3>ent_coef は「効かない」ことが予測できていました</h3>
+  <p><code>ent_coef=0.01</code> は平均 <code>&minus;250.38</code>。
+     既定値の <code>&minus;254.35</code> と<strong>ほぼ同じ</strong>で、
+     ばらつき幅も <code>74.5</code> 対 <code>71.6</code> と変わりません。</p>
+  <p class="why"><b>7-b の指標から予測できていました</b>
+     <code>ent_coef</code> は &sect;02 の地図で
+     <strong>「<code>std</code> が早く落ちきる」ときに触るもの</strong>でした。
+     7-b の実測では 30 万ステップ時点で <code>std = 0.602</code>、
+     <strong>まだ下降中で、探索は十分生きていました</strong>。
+     <strong>探索が足りていないという症状が無いのに探索の薬を出しても、効くはずがありません。</strong></p>
+  <div class="callout tip">
+    <span class="k">これが「指標を根拠に選ぶ」ということです</span>
+    <p>3 つのパラメータを闇雲に試せば、<strong>3 回とも 2 分ずつ &times; 3 シード＝18 分</strong>かかります。
+      7-b の指標を読んでいれば、<strong><code>ent_coef</code> は試すまでもないと分かり、
+      <code>learning_rate</code> だけに絞れました</strong>。</p>
+    <p>パラメータが 20 個ある中で全部試すのは不可能です。
+      <strong>指標は「試す価値のある 1〜2 個」に絞り込むための道具</strong>です。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">1 シードだけ見ていたら、どんな結論になっていたか</span>
+    <div class="tw"><table>
+      <thead><tr><th>もし引いたのが</th><th>出る結論</th></tr></thead>
+      <tbody>
+        <tr><td><code>lr=1e-3</code> の seed 1</td><td class="ok">「学習率を上げると劇的に改善する」</td></tr>
+        <tr><td><code>lr=1e-3</code> の seed 0</td><td class="ng">「学習率を上げると悪化する」</td></tr>
+        <tr><td>VecNormalize の seed 2</td><td class="ng">「VecNormalize は効く」</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>同じ実験から、正反対の結論が引けます。</strong>
+       これが「<strong>1 シードの結果を信じない</strong>」の意味で、次回 7-d の主題です。</p>
+  </div>
+
+  <h3>で、結局どうすればいいのか</h3>
+  <div class="tw"><table>
+    <thead><tr><th>やったこと</th><th class="num">報酬</th><th class="num">かかった時間</th></tr></thead>
+    <tbody>
+      <tr><td>既定値・30 万ステップ</td><td class="num">&minus;254.35</td><td class="num">約 2 分</td></tr>
+      <tr><td><code>lr=1e-3</code>・30 万ステップ</td><td class="num">&minus;198.16</td><td class="num">約 2 分</td></tr>
+      <tr><td><strong>既定値・100 万ステップ</strong></td><td class="num ok"><strong>+24.55</strong></td><td class="num">約 19 分</td></tr>
+      <tr><td>古典制御（基準線）</td><td class="num">+28.31</td><td class="num">——</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>調整より、ステップ数のほうが圧倒的に効きました</b>
+     <code>lr</code> の調整で稼げたのは <strong>56 ポイント</strong>。
+     ステップ数を 3.3 倍にして稼げたのは <strong>279 ポイント</strong>です。
+     <strong>桁が違います。</strong></p>
+
+  <p class="why"><b>これが 7-a のチェックリストの順番の意味です</b>
+     6 番（学習量）が 7 番（ハイパーパラメータ）より先なのは、
+     <strong>効果が大きく、判断が簡単だから</strong>。
+     <strong>学習量が足りない状態で調整を始めると、
+     何を変えても少し良くなるので、効いたのが何なのか分かりません。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">両方やればもっと良いのでは</span>
+    <p>そのとおりで、<code>lr=1e-3</code> で 100 万ステップ回せば
+       既定値より速く到達する可能性があります。
+       <strong>ただしばらつきも大きいので、何シードか回して確かめる必要があります。</strong></p>
+    <p>時間があるなら試してみてください。<strong>7-d の課題で扱います。</strong></p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>自分の環境で「調整より学習量」を確かめる</strong>ため。
+      教材の表を読むのと、自分の実験で 100 万ステップが調整を上回るのを見るのとでは違います。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<strong>パラメータを触る前に、まずステップ数を疑える</strong>。
+      そして<strong>1 シードの結果で判断しなくなる</strong>。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      段階 3 は <strong>19 分</strong>かかるので、走らせている間に 7-d を読み始めて構いません。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>設定を引数で切り替えられるようにする</h3>
+    <p class="why"><b>この段階ですること</b> 実験のたびにファイルを書き換えるのをやめます。
+      <strong>何を変えたかがコマンドに残る</strong>ので、あとで追えます。</p>
+    <div class="code"><pre>import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--steps", type=int, default=300_000)
+parser.add_argument("--lr", type=float, default=3e-4)
+parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--tag", default="ppo")
+args = parser.parse_args()
+
+venv = make_vec_env(make_env, n_envs=4, seed=args.seed)   <span class="cmt"># ← ここも忘れずに</span>
+
+model = PPO("MlpPolicy", venv, verbose=1, seed=args.seed, device="cpu",
+            learning_rate=args.lr, tensorboard_log="tb_logs")
+model.learn(total_timesteps=args.steps, tb_log_name=args.tag)
+model.save(f"train/ppo_{args.tag}_s{args.seed}")
+</pre></div>
+    <div class="callout">
+      <span class="k">seed は 2 箇所に書きます</span>
+      <p><code>PPO(seed=...)</code> だけ変えて <code>make_vec_env(seed=0)</code> を
+        そのままにしても、<strong>実は結果は変わります</strong>——
+        SB3 は初期化時に環境の seed も設定し直すので、
+        <code>make_vec_env</code> 側の指定が<strong>上書きされる</strong>からです（実測で確認）。</p>
+      <p><strong>それでも両方に書いてください。</strong>理由は 3 つ。</p>
+      <ul>
+        <li><strong>コードが嘘をつく。</strong><code>seed=0</code> と書いてあれば読み手は
+          「環境は 0 で固定」と理解しますが、実際は上書きされています</li>
+        <li><strong>SB3 の内部動作に依存している。</strong>API として保証されたものではなく、
+          バージョンが変われば挙動が変わりえます</li>
+        <li><strong>ラッパーを挟むと話が変わる。</strong><code>VecNormalize</code> のように
+          環境を包むと、seed の伝わり方が変わる可能性があります</li>
+      </ul>
+    </div>
+    <p><b>確認方法</b> 既定値のまま実行して 7-b と同じ動きをすれば OK です。</p>
+    <div class="code"><pre>uv run python -m train.train_ppo --steps 10000 --tag smoke
+</pre></div>
+    <p class="why"><b>保存名にも設定を入れています</b>
+      <code>ppo_smoke_s0.zip</code> のようになります。
+      <strong>ファイル名を見れば何の実験か分かる</strong>ようにしておくと、
+      2 週間後の自分が助かります。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>学習率を上げて 3 シード回す</h3>
+    <p class="why"><b>この段階ですること</b> &sect;04 の <code>lr=1e-3</code> の行を再現します。</p>
+    <div class="code"><pre>for seed in 0 1 2; do
+  uv run python -m train.train_ppo --lr ??? --seed $seed --tag lr1e-3
+done
+</pre></div>
+    <p>&sect;02 の作法「<strong>2〜3 倍単位で動かす</strong>」に従うと、
+      既定の <code>3e-4</code> からいくつにすべきでしょうか。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  uv run python -m train.train_ppo --lr 1e-3 --seed $seed --tag lr1e-3
+</pre></div>
+      <p class="why"><b><code>3e-4 &rarr; 1e-3</code> は約 3.3 倍</b>
+        <code>5e-4</code>（1.7 倍）でも構いませんが、<strong>差が出にくくなります</strong>。
+        <code>3e-3</code>（10 倍）まで行くと <code>approx_kl</code> が跳ね上がって壊れる可能性が高い。
+        <strong>7-b で読んだ <code>approx_kl = 0.002〜0.008</code> が
+        健全範囲の下寄りだった、という根拠があるから 3 倍を選べます。</strong></p>
+      <p class="why"><b>学習後に <code>approx_kl</code> を必ず確認してください</b>
+        <code>0.02</code> を超えていたら上げすぎです。
+        <strong>「報酬が良くなったからOK」ではなく、指標で裏を取る</strong>のが 7-b を学んだ意味です。</p>
+    </div></details>
+    <p><b>確認方法</b> 3 シードの平均が <strong>&minus;200 前後</strong>、
+      ただし<strong>1 つは大きく外れる</strong>はずです。&sect;04 の表と見比べてください。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>既定値のまま 100 万ステップ回す</h3>
+    <p class="why"><b>この段階ですること</b> 今回の結論を自分で確かめます。
+      <strong>19 分かかります。</strong></p>
+    <div class="code"><pre>uv run python -m train.train_ppo --steps 1000000 --tag long
+</pre></div>
+    <p><b>確認方法</b> 学習後に <code>evaluate()</code> で採点すると、
+      <strong>報酬 +20 前後、上端滞在 200 前後</strong>になります。
+      <strong>古典制御（+28.31 / 216.2）にほぼ並びます。</strong></p>
+    <p class="why"><b>TensorBoard で 30 万と重ねて見てください</b>
+      <code>tb_log_name</code> を変えてあるので、<strong>同じグラフに 2 本並びます</strong>。
+      30 万で切ったときにどこにいたのかが一目で分かります。</p>
+    <div class="callout">
+      <span class="k">上端滞在 207 が上限に近い理由</span>
+      <p>Step 4 で測ったスイングアップ所要時間は <strong>2.89 秒</strong>。
+        100Hz なら 289 ステップです。<strong>500 &minus; 289 = 211</strong>。
+        <strong>PPO の 207.5 は、物理的な上限にほぼ達しています。</strong>
+        ここから先はスイングアップ自体を速くするしかありません。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><strong>調整より学習量のほうが圧倒的に効いた。</strong>
+          <code>lr</code> 調整で <b>56 ポイント</b>、ステップ数 3.3 倍で <b>279 ポイント</b></li>
+      <li><b>VecNormalize</b> はこの環境では<strong>悪化させた</strong>（&minus;254 &rarr; &minus;298）。
+          <strong>6-a で <code>cos</code>/<code>sin</code> にした時点で観測が揃っていた</strong>から</li>
+      <li><code>lr=1e-3</code> は平均を改善したが、<strong>ばらつきが 3.4 倍</strong>になった</li>
+      <li><code>ent_coef</code> は<strong>効かないと事前に予測できた</strong>。
+          7-b で <code>std = 0.602</code> と探索が生きていたから。
+          <strong>指標は「試す価値のある 1〜2 個」に絞り込む道具</strong></li>
+      <li>触るパラメータは<strong>指標が根拠を出してから</strong>選ぶ。
+          <code>approx_kl</code> が小さめ &rarr; <code>learning_rate</code>、という対応</li>
+      <li><strong>1 シードの結果からは正反対の結論が引ける。</strong>同じ実験でも</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="m1"><span>設定を <code>argparse</code> で切り替えられるようにした</span></label>
+    <label><input type="checkbox" data-ck="m2"><span><code>lr=1e-3</code> を 3 シード回し、平均とばらつきを見た</span></label>
+    <label><input type="checkbox" data-ck="m3"><span>学習後の <code>approx_kl</code> が健全範囲にあることを確認した</span></label>
+    <label><input type="checkbox" data-ck="m4"><span>100 万ステップを回し、古典制御に並ぶことを確かめた</span></label>
+    <label><input type="checkbox" data-ck="m5"><span><code>VecNormalize</code> がこの環境で効かない理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="m6"><span>「調整より学習量」を自分の数字で説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（7-d）でやること</span>
+    <p>Step 7 の最終回です。今回<strong>何度も「1 シードでは判断できない」と書きました</strong>。
+       では<strong>何シード回せばいいのか</strong>、
+       <strong>どう比べれば「本当に良くなった」と言えるのか</strong>を扱います。</p>
+    <p>そして Step 7 の完了条件——<strong>古典制御との比較</strong>——をきちんと締めます。</p>
+    <p>先に考えておいてください——
+       <strong>&sect;04 の表で <code>lr=1e-3</code> は平均 &minus;198、既定値は &minus;254 でした。
+       この 56 ポイントの差は「本物」でしょうか。</strong>
+       ばらつき幅が 245 あることを踏まえて考えてみてください。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 7-c</span>
+  <span>stable-baselines3 2.9.0 で検証（30 万ステップ &times; 3 シード）</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step07c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

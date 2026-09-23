@@ -1,0 +1,907 @@
+<title>クリップ目的関数</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">ratio — どれだけ変わったか</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">クリップ目的関数</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">なぜ min を取るのか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">損失の全体像</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 8-c</span>
+  <h1>クリップ目的関数</h1>
+  <p>PPO 固有の発明はここだけ。
+     <strong>「良かった行動の確率を上げる。ただし上げすぎない」</strong>を式にする。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 8 の 3/5</span>
+    <span class="chip">algos/ppo_min.py に追記</span>
+    <span class="chip">前提: 8-b</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>GAE</b> でアドバンテージが作れる。<code>&lambda;</code> が TD とモンテカルロをつなぐつまみ</li>
+      <li>PPO の 5 部品のうち<strong>1・3 ができた</strong>（ネットワーク、アドバンテージ）</li>
+      <li>8-a で「<strong>本当に新しいのは部品 4 だけ</strong>」と書いた。今回がそこ</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> アドバンテージが大きい行動の確率を、そのまま大きく上げてはいけないのはなぜか？</p>
+    <p><b>2.</b> <code>clip_range=0.2</code> という設定は、具体的に何を止めているのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題に答えたあと、<strong>「どれだけ変わったか」を測る量</strong>を定義します。
+     そこにクリップをかける形を作り、<strong>なぜ <code>min</code> なのか</strong>を数字で確かめます。
+     <strong>実装は 4 行です。</strong></p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題は「なぜ大きく上げてはいけないか」でした。
+       <strong>答えは 5-f にあります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>アドバンテージが大きい行動の確率を、そのまま大きく上げてはいけないのはなぜでしょうか。
+       5-f で「PPO は on-policy」と学んだことを思い出してください。</p>
+  </div>
+
+  <p><b>答え：方策が変わると、集めたデータが古くなるからです。</b></p>
+
+  <p>5-f で見たとおり、<strong>PPO は on-policy</strong>——
+     <strong>いまの方策で集めたデータでしか学習できません</strong>。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>手順</th><th>状態</th></tr></thead>
+    <tbody>
+      <tr><td>1. 方策 &pi;<sub>old</sub> で 2048 ステップ集める</td><td class="ok">データは &pi;<sub>old</sub> のもの</td></tr>
+      <tr><td>2. そのデータで方策を少し更新</td><td class="ok">まだ &pi;<sub>old</sub> に近い</td></tr>
+      <tr><td>3. <strong>同じデータで</strong>さらに更新（10 エポック繰り返す）</td><td class="ng"><strong>方策が離れていく</strong></td></tr>
+      <tr><td>4. 離れすぎると</td><td class="ng"><strong>データが方策と合わなくなる</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ここが PPO の設計の肝です</b>
+     本来 on-policy なら<strong>1 回更新したらデータを捨てる</strong>べきです（5-f）。
+     しかしそれでは<strong>データが高くつきすぎる</strong>。
+     だから PPO は<strong>同じデータを 10 回使い回します</strong>——
+     <strong>ただし「方策があまり離れない」という条件付きで</strong>。</p>
+
+  <div class="callout">
+    <span class="k">これが名前の由来です</span>
+    <p><b>PPO</b> = <b>P</b>roximal <b>P</b>olicy <b>O</b>ptimization。
+       <b>Proximal</b> は「近接した」という意味で、
+       <strong>「元の方策の近くに留まりながら最適化する」</strong>ことを指します。</p>
+    <p>7-b で <code>approx_kl</code> を「更新の大きさ」として読みました。
+       <strong>あれは「どれだけ離れたか」を測っていた</strong>わけです。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>ratio — どれだけ変わったか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「方策が離れた度合い」を測る量を作ります。
+       <strong>8-a で保存しておいた <code>log_prob</code> がここで効いてきます。</strong></p>
+  </div>
+
+  <p>ある行動について、<strong>更新前と更新後で選ばれやすさがどれだけ変わったか</strong>を見ます。</p>
+
+  <div class="code"><pre>ratio = 新しい方策での確率密度 / 古い方策での確率密度</pre></div>
+
+  <p>確率密度は対数で持っているので（<code>density_explained.html</code>）、
+     <strong>引き算して <code>exp</code> すれば比が出ます</strong>。</p>
+
+  <div class="code"><pre>ratio = exp(log_prob_new - log_prob_old)</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">log_prob の差</th><th class="num">ratio</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td class="num">&minus;0.5</td><td class="num">0.6065</td><td>選ばれにくくなった</td></tr>
+      <tr><td class="num">&minus;0.2</td><td class="num">0.8187</td><td>少し減った</td></tr>
+      <tr><td class="num"><strong>0.0</strong></td><td class="num"><strong>1.0000</strong></td><td><strong>変わっていない</strong></td></tr>
+      <tr><td class="num">+0.2</td><td class="num">1.2214</td><td>少し増えた</td></tr>
+      <tr><td class="num">+0.5</td><td class="num">1.6487</td><td>選ばれやすくなった</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b><code>ratio = 1</code> が「変化なし」の基準です</b>
+     <code>logstd_explained.html</code> で見たとおり、
+     <strong><code>exp(0) = 1</code></strong>。差がゼロなら比は 1 です。</p>
+
+  <div class="callout tip">
+    <span class="k">密度のまま比を取ってよい理由</span>
+    <p><code>density_explained.html</code> で「確率 = 密度 &times; 幅」と書きました。
+       <strong>比を取ると幅が打ち消し合います</strong>——
+       分子と分母で同じ幅を掛けるはずだったので。
+       <strong>だから密度のままで正しい確率の比が出ます。</strong></p>
+  </div>
+
+  <h3>これが最も素朴な目的関数です</h3>
+  <div class="code"><pre>目的 = ratio &times; A        <span class="cmt"># これを大きくしたい</span></pre></div>
+  <p class="why"><b>符号で場合分けせずに済みます</b>
+     <code>A &gt; 0</code>（良かった行動）なら <code>ratio</code> を大きくすれば目的が増える &rarr; <strong>確率を上げる</strong>。
+     <code>A &lt; 0</code>（悪かった行動）なら <code>ratio</code> を小さくすれば目的が増える &rarr; <strong>確率を下げる</strong>。
+     <strong>1 つの式で両方が表現できています。</strong></p>
+  <p class="why"><b>しかしこれには上限がありません</b>
+     <code>A &gt; 0</code> なら <code>ratio</code> を無限に大きくするのが最善になってしまいます。
+     <strong>&sect;01 で見た「離れすぎる」が起きます。</strong></p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>クリップ目的関数</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>PPO の中心となる式を出します。<strong>2 行です。</strong></p>
+  </div>
+
+  <div class="code"><pre>a1 = ratio &times; A
+a2 = clamp(ratio, 1-&epsilon;, 1+&epsilon;) &times; A     <span class="cmt"># &epsilon; = clip_range = 0.2</span>
+
+目的 = min(a1, a2)
+</pre></div>
+
+  <p><code>clamp</code> は<strong>範囲からはみ出した値を境界に丸める</strong>操作です。
+     <code>&epsilon;=0.2</code> なら <code>ratio</code> を <strong>0.8 〜 1.2 に制限</strong>します。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">ratio</th><th class="num">clamp 後</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.5</td><td class="num">0.8</td></tr>
+      <tr><td class="num">1.0</td><td class="num">1.0</td></tr>
+      <tr><td class="num">1.5</td><td class="num">1.2</td></tr>
+      <tr><td class="num">2.0</td><td class="num">1.2</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b><code>clip_range = 0.2</code> の意味が見えました</b>
+     7-c のパラメータ表に出てきた <code>clip_range</code> は、<strong>この &epsilon;</strong> です。
+     <strong>「1 回の更新で、選ばれやすさを &plusmn;20% までしか変えさせない」</strong>という設定です。</p>
+
+  <div class="callout">
+    <span class="k">log_prob で言うと</span>
+    <p><code>ratio = 1.2</code> は <code>log_prob</code> の差が <strong>0.1823</strong>、
+       <code>ratio = 0.8</code> は <strong>&minus;0.2231</strong> にあたります（実測）。
+       <strong>7-b で読んだ <code>approx_kl</code> が <code>0.002〜0.008</code> だった</strong>のを思い出すと、
+       <strong>この制限にはほとんど引っかかっていなかった</strong>と分かります。</p>
+    <p>7-b の <code>clip_fraction</code>（制限に引っかかった割合）が
+       <code>0.008 &rarr; 0.093</code> だったのも同じ話です。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>なぜ min を取るのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>ここが唯一ひねってある部分</strong>です。
+       「クリップするだけ」ではなく「<code>min</code> を取る」理由を、実測の表で確かめます。</p>
+  </div>
+
+  <h3>A &gt; 0 のとき（良かった行動）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">ratio</th><th class="num">a1 = r&times;A</th><th class="num">a2 = clamp&times;A</th><th class="num">min</th><th>採用されるのは</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.5</td><td class="num">0.50</td><td class="num">0.80</td><td class="num">0.50</td><td>a1</td></tr>
+      <tr><td class="num">1.0</td><td class="num">1.00</td><td class="num">1.00</td><td class="num">1.00</td><td>a1</td></tr>
+      <tr><td class="num">1.2</td><td class="num">1.20</td><td class="num">1.20</td><td class="num">1.20</td><td>a1</td></tr>
+      <tr><td class="num">1.5</td><td class="num">1.50</td><td class="num">1.20</td><td class="num"><strong>1.20</strong></td><td class="ng"><strong>a2（頭打ち）</strong></td></tr>
+      <tr><td class="num">2.0</td><td class="num">2.00</td><td class="num">1.20</td><td class="num"><strong>1.20</strong></td><td class="ng"><strong>a2（頭打ち）</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>上げすぎると報われなくなります</b>
+     <code>ratio</code> を 1.2 より大きくしても<strong>目的が増えません</strong>。
+     増えないということは<strong>勾配がゼロ</strong>——<strong>それ以上そっちへ動かす理由が消えます</strong>。</p>
+
+  <h3>A &lt; 0 のとき（悪かった行動）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">ratio</th><th class="num">a1</th><th class="num">a2</th><th class="num">min</th><th>採用されるのは</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.5</td><td class="num">&minus;0.50</td><td class="num">&minus;0.80</td><td class="num"><strong>&minus;0.80</strong></td><td class="ng"><strong>a2（頭打ち）</strong></td></tr>
+      <tr><td class="num">0.8</td><td class="num">&minus;0.80</td><td class="num">&minus;0.80</td><td class="num">&minus;0.80</td><td>a1</td></tr>
+      <tr><td class="num">1.0</td><td class="num">&minus;1.00</td><td class="num">&minus;1.00</td><td class="num">&minus;1.00</td><td>a1</td></tr>
+      <tr><td class="num">1.5</td><td class="num">&minus;1.50</td><td class="num">&minus;1.20</td><td class="num">&minus;1.50</td><td class="ok"><strong>a1（制限なし）</strong></td></tr>
+      <tr><td class="num">2.0</td><td class="num">&minus;2.00</td><td class="num">&minus;1.20</td><td class="num">&minus;2.00</td><td class="ok"><strong>a1（制限なし）</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">非対称なのが肝です</span>
+    <div class="tw"><table>
+      <thead><tr><th></th><th>上げすぎ（ratio 大）</th><th>下げすぎ（ratio 小）</th></tr></thead>
+      <tbody>
+        <tr><td><b>A &gt; 0</b>（良い行動）</td><td class="ng"><strong>止まる</strong></td><td class="ok">止まらない</td></tr>
+        <tr><td><b>A &lt; 0</b>（悪い行動）</td><td class="ok">止まらない</td><td class="ng"><strong>止まる</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>「行きすぎ」だけを止めて、「戻る」は自由にしています。</strong></p>
+    <p>たとえば <code>A &gt; 0</code> なのに <code>ratio = 0.5</code>（良い行動なのに確率を下げてしまった）という状態からは、
+      <strong>制限なく戻れます</strong>。もし単純にクリップしていたら、
+      そこでも勾配が消えて<strong>間違った状態から抜け出せなくなります</strong>。</p>
+  </div>
+
+  <p class="why"><b><code>min</code> は「悲観的に見る」操作です</b>
+     2 つの候補のうち<strong>小さいほうを採る</strong>ので、
+     <strong>目的関数を控えめに見積もる</strong>ことになります。
+     結果として<strong>「自信のない方向には進まない」</strong>という性質が生まれます。</p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>損失の全体像</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>方策の損失だけでは足りません。
+       <strong>Critic も学習する必要があります</strong>。3 つを足して 1 つの損失にします。</p>
+  </div>
+
+  <div class="code"><pre>loss = policy_loss + vf_coef &times; value_loss - ent_coef &times; entropy
+       ^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^
+       Actor         Critic                   探索を保つ
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>項</th><th>中身</th><th>7-b の指標</th><th>既定の係数</th></tr></thead>
+    <tbody>
+      <tr><td><b>policy_loss</b></td><td><code>-min(a1, a2)</code> の平均</td><td><code>approx_kl</code></td><td>1.0</td></tr>
+      <tr><td><b>value_loss</b></td><td><code>(V - 収益)&sup2;</code> の平均</td><td><code>explained_variance</code></td><td>0.5</td></tr>
+      <tr><td><b>entropy</b></td><td>分布の広がり</td><td><code>entropy_loss</code></td><td>0.0</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>符号に注意してください</b>
+     <code>policy_loss</code> に<strong>マイナスが付く</strong>のは、
+     &sect;04 の <code>min(a1,a2)</code> が<strong>大きくしたい量</strong>だからです。
+     学習は<strong>損失を小さくする</strong>方向に動くので、符号を反転させます。</p>
+  <p class="why"><code>entropy</code> も<strong>大きいほうが良い</strong>（探索が続く）ので、
+     <strong>引き算</strong>で損失に入れます。
+     <strong>7-b で <code>entropy_loss</code> が負の値だった</strong>のはこのためでした（8-a 段階 3）。</p>
+
+  <div class="callout">
+    <span class="k">アドバンテージは正規化します</span>
+    <div class="code"><pre>adv = (adv - adv.mean()) / (adv.std() + 1e-8)</pre></div>
+    <p>論文には目立って書かれていませんが、<strong>実装では必須</strong>とされる処理です。
+      報酬のスケールが変わってもこの正規化で吸収されるので、
+      <strong><code>learning_rate</code> をタスクごとに調整しなくて済みます</strong>。</p>
+    <p><strong>7-c で <code>VecNormalize</code> が効かなかった一因でもあります</strong>——
+      アドバンテージはすでに正規化されているので、
+      報酬を別途正規化しても得るものが少ない。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">detach する場所</span>
+    <p>8-a の最後で触れた話です。<strong>勾配を流したくないもの</strong>に <code>detach</code> を付けます。</p>
+    <div class="tw"><table>
+      <thead><tr><th>量</th><th>detach</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>新しい <code>log_prob</code></td><td class="ng">しない</td><td>ここに勾配を流したい</td></tr>
+        <tr><td>古い <code>log_prob</code></td><td class="ok">する</td><td>過去の値。更新対象ではない</td></tr>
+        <tr><td>アドバンテージ</td><td class="ok">する</td><td>Critic 経由で勾配が回り込むのを防ぐ</td></tr>
+        <tr><td>収益（value の目標）</td><td class="ok">する</td><td>同上</td></tr>
+      </tbody>
+    </table></div>
+    <p>実装では<strong>収集時に <code>torch.no_grad()</code> で囲む</strong>ので、
+      古い値は自動的に切り離されています。
+      <strong>明示的な <code>detach()</code> が要らない書き方</strong>になります。</p>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>部品 4 を作る</strong>ため。これで 5 部品のうち 3 つが揃い、
+      <strong>次回つなげば動きます</strong>。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<code>clip_range</code> が何を止めているかを、<strong>数字で</strong>説明できる。
+      そして <code>min</code> が非対称に働く理由を言える。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。<strong>学習はまだ回しません</strong>——
+      表を作って挙動を確かめるところまでです。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>ratio の表を作る</h3>
+    <p class="why"><b>この段階ですること</b> &sect;02 の表を自分で出します。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>import numpy as np
+
+for d in (-0.5, -0.2, 0.0, 0.2, 0.5):
+    print(f"log_prob差={d:+.1f} -> ratio={np.exp(d):.4f}")
+
+print()
+print("ratio=1.2 になる log_prob 差:", round(np.log(1.2), 4))
+print("ratio=0.8 になる log_prob 差:", round(np.log(0.8), 4))
+</pre></div>
+    <p><b>確認方法</b> <code>0.1823</code> と <code>-0.2231</code> が出れば OK。</p>
+    <p class="why"><b>7-b の実測と比べてください</b>
+      あのとき <code>approx_kl</code> は <code>0.002〜0.008</code> でした。
+      <strong>クリップが働く <code>0.18</code> にはまったく届いていません。</strong>
+      <code>clip_fraction</code> が <code>0.093</code> までしか上がらなかったのも同じ理由です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>クリップ目的関数を書く</h3>
+    <p class="why"><b>この段階ですること</b> &sect;03 の 3 行をコードにします。
+      <strong>今回の本題はここだけ</strong>です。</p>
+    <div class="code"><pre>import torch
+
+
+def policy_loss(log_prob_new, log_prob_old, adv, clip=0.2):
+  ratio = (log_prob_new - log_prob_old).exp()
+  a1 = ratio * adv
+  a2 = torch.clamp(ratio, 1 - clip, 1 + clip) * adv
+  return ???                            <span class="cmt"># ← ここだけ考える</span>
+</pre></div>
+    <p>&sect;03 で「目的 = <code>min(a1, a2)</code>」と決めました。
+      <strong>ただし損失は「小さくしたい量」</strong>です（&sect;05 の符号の話）。
+      バッチ全体で 1 つの数にする必要もあります。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  return -torch.min(a1, a2).mean()
+</pre></div>
+      <p class="why"><b>3 つの操作が入っています</b>
+        <code>torch.min(a1, a2)</code> で要素ごとに小さいほうを採り、
+        <code>.mean()</code> でバッチ全体を 1 つの数にし、
+        <code>-</code> で<strong>「大きくしたい」を「小さくしたい」に反転</strong>します。</p>
+      <p class="why"><b><code>torch.min</code> は 2 引数だと要素ごとの比較です</b>
+        <code>torch.min(x)</code>（1 引数）は<strong>全体の最小値</strong>を返しますが、
+        <code>torch.min(a, b)</code>（2 引数）は<strong>同じ位置どうしを比べて小さいほう</strong>を返します。
+        <strong>ここで欲しいのは後者</strong>です。</p>
+      <p class="why"><b><code>.mean()</code> を忘れると</b>
+        損失がスカラーにならず <code>backward()</code> で落ちます。
+        <strong>これはエラーが出るので気づけます</strong>——
+        今回は珍しく親切な失敗です。</p>
+    </div></details>
+    <p><b>確認方法</b> &sect;04 の表を再現します。</p>
+    <div class="code"><pre>for A in (1.0, -1.0):
+    print(f"A={A:+.0f}")
+    for r in (0.5, 0.8, 1.0, 1.2, 1.5, 2.0):
+        lp_old = torch.zeros(1)
+        lp_new = torch.full((1,), float(np.log(r)))
+        loss = policy_loss(lp_new, lp_old, torch.full((1,), A))
+        print(f"  ratio={r:<5} 目的={-loss.item():+.2f}")
+</pre></div>
+    <div class="code"><pre>A=+1
+  ratio=0.5   目的=+0.50
+  ratio=0.8   目的=+0.80
+  ratio=1.0   目的=+1.00
+  ratio=1.2   目的=+1.20
+  ratio=1.5   目的=+1.20     <span class="cmt"># 頭打ち</span>
+  ratio=2.0   目的=+1.20     <span class="cmt"># 頭打ち</span>
+A=-1
+  ratio=0.5   目的=-0.80     <span class="cmt"># 頭打ち</span>
+  ratio=0.8   目的=-0.80
+  ratio=1.0   目的=-1.00
+  ratio=1.2   目的=-1.20
+  ratio=1.5   目的=-1.50     <span class="cmt"># 制限なし</span>
+  ratio=2.0   目的=-2.00     <span class="cmt"># 制限なし</span>
+</pre></div>
+    <p class="why"><b>非対称になっていることを確認してください</b>
+      <code>A=+1</code> では<strong>上側</strong>が、<code>A=-1</code> では<strong>下側</strong>が頭打ちです。
+      &sect;04 の「行きすぎだけ止めて、戻るのは自由」がそのまま出ています。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>勾配が消えることを確かめる</h3>
+    <p class="why"><b>この段階ですること</b> 「頭打ち」が<strong>本当に学習を止めている</strong>ことを、
+      勾配の値で確かめます。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>for r in (1.0, 1.2, 1.5):
+    lp_old = torch.zeros(1)
+    lp_new = torch.full((1,), float(np.log(r)), requires_grad=True)
+    loss = policy_loss(lp_new, lp_old, torch.ones(1))
+    loss.backward()
+    print(f"ratio={r:<5} 勾配={lp_new.grad.item():+.4f}")
+</pre></div>
+    <p><b>確認方法</b> <code>ratio=1.5</code> で勾配が <strong>0.0000</strong> になります。</p>
+    <div class="code"><pre>ratio=1.0   勾配=-1.0000
+ratio=1.2   勾配=-0.6000     <span class="cmt"># 境界上。torch.min がクリップ側を選ぶ</span>
+ratio=1.5   勾配=+0.0000     <span class="cmt"># クリップ領域なので学習が止まる</span>
+</pre></div>
+    <p class="why"><b><code>ratio=1.2</code> がちょうど半分なのはなぜか</b>
+      <code>ratio=1.2</code> は<strong>クリップの境界ちょうど</strong>です。
+      <code>a1</code> と <code>a2</code> の値が等しいので、
+      <strong><code>torch.min</code> はどちらを選んでもよい</strong>状態になります。
+      PyTorch は同値のとき<strong>勾配を両者で分け合う</strong>ので、半分の <code>-0.6</code> になります。</p>
+    <p class="why"><strong>実害はありません。</strong>
+      境界ちょうどの値が出る確率はごくわずかで、
+      <strong>大事なのは「境界を越えたら 0 になる」こと</strong>です。</p>
+    <p class="why"><b>「勾配ゼロ」が PPO の制限のかけ方です</b>
+      値を無理やり押し戻すのではなく、
+      <strong>「そっちへ動かしても損失が減らない」という状態を作る</strong>だけ。
+      <strong>結果として更新が自然に止まります。</strong></p>
+    <p class="why"><b><code>logstd_explained.html</code> と同じ発想です</b>
+      あちらは「負にならない形に変換する」ことで制約を満たしました。
+      こちらは「行きすぎると報われない形にする」ことで制約を満たしています。
+      <strong>どちらも「制約を後から押し付けない」</strong>という共通の設計です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>PPO が制限をかけるのは、<strong>同じデータを 10 回使い回す</strong>から。
+          方策が離れるとデータが古くなる（5-f の on-policy）</li>
+      <li><b>ratio</b> = <code>exp(log_prob_new - log_prob_old)</code>。
+          <strong>1 が「変化なし」</strong></li>
+      <li><code>clip_range=0.2</code> は<strong>「選ばれやすさを &plusmn;20% までしか変えさせない」</strong></li>
+      <li><b>min を取る</b>と<strong>非対称</strong>になる——
+          <strong>行きすぎだけ止まり、戻るのは自由</strong></li>
+      <li>制限のかけ方は<strong>「勾配をゼロにする」</strong>。押し戻すのではなく、
+          そっちへ動かす理由を消す</li>
+      <li>損失は 3 つの和。<code>policy_loss + 0.5&times;value_loss - 0.0&times;entropy</code></li>
+      <li><strong>アドバンテージの正規化は必須。</strong>
+          7-c で <code>VecNormalize</code> が効かなかった一因でもある</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="q1"><span><code>ratio=1.2</code> が <code>log_prob</code> 差 <code>0.1823</code> に対応することを確認した</span></label>
+    <label><input type="checkbox" data-ck="q2"><span><code>policy_loss()</code> を書き、&sect;04 の表を再現した</span></label>
+    <label><input type="checkbox" data-ck="q3"><span><code>A&gt;0</code> と <code>A&lt;0</code> で頭打ちの向きが逆になることを確かめた</span></label>
+    <label><input type="checkbox" data-ck="q4"><span><code>ratio=1.5</code> で勾配が 0 になることを確かめた</span></label>
+    <label><input type="checkbox" data-ck="q5"><span>なぜ <code>min</code> なのかを、<strong>間違った状態から戻る</strong>話で説明できる</span></label>
+    <label><input type="checkbox" data-ck="q6"><span>PPO の <b>P</b>（Proximal）が何を指すか言える</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（8-d）でやること</span>
+    <p><strong>5 部品を全部つないで動かします。</strong>
+       残るのは部品 2（データ収集）と 5（学習ループ）で、どちらも新しい概念はありません。</p>
+    <p>そして<strong>実際に振り子を立たせます</strong>。
+       SB3 の結果（&minus;254 / 30 万ステップ）と比べて、
+       <strong>自分で書いた PPO がどこまで行くか</strong>を見ます。</p>
+    <p>先に考えておいてください——
+       <strong>7-a では環境を 4 つ並べました（<code>n_envs=4</code>）。</strong>
+       自作実装では環境 1 つで書きます。
+       <strong>同じ総ステップ数なら、結果は同じになるでしょうか。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 8-c</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step08c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

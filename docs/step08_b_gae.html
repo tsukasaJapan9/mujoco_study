@@ -1,0 +1,893 @@
+<title>GAE — アドバンテージの作り方</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">どこまで実際の報酬を使うか</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">GAE — 全部を混ぜる</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">λ で何が変わるか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">エピソードの切れ目</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 8-b</span>
+  <h1>GAE — アドバンテージの作り方</h1>
+  <p>「1 歩先まで見る」と「最後まで見る」の間を、
+     <strong>つまみ 1 つで連続的に選ぶ</strong>。それが GAE。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 8 の 2/5</span>
+    <span class="chip">algos/ppo_min.py に追記</span>
+    <span class="chip">前提: 8-a</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>アドバンテージの 1 歩先推定は <code>A &asymp; r + &gamma;V(s') &minus; V(s)</code>。
+          <strong>5-e の TD 誤差そのもの</strong></li>
+      <li>ただし<strong>実際の報酬を 1 個しか使っていない</strong>。残りは全部 <code>V</code> の予想頼み</li>
+      <li>PPO の 5 部品のうち、今回は<strong>部品 3（アドバンテージ計算）</strong></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 何歩先まで実際の報酬を使うべきか。多いほど良いのか？</p>
+    <p><b>2.</b> <b>&lambda;</b> というつまみは、何を調整しているのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答えから始めて、<strong>「n 歩先まで使う」という考え方</strong>を作ります。
+     そのあと <strong>n を 1 つに決めない</strong>という発想で GAE に到達します。
+     <strong>小さな具体例の数字を最後まで追いかけます。</strong></p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題は「2 歩先まで使うとどうなるか」「最後まで使うと何と同じか」でした。
+       <strong>どちらも、もう知っているものに行き着きます。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p><code>A &asymp; r + &gamma;V(s') &minus; V(s)</code> は 1 歩先まで実際の報酬を使いました。
+       <strong>2 歩先まで使うとどういう式になるでしょうか。</strong>
+       そして<strong>最後まで使ったら、それは何と同じになるでしょうか。</strong></p>
+  </div>
+
+  <h3>答え 1: 2 歩先まで使う</h3>
+  <p>1 歩先の式で <code>V(s')</code> を使っていた部分を、<strong>もう 1 歩ぶん実際の値で置き換えます</strong>。</p>
+  <div class="code"><pre>1 歩: A = r&#8321; + &gamma;V(s&#8321;)                        - V(s&#8320;)
+2 歩: A = r&#8321; + &gamma;r&#8322; + &gamma;&sup2;V(s&#8322;)                - V(s&#8320;)
+3 歩: A = r&#8321; + &gamma;r&#8322; + &gamma;&sup2;r&#8323; + &gamma;&sup3;V(s&#8323;)        - V(s&#8320;)
+</pre></div>
+  <p class="why"><b>実際の報酬が 1 個ずつ増え、<code>V</code> が後ろにずれていきます</b>
+     <strong>予想に頼る割合が減っていく</strong>わけです。</p>
+
+  <h3>答え 2: 最後まで使う</h3>
+  <div class="code"><pre>最後まで: A = r&#8321; + &gamma;r&#8322; + &gamma;&sup2;r&#8323; + ... + &gamma;&#8319;&#8315;&sup1;r&#8345;  - V(s&#8320;)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              これは 5-b の収益 G そのもの
+</pre></div>
+  <p class="why"><b><code>V</code> が完全に消えます</b>
+     残るのは <code>G &minus; V(s&#8320;)</code>——<strong>実際にもらった収益と、予想の差</strong>。
+     <strong>5-c でモンテカルロと呼んだ測り方</strong>です。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>何歩先まで使うか</th><th>予想（V）への依存</th><th>5-c の言葉では</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1 歩</strong></td><td class="ng">強い。<code>V</code> が外れると全部外れる</td><td>TD</td></tr>
+      <tr><td>n 歩</td><td>中間</td><td>——</td></tr>
+      <tr><td><strong>最後まで</strong></td><td class="ok">なし。実測だけ</td><td><strong>モンテカルロ</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>どこまで実際の報酬を使うか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「最後まで使えばいい」と思えますが、<strong>そうではありません</strong>。
+       5-c と 5-d で見たトレードオフが、ここでも出てきます。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>1 歩だけ使う</th><th>最後まで使う</th></tr></thead>
+    <tbody>
+      <tr><td>正しさ（偏り）</td><td class="ng"><strong><code>V</code> が外れると偏る</strong></td><td class="ok">偏らない</td></tr>
+      <tr><td>ばらつき（分散）</td><td class="ok"><strong>小さい</strong></td><td class="ng"><strong>大きい</strong></td></tr>
+      <tr><td>いつ使えるか</td><td class="ok">1 歩ごと</td><td class="ng">エピソードが終わってから</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ばらつきが大きいのはなぜか</b>
+     最後まで使うと、<strong>途中で起きた偶然が全部混ざります</strong>。
+     5-c でモンテカルロの誤差を測ったとき、
+     <strong>試行回数を 1000 倍にしても誤差が 1/80 にしかならなかった</strong>のを思い出してください。</p>
+  <p class="why"><b>偏るのはなぜか</b>
+     1 歩しか使わないと、残りは全部 <code>V</code> の予想です。
+     <strong>学習途中の <code>V</code> は外れている</strong>（8-a の実測トレース）ので、
+     その誤差をまるごと引き継ぎます。</p>
+
+  <div class="callout">
+    <span class="k">これは 5-c と 5-d の対立の再演です</span>
+    <p><b>モンテカルロ</b>（歩いて測る、正確だが遅い・ぶれる）と
+       <b>ベルマン</b>（予想を使う、速いが予想次第）——
+       <strong>Step 5 で 2 本の教材をかけて対比したもの</strong>が、
+       ここでは<strong>連続的に選べるつまみ</strong>になります。</p>
+  </div>
+
+  <h3>ではどの n を選ぶのか</h3>
+  <p><strong>選びません。</strong>GAE の発想はここです——
+     <strong>全部の n を計算して、重みを付けて混ぜます。</strong></p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>GAE — 全部を混ぜる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><b>GAE</b>（Generalized Advantage Estimation）の式を出します。
+       <strong>見た目より単純</strong>で、実装は 5-b で書いた <code>G()</code> とほぼ同じ形です。</p>
+  </div>
+
+  <p>まず記号を 1 つ決めます。<strong>1 歩ぶんの TD 誤差</strong>を <code>&delta;</code>（デルタ）と書きます。</p>
+  <div class="code"><pre>&delta;&#8348; = r&#8348; + &gamma;V(s&#8348;&#8330;&#8321;) - V(s&#8348;)</pre></div>
+
+  <p>すると GAE はこう書けます。</p>
+  <div class="code"><pre>A&#8348; = &delta;&#8348; + (&gamma;&lambda;)&delta;&#8348;&#8330;&#8321; + (&gamma;&lambda;)&sup2;&delta;&#8348;&#8330;&#8322; + (&gamma;&lambda;)&sup3;&delta;&#8348;&#8330;&#8323; + ...</pre></div>
+
+  <p class="why"><b>この形、見覚えがあるはずです</b>
+     5-b の収益 <code>G = r&#8321; + &gamma;r&#8322; + &gamma;&sup2;r&#8323; + ...</code> と<strong>同じ形</strong>です。
+     違うのは<strong>足すものが報酬ではなく <code>&delta;</code></strong>、
+     <strong>割引が <code>&gamma;</code> ではなく <code>&gamma;&lambda;</code></strong> という点だけ。</p>
+
+  <div class="callout tip">
+    <span class="k">だから実装も 5-b と同じです</span>
+    <p>5-b で「後ろから畳む」書き方を学びました。GAE もまったく同じです。</p>
+    <div class="code"><pre><span class="cmt"># 5-b の収益</span>
+g = 0.0
+for r in reversed(rewards):
+    g = r + gamma * g
+
+<span class="cmt"># GAE のアドバンテージ</span>
+a = 0.0
+for delta in reversed(deltas):
+    a = delta + gamma * lam * a
+</pre></div>
+    <p><strong>掛ける数が <code>gamma</code> から <code>gamma * lam</code> に変わっただけ</strong>です。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>&lambda; で何が変わるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>小さな例で <strong>&lambda; を 0 から 1 まで動かして</strong>、
+       &sect;02 の両端が本当に出てくるかを数字で確かめます。</p>
+  </div>
+
+  <h3>例: 5 ステップの軌跡</h3>
+  <p>最後にゴールして <code>r = 1.0</code> をもらう場面です（<code>&gamma; = 0.99</code>）。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">t</th><th class="num">r</th><th class="num">V(s)</th><th class="num">V(次)</th><th class="num">&delta;</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td class="num">0.0</td><td class="num">0.50</td><td class="num">0.55</td><td class="num">+0.0445</td></tr>
+      <tr><td class="num">1</td><td class="num">0.0</td><td class="num">0.55</td><td class="num">0.62</td><td class="num">+0.0638</td></tr>
+      <tr><td class="num">2</td><td class="num">0.0</td><td class="num">0.62</td><td class="num">0.70</td><td class="num">+0.0730</td></tr>
+      <tr><td class="num">3</td><td class="num">0.0</td><td class="num">0.70</td><td class="num">0.80</td><td class="num">+0.0920</td></tr>
+      <tr><td class="num">4</td><td class="num"><strong>1.0</strong></td><td class="num">0.80</td><td class="num">0.00</td><td class="num"><strong>+0.2000</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><code>V</code> は少しずつ過小評価している設定です（<code>&delta;</code> が全部正）。
+     最後は終端なので <code>V(次) = 0</code>（6-c の話）。</p>
+
+  <h3>&lambda; を振った結果（実測）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&lambda;</th><th class="num">A[0]</th><th class="num">A[1]</th><th class="num">A[2]</th><th class="num">A[3]</th><th class="num">A[4]</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td class="num"><strong>0.0</strong></td><td class="num">0.0445</td><td class="num">0.0638</td><td class="num">0.0730</td><td class="num">0.0920</td><td class="num">0.2000</td><td><strong>1 歩先だけ</strong></td></tr>
+      <tr><td class="num">0.5</td><td class="num">0.1171</td><td class="num">0.1467</td><td class="num">0.1675</td><td class="num">0.1910</td><td class="num">0.2000</td><td>中間</td></tr>
+      <tr><td class="num"><strong>0.95</strong></td><td class="num">0.4021</td><td class="num">0.3802</td><td class="num">0.3364</td><td class="num">0.2801</td><td class="num">0.2000</td><td><strong>既定値</strong></td></tr>
+      <tr><td class="num"><strong>1.0</strong></td><td class="num">0.4606</td><td class="num">0.4203</td><td class="num">0.3601</td><td class="num">0.2900</td><td class="num">0.2000</td><td><strong>最後まで</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>両端が &sect;02 のものと一致します</h3>
+  <div class="code"><pre><span class="cmt"># lambda = 0 は TD 誤差そのもの</span>
+A = [0.0445, 0.0638, 0.0730, 0.0920, 0.2000]
+&delta; = [0.0445, 0.0638, 0.0730, 0.0920, 0.2000]    <span class="cmt"># 完全に一致</span>
+
+<span class="cmt"># lambda = 1 はモンテカルロ（実際の収益 - V）</span>
+実際の収益 G = [0.9606, 0.9703, 0.9801, 0.9900, 1.0000]
+G - V        = [0.4606, 0.4203, 0.3601, 0.2900, 0.2000]
+lambda=1 の A = [0.4606, 0.4203, 0.3601, 0.2900, 0.2000]    <span class="cmt"># 完全に一致</span>
+</pre></div>
+
+  <p class="why"><b>&lambda; は「両端をつなぐつまみ」です</b>
+     <code>0</code> なら TD、<code>1</code> ならモンテカルロ、<strong>その間は連続的に混ざります</strong>。
+     &sect;02 で「どの n を選ぶか」と悩んだ問題が、<strong>選ばなくてよくなりました</strong>。</p>
+
+  <div class="callout">
+    <span class="k">A[0] の変化に注目してください</span>
+    <p><code>&lambda;=0</code> では <code>0.0445</code>、<code>&lambda;=1</code> では <code>0.4606</code>——<strong>10 倍違います</strong>。</p>
+    <p>t=0 の時点では<strong>ゴールの情報がまだ届いていません</strong>。
+      <code>&lambda;=0</code> だと「次の <code>V</code> が少し高い」という弱い情報しか使えない。
+      <code>&lambda;=1</code> なら<strong>5 歩先のゴールまで見通せます</strong>。</p>
+    <p>逆に <code>A[4]</code> はどの <code>&lambda;</code> でも <code>0.2000</code> です——
+      <strong>そこから先が無いので、混ぜるものがない</strong>から。</p>
+  </div>
+
+  <h3>実務での選び方</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&lambda;</th><th>性格</th><th>使いどころ</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.9</td><td>TD 寄り。安定だが情報が遅い</td><td><code>V</code> が信用できるとき</td></tr>
+      <tr><td class="num"><strong>0.95</strong></td><td><strong>既定値</strong></td><td>まずここから</td></tr>
+      <tr><td class="num">0.99</td><td>モンテカルロ寄り。ばらつく</td><td>報酬が疎いとき</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>&gamma; とは役割が違います</b>
+     <code>&gamma;</code> は<strong>何を最適化するか</strong>（5-b の実効地平）を変えますが、
+     <code>&lambda;</code> は<strong>それをどう推定するか</strong>だけを変えます。
+     <strong>&lambda; を変えても解きたい問題は変わりません。</strong></p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>エピソードの切れ目</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>実装で<strong>いちばん間違えやすい箇所</strong>です。
+       6-c の <code>terminated</code> / <code>truncated</code> がここで効いてきます。</p>
+  </div>
+
+  <p>GAE は<strong>後ろから畳んでいく</strong>ので、エピソードの切れ目で止めないと
+     <strong>次のエピソードの情報が漏れ込みます</strong>。</p>
+
+  <div class="code"><pre>a = 0.0
+for t in reversed(range(T)):
+    delta = r[t] + gamma * next_value[t] - V[t]
+    a = delta + gamma * lam * (1 - end[t]) * a     <span class="cmt"># end なら畳み込みを打ち切る</span>
+    adv[t] = a
+</pre></div>
+
+  <p><code>end[t]</code> は<strong>終端でも打ち切りでも 1</strong> にします。
+     <strong>どちらもそこでエピソードが切れている</strong>ので、
+     次のエピソードの <code>&delta;</code> を混ぜてはいけません。</p>
+
+  <div class="callout">
+    <span class="k">ところが next_value の扱いは 2 つで違います</span>
+    <div class="tw"><table>
+      <thead><tr><th></th><th class="num">next_value</th><th class="num">end</th></tr></thead>
+      <tbody>
+        <tr><td><b>terminated</b>（タスクとして終了）</td><td class="num"><strong>0</strong></td><td class="num">1</td></tr>
+        <tr><td><b>truncated</b>（打ち切り）</td><td class="num"><strong>V(最後の観測)</strong></td><td class="num">1</td></tr>
+        <tr><td>継続中</td><td class="num">V(次の観測)</td><td class="num">0</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>6-c で「打ち切りでは未来の価値を足す」と学んだのがこれです。</strong>
+      畳み込みは止めるが、<strong>その 1 歩ぶんの未来の価値は足す</strong>——
+      2 つを別々に扱う必要があります。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">打ち切り時の観測を取っておく必要があります</span>
+    <p>打ち切ると <code>env.reset()</code> して新しい観測に切り替わります。
+      <strong>その前に、打ち切り時点の観測で <code>V</code> を計算しておく</strong>必要があります。</p>
+    <p><strong>ここを忘れると、次のエピソードの最初の状態の価値を使ってしまいます。</strong>
+      エラーは出ません。<strong>アドバンテージが静かに狂うだけ</strong>です。</p>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>部品 3 を作る</strong>ため。20 行ほどですが、
+      <strong>PPO でいちばん間違えやすい箇所</strong>でもあります。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——&lambda; を変えたときの挙動を、<strong>自分で出した数字で</strong>説明できる
+      （ロードマップの完了条件のひとつ）。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 1 の 1 箇所だけ</strong>です。
+      <code>algos/ppo_min.py</code> に関数を 1 つ足します。<strong>学習はまだ回しません。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>GAE を書く</h3>
+    <p class="why"><b>この段階ですること</b> &sect;03 の「後ろから畳む」をコードにします。
+      <strong>5-b の <code>G()</code> と見比べながら</strong>書いてください。</p>
+    <div class="code"><pre>import numpy as np
+
+
+def gae(rewards, values, next_values, ends, gamma=0.99, lam=0.95):
+  """後ろから畳んでアドバンテージを作る
+
+  next_values[t] : そのステップの「次の状態の価値」
+                   終端なら 0、打ち切りなら打ち切り時点の観測の価値
+  ends[t]        : エピソードがそこで切れたか（終端でも打ち切りでも 1）
+  """
+  T = len(rewards)
+  adv = np.zeros(T, dtype=np.float32)
+  running = 0.0
+  for t in reversed(range(T)):
+    delta = rewards[t] + gamma * next_values[t] - values[t]
+    running = ???                       <span class="cmt"># ← ここだけ考える</span>
+    adv[t] = running
+  return adv
+</pre></div>
+    <p>&sect;03 の畳み込みに、&sect;05 の「エピソードの切れ目で止める」を足した 1 行です。
+      使える変数は <code>delta</code>, <code>gamma</code>, <code>lam</code>, <code>ends[t]</code>, <code>running</code>。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    running = delta + gamma * lam * (1.0 - ends[t]) * running
+</pre></div>
+      <p class="why"><b>3 つの部品でできています</b>
+        <code>delta</code>（今のステップの TD 誤差）、
+        <code>gamma * lam</code>（&sect;03 の割引）、
+        <code>(1.0 - ends[t])</code>（切れ目なら 0 を掛けて畳み込みを断つ）。</p>
+      <p class="why"><b>5-b の <code>G()</code> と並べると</b></p>
+      <div class="code"><pre>g = r + gamma * g                              <span class="cmt"># 5-b の収益</span>
+a = delta + gamma * lam * (1 - end) * a        <span class="cmt"># GAE</span>
+</pre></div>
+      <p class="why"><strong>足すものが <code>r</code> から <code>delta</code> に、
+        割引が <code>gamma</code> から <code>gamma*lam</code> に変わり、
+        切れ目を断つ項が増えただけ</strong>です。</p>
+    </div></details>
+    <p><b>確認方法</b> &sect;04 の例で検算します。</p>
+    <div class="code"><pre>r  = np.array([0.0, 0.0, 0.0, 0.0, 1.0])
+V  = np.array([0.50, 0.55, 0.62, 0.70, 0.80])
+NV = np.array([0.55, 0.62, 0.70, 0.80, 0.00])
+E  = np.array([0.0, 0.0, 0.0, 0.0, 1.0])
+
+for lam in (0.0, 0.5, 0.95, 1.0):
+    print(f"lam={lam:<5}", np.round(gae(r, V, NV, E, 0.99, lam), 4))
+</pre></div>
+    <div class="code"><pre>lam=0.0   [0.0445 0.0638 0.073  0.092  0.2   ]
+lam=0.5   [0.1171 0.1467 0.1675 0.191  0.2   ]
+lam=0.95  [0.4021 0.3802 0.3364 0.2801 0.2   ]
+lam=1.0   [0.4606 0.4203 0.3601 0.29   0.2   ]
+</pre></div>
+    <p class="why"><b>&sect;04 の表と完全に一致すれば成功です</b></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>両端が既知のものと一致することを確かめる</h3>
+    <p class="why"><b>この段階ですること</b> <code>&lambda;=0</code> と <code>&lambda;=1</code> が、
+      それぞれ TD 誤差とモンテカルロに一致することを検算します。
+      <strong>これが GAE を理解した証拠になります。</strong></p>
+    <div class="code"><pre><span class="cmt"># lambda=0 は TD 誤差そのもの</span>
+delta = r + 0.99 * NV - V
+print("delta      :", np.round(delta, 4))
+print("gae(lam=0) :", np.round(gae(r, V, NV, E, 0.99, 0.0), 4))
+
+<span class="cmt"># lambda=1 はモンテカルロ（実際の収益 - V）</span>
+G = np.zeros(5); acc = 0.0
+for t in reversed(range(5)):
+    acc = r[t] + 0.99 * acc
+    G[t] = acc
+print("G - V      :", np.round(G - V, 4))
+print("gae(lam=1) :", np.round(gae(r, V, NV, E, 0.99, 1.0), 4))
+</pre></div>
+    <p><b>確認方法</b> 上下 2 組がそれぞれ一致します。</p>
+    <div class="code"><pre>delta      : [0.0445 0.0638 0.073  0.092  0.2   ]
+gae(lam=0) : [0.0445 0.0638 0.073  0.092  0.2   ]
+
+G - V      : [0.4606 0.4203 0.3601 0.29   0.2   ]
+gae(lam=1) : [0.4606 0.4203 0.3601 0.29   0.2   ]
+</pre></div>
+    <p class="why"><b>5-b で書いた <code>G()</code> がそのまま使えます</b>
+      収益の計算は 5-b のものと同一です。
+      <strong>Step 5 で書いたコードが Step 8 で再利用できる</strong>——
+      同じ概念だから当然ですが、確かめておくと安心できます。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>エピソードの切れ目で止まることを確かめる</h3>
+    <p class="why"><b>この段階ですること</b> &sect;05 の話を検算します。
+      <strong>切れ目を無視するとどうなるか</strong>を見ておきます。</p>
+    <div class="code"><pre><span class="cmt"># 3 ステップ目でエピソードが切れる場合</span>
+E2 = np.array([0.0, 0.0, 1.0, 0.0, 1.0])
+
+print("切れ目あり:", np.round(gae(r, V, NV, E2, 0.99, 0.95), 4))
+print("切れ目なし:", np.round(gae(r, V, NV, np.zeros(5), 0.99, 0.95), 4))
+</pre></div>
+    <p class="why"><b>先に予想してください</b>
+      <code>t=0,1,2</code> の値はどちらが大きくなるでしょうか。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <p class="why"><strong>切れ目なしのほうが大きくなります。</strong>
+        <code>t=2</code> で切れているのに畳み込みを続けると、
+        <strong>次のエピソードの <code>&delta;</code> が混ざって上乗せされる</strong>からです。</p>
+      <p class="why"><b>これが「静かに壊れる」パターンです</b>
+        アドバンテージが実際より大きく見積もられ、
+        <strong>方策が「この行動は良かった」と誤って学習します</strong>。
+        エラーは出ません。<strong>学習が少し下手になるだけ</strong>です。</p>
+      <p class="why"><b>実際のデータではもっと深刻です</b>
+        今回は 5 ステップの例なので影響が小さく見えますが、
+        実際は <code>n_steps=2048</code> の中に<strong>エピソードが 4 個ほど入ります</strong>。
+        <strong>切れ目を無視すると、全部が繋がった 1 本の軌跡として扱われます。</strong></p>
+    </div></details>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>アドバンテージは<strong>何歩先まで実際の報酬を使うか</strong>で作り方が変わる。
+          1 歩なら TD、最後までならモンテカルロ</li>
+      <li><strong>どちらにも欠点がある。</strong>
+          1 歩は <code>V</code> の誤差を引き継ぎ、最後までは<strong>ばらつきが大きい</strong></li>
+      <li><b>GAE</b> は<strong>全部を重み付きで混ぜる</strong>。重みが <code>(&gamma;&lambda;)</code> の累乗</li>
+      <li>実装は<strong>5-b の <code>G()</code> とほぼ同じ</strong>。
+          足すものが <code>&delta;</code>、割引が <code>&gamma;&lambda;</code> になっただけ</li>
+      <li><b>&lambda;=0</b> は TD 誤差そのもの、<b>&lambda;=1</b> はモンテカルロ（実測で確認）</li>
+      <li><strong>&gamma; と &lambda; は役割が違う。</strong>
+          &gamma; は<strong>何を最適化するか</strong>、&lambda; は<strong>それをどう推定するか</strong></li>
+      <li>エピソードの切れ目で<strong>畳み込みを断つ</strong>。
+          ただし<strong>打ち切りでは未来の価値は足す</strong>（6-c）</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="p1"><span><code>gae()</code> を書き、&sect;04 の 4 行を再現した</span></label>
+    <label><input type="checkbox" data-ck="p2"><span><code>&lambda;=0</code> が TD 誤差に一致することを確かめた</span></label>
+    <label><input type="checkbox" data-ck="p3"><span><code>&lambda;=1</code> がモンテカルロに一致することを確かめた</span></label>
+    <label><input type="checkbox" data-ck="p4"><span>切れ目を無視すると値が大きくなることを確かめた</span></label>
+    <label><input type="checkbox" data-ck="p5"><span><code>&gamma;</code> と <code>&lambda;</code> の役割の違いを説明できる</span></label>
+    <label><input type="checkbox" data-ck="p6"><span><code>terminated</code> と <code>truncated</code> で <code>next_value</code> の扱いが違う理由を説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（8-c）でやること</span>
+    <p>部品 4——<strong>損失の計算</strong>です。
+       8-a で「本当に新しいのは 4 番だけ」と書いた、その部分に到達します。</p>
+    <p>アドバンテージができたので、あとは<strong>「良かった行動の確率を上げる」</strong>だけ。
+       ただし<strong>上げすぎると壊れます</strong>——そこを防ぐのが
+       <b>クリップ目的関数</b>で、PPO という名前の由来でもあります。</p>
+    <p>先に考えておいてください——
+       <strong>アドバンテージが大きい行動の確率を、そのまま大きく上げてはいけないのはなぜでしょうか。</strong>
+       5-f で「PPO は on-policy」と学んだことを思い出してください。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 8-b</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step08b-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

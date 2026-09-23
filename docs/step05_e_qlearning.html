@@ -398,14 +398,14 @@ s'     着いた場所
      <strong>ベルマン方程式をこの 4 つだけで当てはめられないか</strong>——それが今回の課題です。</p>
 
   <p>幸い、ベルマン方程式の右辺を見ると<strong>ほとんど揃っています</strong>。</p>
-  <div class="code"><pre>Q(s,a) = r + &gamma; &times; max Q(s', a')
+  <div class="code"><pre>Q(s,a) = r + &gamma; &times; max_{a'} Q(s', a')
          ^        ^          ^^
          |        |          これは表を引けば分かる
          |        いま着いた場所 s' がそれ
          いまもらった報酬がそれ
 </pre></div>
   <p class="why"><b><code>max</code> が残っているのがポイントです</b>
-     <code>max Q(s', a')</code> は<strong>「着いた場所での 4 方向の値を見比べる」</strong>だけで、
+     <code>max<sub>a'</sub> Q(s', a')</code> は<strong>「着いた場所での 4 方向の値を見比べる」</strong>だけで、
      <strong>実際にそこで 4 方向を試す必要はありません</strong>。表を引くだけ。
      つまり<strong>1 歩あるいた情報だけで右辺が計算できます</strong>。</p>
 </section>
@@ -437,7 +437,7 @@ s'     着いた場所
      それをそのまま代入すると、表がぶれに振り回されます。</p>
 
   <h3>理由 2：右辺の <code>Q</code> 自体がまだ間違っている</h3>
-  <p>更新に使う <code>max Q(s', a')</code> は<strong>学習途中の表</strong>から引いた値です。
+  <p>更新に使う <code>max<sub>a'</sub> Q(s', a')</code> は<strong>学習途中の表</strong>から引いた値です。
      最初は全部 0。<strong>間違った値を根拠に、全力で書き換えてしまう</strong>ことになります。</p>
 
   <h3>対処：少しだけ近づける</h3>
@@ -493,7 +493,7 @@ s'     着いた場所
   <p>&sect;01 で「1 歩あるけば右辺が計算できる」と分かりました。
      &sect;02 で「いきなり代入せず少しだけ近づける」と決めました。合わせるとこうなります。</p>
 
-  <div class="code"><pre>target = r + &gamma; &times; max Q(s', a')          <span class="cmt"># こうあるべき値（1 サンプルによる推定）</span>
+  <div class="code"><pre>target = r + &gamma; &times; max_{a'} Q(s', a')          <span class="cmt"># こうあるべき値（1 サンプルによる推定）</span>
 Q(s,a) = Q(s,a) + &alpha; &times; (target - Q(s,a))  <span class="cmt"># そこへ少しだけ近づける</span>
 </pre></div>
 
@@ -800,7 +800,7 @@ print("ゴールした回数:", sum(1 for L in lengths0 if L &lt; 500))
   <div class="recap">
     <span class="k">今回で分かったこと</span>
     <ol>
-      <li><b>Q 学習</b>は 2 行。<code>target = r + &gamma; max Q(s',a')</code> と
+      <li><b>Q 学習</b>は 2 行。<code>target = r + &gamma; max<sub>a'</sub> Q(s',a')</code> と
           <code>Q(s,a) += &alpha;(target &minus; Q(s,a))</code>。<strong>新しい発想はひとつも無い</strong></li>
       <li>1 行目は<strong>ベルマン方程式を 1 サンプルで置き換えたもの</strong>（壁 A への対処）</li>
       <li>2 行目の <b>&alpha;</b> は<strong>「1 回の経験をどれだけ信じるか」</strong>。

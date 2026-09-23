@@ -1,0 +1,889 @@
+<title>シードと評価プロトコル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">何シード回せばいいのか</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">評価プロトコルを固める</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">古典制御と比べる</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">Step 7 のまとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 7-d</span>
+  <h1>シードと評価プロトコル</h1>
+  <p>7-c で出した「56 ポイントの改善」は、実は<strong>何も証明していません</strong>。
+     強化学習の実験で、何をもって「良くなった」と言えるのかを扱う。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 7 の 4/4</span>
+    <span class="chip">train/eval.py</span>
+    <span class="chip">前提: 7-c</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><code>lr=1e-3</code> が平均 <b>&minus;198.16</b>、既定値が <b>&minus;254.35</b>。
+          <strong>56 ポイントの差</strong></li>
+      <li>ただし <code>lr=1e-3</code> は<strong>ばらつき幅が 245</strong>。seed 0 だけ大きく外れた</li>
+      <li>調整より学習量が効いた。<strong>100 万ステップで +24.55</strong>、古典制御 +28.31 に迫る</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 3 シードの平均が良くなったら、「良くなった」と言っていいのか？</p>
+    <p><b>2.</b> 学習した方策と古典制御を、どう比べれば公平なのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答えは<strong>「言えない」</strong>です。まずそれを数字で示します。
+     そのうえで<strong>何シード必要なのか</strong>、
+     <strong>比較のとき何を固定すべきか</strong>を決め、
+     最後に Step 7 の完了条件——<strong>古典制御との比較</strong>——を締めます。</p>
+
+  <div class="callout tip">
+    <span class="k">今回は強化学習に固有の話ではありません</span>
+    <p>「差が本物か」を判断する作業は、<strong>実験科学一般の話</strong>です。
+       ただし強化学習は<strong>乱数の影響が異常に大きい</strong>ので、
+       他の分野より厳しく扱う必要があります。
+       <strong>同じコード・同じ設定で、シードを変えるだけで結果が倍違う</strong>——
+       それが普通に起きる分野です。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「56 ポイントの差は本物か」に答えます。
+       <strong>答えは「本物とは言えない」</strong>。その判断の仕方を身につけます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>&sect;04 の表で <code>lr=1e-3</code> は平均 &minus;198、既定値は &minus;254 でした。
+       この 56 ポイントの差は「本物」でしょうか。
+       ばらつき幅が 245 あることを踏まえて考えてみてください。</p>
+  </div>
+
+  <p><b>答え：本物とは言えません。</b>数字で確かめます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>設定</th><th class="num">平均</th><th class="num">標準偏差</th><th class="num">標準誤差</th><th class="num">95% の目安</th></tr></thead>
+    <tbody>
+      <tr><td>既定値</td><td class="num">&minus;254.35</td><td class="num">39.01</td><td class="num">22.52</td><td class="num">&plusmn;63</td></tr>
+      <tr><td><code>lr=1e-3</code></td><td class="num">&minus;198.16</td><td class="num"><strong>139.07</strong></td><td class="num">80.29</td><td class="num ng"><strong>&plusmn;223</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>誤差範囲が差より大きいのです</b>
+     <code>lr=1e-3</code> の真の平均は <strong>&minus;198 &plusmn; 223</strong>、
+     つまり <strong>&minus;421 から +25 のどこか</strong>としか言えません。
+     既定値の <strong>&minus;254 &plusmn; 63</strong> と<strong>完全に重なっています</strong>。</p>
+
+  <h3>検定の形で書くと</h3>
+  <div class="code"><pre>差            = +56.19
+差の標準誤差   =  83.39
+t             =   0.67        <span class="cmt"># 有意と言うには 2.78 以上が必要（自由度 4）</span>
+</pre></div>
+  <p class="why"><strong><code>t = 0.67</code> は「差が無い」と言われても反論できない水準</strong>です。
+     <strong>56 ポイントという数字自体は正しい</strong>のですが、
+     <strong>それが設定の差によるものか、乱数の綾かを区別できていません。</strong></p>
+
+  <div class="callout">
+    <span class="k">では何シード必要だったのか</span>
+    <p>この差（56）とばらつき（標準偏差 104 程度）で検出するのに必要なシード数を計算しました。</p>
+    <div class="tw"><table>
+      <thead><tr><th class="num">シード数</th><th class="num">検出できる最小の差</th><th>56 の差を検出できるか</th></tr></thead>
+      <tbody>
+        <tr><td class="num">3</td><td class="num">169.8</td><td class="ng">できない</td></tr>
+        <tr><td class="num">5</td><td class="num">131.6</td><td class="ng">できない</td></tr>
+        <tr><td class="num">10</td><td class="num">93.0</td><td class="ng">できない</td></tr>
+        <tr><td class="num">20</td><td class="num">65.8</td><td class="ng">できない</td></tr>
+        <tr><td class="num">50</td><td class="num">41.6</td><td class="ok">できる</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>50 シード必要です。</strong>1 本 2 分として 100 分 &times; 2 条件。
+      <strong>この差を確かめるだけで 3 時間以上</strong>かかります。</p>
+  </div>
+
+  <p class="why"><b>これが強化学習の実験の現実です</b>
+     <strong>小さな差を証明するのは、非常に高くつきます。</strong>
+     論文で「3 シードの平均」という書き方をよく見ますが、
+     <strong>3 シードで言えるのは「大きな差がある」ことだけ</strong>です。
+     <strong>数十ポイントの違いを語るには足りません。</strong></p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>何シード回せばいいのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;01 の結論は「50 シード必要」でしたが、<strong>現実には回せません</strong>。
+       では実務でどうするのか。<strong>諦め方を含めた判断基準</strong>を持ちます。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">シード数</th><th>言えること</th><th>使いどころ</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="ng"><strong>何も言えない</strong></td><td>動くかどうかの確認だけ</td></tr>
+      <tr><td class="num">3</td><td><strong>大きな差（100 以上）なら言える</strong></td><td>普段の実験。最低ライン</td></tr>
+      <tr><td class="num">5〜10</td><td>中くらいの差なら言える</td><td>重要な判断のとき</td></tr>
+      <tr><td class="num">20 以上</td><td>小さな差も言える</td><td>論文、最終決定</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">実務的な判断基準</span>
+    <p><strong>3 シードで差がはっきりしないなら、その変更は採用しない。</strong></p>
+    <p>理由は単純で、<strong>3 シードで見えない程度の差は、実用上どうでもいい</strong>からです。
+       同じ時間を「学習量を増やす」に使ったほうが確実に効きます——
+       <strong>7-c で見たとおり、ステップ数は 279 ポイント稼ぎました</strong>。
+       あちらは 3 シードどころか 1 シードでも明らかな差です。</p>
+  </div>
+
+  <p class="why"><b>差の大きさで扱いを変えます</b>
+     <strong>「効くものは、少ないシードでも明らかに効く」</strong>。
+     逆に言えば、<strong>何シードも回して初めて見える差は、追う価値が低い</strong>。
+     限られた計算時間を何に使うかの判断として、これは合理的です。</p>
+
+  <div class="callout">
+    <span class="k">シードを固定することと、複数回すことは別の話です</span>
+    <p><code>seed=0</code> を指定するのは<strong>再現性のため</strong>——
+       同じコードを走らせたら同じ結果が出るように。</p>
+    <p>複数シードを回すのは<strong>一般化のため</strong>——
+       たまたまうまくいっただけでないことを確かめるために。</p>
+    <p><strong>両方必要です。</strong>「seed を固定したから大丈夫」は、
+       再現性の話を一般化の話とすり替えています。</p>
+  </div>
+</section>
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>評価プロトコルを固める</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>シード数の話とは別に、<strong>1 回の評価をどう測るか</strong>にも決めごとが要ります。
+       <strong>測り方が揺れていると、シードを増やしても意味がありません。</strong></p>
+  </div>
+
+  <p>Step 6 以降、実は少しずつ決めてきました。まとめます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>決めること</th><th>今回の設定</th><th>決めた場所</th><th>揺れると何が起きるか</th></tr></thead>
+    <tbody>
+      <tr><td>エピソード数</td><td class="num">10</td><td>6-d</td><td>少ないと運の影響が残る</td></tr>
+      <tr><td>1 エピソードの長さ</td><td class="num">500 ステップ</td><td>6-c</td><td>長いほど上端滞在が稼げる</td></tr>
+      <tr><td>初期状態の乱数</td><td class="num">seed=ep（0〜9）</td><td>6-d</td><td>固定しないと毎回違う条件</td></tr>
+      <tr><td>行動空間の乱数</td><td class="num">seed=ep</td><td>6-d</td><td>ランダム方策の結果が揺れる</td></tr>
+      <tr><td>探索</td><td class="num">切る（<code>deterministic=True</code>）</td><td>7-a</td><td>実力より低く出る</td></tr>
+      <tr><td>報酬</td><td class="num">生の値</td><td>7-c</td><td>正規化すると基準線と比較不能</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>すべて「比較可能にするため」の決めごとです</b>
+     どれも<strong>単独では性能を変えません</strong>。
+     変えるのは<strong>比較できるかどうか</strong>です。
+     <strong>測り方が違う 2 つの数字を並べても意味がありません。</strong></p>
+
+  <div class="callout">
+    <span class="k">いちばん間違えやすいのは評価エピソード数です</span>
+    <p>10 エピソードの平均は、<strong>それ自体がばらつきます</strong>。
+       同じ方策を別の 10 エピソードで測れば違う値が出ます。</p>
+    <p>つまり<strong>ばらつきが 2 段階</strong>あります。</p>
+    <ul>
+      <li><b>学習のばらつき</b>（シードごとに方策が違う）&larr; &sect;01 で扱ったもの</li>
+      <li><b>評価のばらつき</b>（同じ方策でも測るたびに違う）&larr; こちら</li>
+    </ul>
+    <p>評価エピソードを増やせば後者は減りますが、<strong>前者は減りません</strong>。
+       <strong>評価を 100 エピソードにしても、1 シードは 1 シードのままです。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">評価用の関数は 1 つに固定する</span>
+    <p>6-d で書いた <code>evaluate()</code> を、
+      <strong>ランダム方策・古典制御・学習した方策のすべてに同じものを使ってきました</strong>。
+      これが効いています——<strong>3 つの数字が同じ土俵の上にあります</strong>。</p>
+    <p><code>train/eval.py</code> として切り出し、
+      <strong>他のファイルから import する形にしておくこと</strong>を勧めます。
+      コピーして少し変えたものが増えると、比較できない数字が混ざります。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>古典制御と比べる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Step 7 の完了条件です。<strong>Phase A をやった意味がここで回収されます。</strong>
+       ただし「勝った・負けた」で終わらせず、<strong>何が比較できて何が比較できないか</strong>を整理します。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>方策</th><th class="num">合計報酬</th><th class="num">上端滞在</th><th class="num">作るのにかかったもの</th></tr></thead>
+    <tbody>
+      <tr><td>ランダム</td><td class="num">&minus;499.50</td><td class="num">0 / 500</td><td class="num">——</td></tr>
+      <tr><td>PPO 30 万ステップ</td><td class="num">&minus;254.35</td><td class="num">46.2 / 500</td><td class="num">2 分</td></tr>
+      <tr><td><strong>PPO 100 万ステップ</strong></td><td class="num ok"><strong>+24.55</strong></td><td class="num ok"><strong>207.5 / 500</strong></td><td class="num">19 分</td></tr>
+      <tr><td><strong>古典制御（Step 4）</strong></td><td class="num ok"><strong>+28.31</strong></td><td class="num ok"><strong>216.2 / 500</strong></td><td class="num">人間の設計</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>ほぼ並びました</b>
+     差は報酬で <strong>3.76</strong>、上端滞在で <strong>8.7 ステップ</strong>。
+     &sect;01 の基準で言えば、<strong>この差を「有意」と主張するには何十シードも要ります</strong>。
+     <strong>実質的に同等</strong>と言ってよい水準です。</p>
+
+  <h3>比較できること</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>古典制御</th><th>PPO</th></tr></thead>
+    <tbody>
+      <tr><td>この報酬での成績</td><td class="num">+28.31</td><td class="num">+24.55</td></tr>
+      <tr><td>上端滞在</td><td class="num">216.2</td><td class="num">207.5</td></tr>
+      <tr><td>物理的な上限（Step 4 の計算）</td><td class="num">約 211</td><td class="num">約 211</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><strong>どちらも物理的な上限に達しています。</strong>
+     Step 4 で測ったスイングアップ所要時間 2.89 秒 ＝ 289 ステップ。
+     <code>500 &minus; 289 = 211</code>。
+     <strong>この報酬・この時間制限では、ここが天井です。</strong></p>
+
+  <h3>比較できないこと</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>古典制御</th><th>PPO</th></tr></thead>
+    <tbody>
+      <tr><td>作るのに必要だったもの</td><td><strong>物理の理解</strong>（慣性・エネルギー・引き込み領域）</td><td><strong>報酬の設計</strong>と計算時間</td></tr>
+      <tr><td>モデルを変えたら</td><td class="ng">式を導き直す</td><td class="ok">再学習するだけ</td></tr>
+      <tr><td>なぜそう動くか</td><td class="ok">説明できる</td><td class="ng">説明しにくい</td></tr>
+      <tr><td>多関節に拡張</td><td class="ng">急速に難しくなる</td><td class="ok">同じ枠組みで通る</td></tr>
+      <tr><td>実機での安全性</td><td class="ok">挙動が予測できる</td><td class="ng">未知の状態で何をするか不明</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>「RL が勝った」という話ではありません</b>
+     <strong>1 自由度の振り子では、古典制御のほうが圧倒的に安上がり</strong>です。
+     2.89 秒で解く式を、<strong>19 分の計算で再発見しただけ</strong>とも言えます。</p>
+  <p class="why"><b>強化学習の価値は、拡張したときに出ます</b>
+     関節が 12 個になった瞬間、<strong>古典制御は設計が破綻します</strong>。
+     エネルギー整形に相当する式を 12 自由度で導くのは現実的ではありません。
+     一方 PPO のコードは<strong>ほとんど変わりません</strong>——
+     <code>observation_space</code> と <code>action_space</code> の次元が変わるだけです。</p>
+
+  <div class="callout tip">
+    <span class="k">だから Phase A をやりました</span>
+    <p>古典制御の基準線が無ければ、<strong>+24.55 という数字を評価できませんでした</strong>。
+       「まあまあ良さそう」で終わっていたはずです。</p>
+    <p>そして<strong>物理的な上限 211 を計算できたのも Phase A のおかげ</strong>です。
+       <strong>「これ以上は伸びない」と分かることは、「まだ伸びる」と分かることと同じくらい重要</strong>です——
+       伸びない場所にステップ数を注ぎ込まずに済みます。</p>
+  </div>
+</section>
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>「差が本物か」を自分で判定できるようにする</strong>ため。
+      平均を並べるだけなら誰でもできますが、
+      <strong>ばらつきを見て「まだ言えない」と判断するほうが難しい</strong>。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——実験結果を見せられたとき、<strong>シード数とばらつきを最初に確認する</strong>ようになる。
+      これは論文を読むときにも効きます。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      段階 1 は評価コードの整理、段階 3 は<strong>時間があるときに</strong>で構いません。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>評価コードを 1 箇所にまとめる</h3>
+    <p class="why"><b>この段階ですること</b> <code>try_env.py</code> に書いた <code>evaluate()</code> を
+      <code>train/eval.py</code> に移し、<strong>どこからでも import できるようにします</strong>。</p>
+    <div class="code"><pre><span class="cmt"># train/eval.py</span>
+import numpy as np
+from gymnasium.wrappers import TimeLimit
+
+from envs.pendulum_env import PendulumEnv
+
+
+def evaluate(policy, n_ep=10, steps=500):
+    """方策を採点する。すべての比較でこの関数だけを使うこと。"""
+    totals, ups = [], []
+    for ep in range(n_ep):
+        env = TimeLimit(PendulumEnv(), max_episode_steps=steps)
+        obs, info = env.reset(seed=ep)
+        env.action_space.seed(ep)
+        total, up = 0.0, 0
+        for t in range(steps):
+            obs, reward, terminated, truncated, info = env.step(policy(env, obs))
+            total += reward
+            if -np.cos(env.unwrapped.data.qpos[0]) &gt; 0.95:
+                up += 1
+            if terminated or truncated:
+                break
+        totals.append(total)
+        ups.append(up)
+    return np.mean(totals), np.mean(ups)
+</pre></div>
+    <p class="why"><b>docstring に「この関数だけを使うこと」と書いておく</b>
+      2 週間後の自分は、<strong>手元でちょっと変えたコピーを作りがち</strong>です。
+      そうすると<strong>比較できない数字が混ざります</strong>。
+      &sect;03 で決めた 6 つの設定は、<strong>この関数の中にしか無い</strong>ようにしておきます。</p>
+    <p><b>確認方法</b> <code>try_env.py</code> から import して、
+      古典制御が <code>28.31 / 216.2</code> と出れば移行成功です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>複数シードの結果を統計として出す</h3>
+    <p class="why"><b>この段階ですること</b> 平均だけでなく<strong>ばらつきも出します</strong>。
+      これが無いと &sect;01 の判断ができません。</p>
+    <div class="code"><pre>import numpy as np
+
+
+def summarize(label, scores):
+    scores = np.array(scores)
+    mean = scores.mean()
+    sd = scores.std(ddof=1)               <span class="cmt"># 標本標準偏差</span>
+    se = ???                              <span class="cmt"># ← ここだけ考える</span>
+    print(f"{label:<12} 平均={mean:8.2f}  標準偏差={sd:7.2f}  "
+          f"標準誤差={se:6.2f}  幅={scores.max()-scores.min():7.2f}")
+    return mean, se
+</pre></div>
+    <p><b>標準誤差</b>（standard error）は<strong>「平均そのもののばらつき」</strong>です。
+      標準偏差をシード数で調整すると出ます。
+      &sect;01 の表で、既定値は <code>標準偏差 39.01</code> に対して <code>標準誤差 22.52</code> でした。
+      <strong>3 シードのとき、どういう計算をすればこうなるでしょうか。</strong></p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    se = sd / np.sqrt(len(scores))
+</pre></div>
+      <p class="why"><b>検算</b>
+        <code>39.01 / sqrt(3) = 22.52</code>。一致します。</p>
+      <p class="why"><b>標準偏差と標準誤差は別物です</b>
+        <b>標準偏差</b>＝<strong>個々のシードがどれだけばらつくか</strong>。
+        シードを増やしても<strong>減りません</strong>（そういう性質の量なので）。<br>
+        <b>標準誤差</b>＝<strong>平均がどれだけ信用できないか</strong>。
+        シードを増やすと <code>1/&radic;n</code> で<strong>減ります</strong>。</p>
+      <p class="why"><b>だから「シードを増やす」意味があります</b>
+        個々の学習のばらつきは変わりませんが、
+        <strong>平均の精度は上がる</strong>。&sect;01 の「50 シード必要」はこの計算から出ています。</p>
+    </div></details>
+    <p><b>確認方法</b> 7-c で取った 3 シードの結果を入れて、&sect;01 の表と一致するか確かめます。</p>
+    <div class="code"><pre>summarize("既定値",  [-227.51, -299.10, -236.45])
+summarize("lr=1e-3", [-358.67, -113.62, -122.19])
+</pre></div>
+    <div class="code"><pre>既定値        平均= -254.35  標準偏差=  39.01  標準誤差= 22.52  幅=  71.59
+lr=1e-3      平均= -198.16  標準偏差= 139.07  標準誤差= 80.29  幅= 245.05
+</pre></div>
+    <p class="why"><b>この 2 行を見て判断してください</b>
+      <code>lr=1e-3</code> の標準誤差が <strong>80.29</strong>。
+      差の <strong>56.19</strong> より<strong>大きい</strong>。
+      <strong>これだけで「まだ言えない」と分かります。</strong>
+      検定の計算をしなくても、<strong>標準誤差と差を見比べるだけで判断できます。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3 · 時間があるとき</span>
+    <h3>シードを増やして結論が変わるか見る</h3>
+    <p class="why"><b>この段階ですること</b> &sect;01 の「3 シードでは足りない」を、
+      <strong>実際にシードを増やして確かめます</strong>。1 本 2 分 &times; 10 本で <strong>20 分</strong>。</p>
+    <div class="code"><pre>for seed in 3 4 5 6 7; do
+  uv run python -m train.train_ppo --seed $seed --tag base
+  uv run python -m train.train_ppo --lr 1e-3 --seed $seed --tag lr1e-3
+done
+</pre></div>
+    <p>8 シードぶんの結果を <code>summarize()</code> に入れて、
+      <strong>標準誤差がどれだけ減ったか</strong>を見てください。</p>
+    <p class="why"><b>予想を立ててから実行すること</b>
+      <code>3 &rarr; 8</code> シードで標準誤差は <code>&radic;(3/8) = 0.61</code> 倍になるはずです。
+      <code>80.29 &times; 0.61 = 49</code> 前後。
+      <strong>差の 56 より小さくなるので、ぎりぎり「差がありそう」と言える水準に届きます。</strong></p>
+    <p class="why"><b>ただし平均自体も動きます</b>
+      新しい 5 シードが良い方に出るか悪い方に出るかで、差そのものが変わります。
+      <strong>「標準誤差が下がる」ことと「差が有意になる」ことは別です。</strong>
+      <strong>結論が変わる可能性も含めて、それが実験というものです。</strong></p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>Step 7 のまとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>7-c の <strong>56 ポイントの差は証明できていない</strong>。
+          <code>t = 0.67</code>、必要なのは 2.78。<strong>検出には 50 シード要る</strong></li>
+      <li><b>標準偏差</b>はシードを増やしても減らない。<b>標準誤差</b>は <code>1/&radic;n</code> で減る。
+          <strong>だからシードを増やす意味がある</strong></li>
+      <li>実務の基準: <strong>3 シードで差がはっきりしないなら採用しない</strong>。
+          <strong>効くものは少ないシードでも明らかに効く</strong></li>
+      <li>評価プロトコルの 6 項目を固定する。<strong>すべて「比較可能にするため」</strong>で、
+          単独では性能を変えない</li>
+      <li>ばらつきは <strong>2 段階</strong>ある。<strong>評価を増やしても学習のばらつきは減らない</strong></li>
+      <li>PPO <b>+24.55</b> 対 古典制御 <b>+28.31</b>。
+          <strong>どちらも物理的な上限 211 に達している</strong>。実質同等</li>
+    </ol>
+  </div>
+
+  <div class="recap">
+    <span class="k">Step 7 全体で手に入れたもの</span>
+    <ol>
+      <li><b>7-a</b> SB3 で PPO を回す。失敗したら<strong>環境から疑う</strong>チェックリスト</li>
+      <li><b>7-b</b> 4 指標の読み方。<strong>報酬だけでは原因が分からない</strong></li>
+      <li><b>7-c</b> 調整より<strong>学習量</strong>。<code>VecNormalize</code> は<strong>この環境では逆効果</strong></li>
+      <li><b>7-d</b> <strong>1 シードでも 3 シードでも、小さな差は語れない</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="n1"><span><code>train/eval.py</code> に評価関数をまとめ、古典制御で <code>28.31</code> を再現した</span></label>
+    <label><input type="checkbox" data-ck="n2"><span><code>summarize()</code> を書き、&sect;01 の表の数字を再現した</span></label>
+    <label><input type="checkbox" data-ck="n3"><span>標準偏差と標準誤差の違いを説明できる</span></label>
+    <label><input type="checkbox" data-ck="n4"><span>3 シード以上回して分散を見た（ロードマップの完了条件）</span></label>
+    <label><input type="checkbox" data-ck="n5"><span>古典制御と性能を比較した（ロードマップの完了条件）</span></label>
+    <label><input type="checkbox" data-ck="n6"><span>評価プロトコルの 6 項目を言える</span></label>
+    <label><input type="checkbox" data-ck="n7"><span>TensorBoard の 4 指標が何を意味するか説明できる（ロードマップの完了条件）</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次は Step 8 — ブラックボックスを開けます</span>
+    <p>Phase B の最後です。<strong>PPO を自分で実装します</strong>——単一ファイル 300 行ほど。</p>
+    <p>ここまで <code>PPO("MlpPolicy", venv)</code> の中で何が起きているかを
+       <strong>指標を通してしか見ていませんでした</strong>。
+       <code>explained_variance</code> が測っている Critic も、
+       <code>approx_kl</code> が制限している更新も、<strong>自分で書くことになります</strong>。</p>
+    <p>先に考えておいてください——
+       <strong>5-c で <code>A = Q &minus; V</code> と習いましたが、<code>Q</code> は表として持っていません。</strong>
+       持っているのは <code>V</code> と、実際に歩いて得た報酬の列だけ。
+       <strong>そこから <code>A</code> をどう計算すればいいでしょうか。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 7-d</span>
+  <span>stable-baselines3 2.9.0 で検証（30 万ステップ &times; 3 シード）</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step07d-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

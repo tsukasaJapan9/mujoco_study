@@ -1,0 +1,1447 @@
+<title>explained_variance の中身</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<style>
+  /* ---- この教材だけで使う ---- */
+  .formula { background:var(--surface); border:1px solid var(--rule-strong); border-radius:4px;
+             padding:20px 22px; display:flex; flex-direction:column; gap:14px; }
+  .formula .fl { font-family:var(--f-mono); font-size:15px; text-align:center;
+                 color:var(--ink); line-height:2.1; overflow-x:auto; }
+  .formula .fl .hi-num { color:var(--bad); font-weight:600; }
+  .formula .fl .hi-den { color:var(--sim); font-weight:600; }
+  .fr { display:inline-flex; flex-direction:column; vertical-align:middle;
+        text-align:center; margin:0 4px; }
+  .fr .top { border-bottom:1.5px solid var(--ink-2); padding:0 8px 2px; }
+  .fr .bot { padding:2px 8px 0; }
+  .legend2 { display:flex; flex-wrap:wrap; gap:10px 26px; font-size:13px; color:var(--ink-2); }
+  .legend2 b { font-family:var(--f-mono); font-weight:600; }
+  .legend2 .n { color:var(--bad); }
+  .legend2 .d { color:var(--sim); }
+</style>
+
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">式を 1 行ずつ読む</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">「正解」とは何か</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">手計算で 3 例</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">ラボ: Critic を壊す</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">EV が見ないもの</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">SB3 の実装を読む</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">「実際の収益」の正体</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">自分のログで読む</span></a></li>
+    <li><a href="#s10"><span class="n">09</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s11"><span class="n">10</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 7 · 補助教材</span>
+  <h1>explained_variance の中身</h1>
+  <p>7-b では「Critic の成績表」と一行で済ませた指標を、式・実装・落とし穴まで開ける。
+     <strong>この指標は、あなたが思っているものを測っていない可能性がある。</strong></p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">補助教材</span>
+    <span class="chip">前提: 7-b / 5-c</span>
+    <span class="chip">stable-baselines3 2.9.0 で検証</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>今回の問い</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">7-b で分かっていること</span>
+    <ol>
+      <li><code>explained_variance = 1 - Var(実際の収益 - V の予測) / Var(実際の収益)</code></li>
+      <li><code>1.0</code> で完璧、<code>0</code> 付近は平均を答えているのと同じ、マイナスはそれ以下</li>
+      <li>あなたの学習では <strong><code>0.994</code></strong> まで上がっていた</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> なぜ<strong>分散で割る</strong>のか。割ることで何が読めるようになるのか。</p>
+    <p><b>2.</b> SB3 は<strong>具体的に何と何</strong>を比べてこの数字を出しているのか。</p>
+    <p><b>3.</b> <strong><code>0.99</code> なのに Critic が当てになっていない</strong>、ということは起きうるのか。</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     式 &rarr; 手計算 &rarr; ラボ（壊してみる）&rarr; SB3 のソース、の順に降りていきます。
+     <strong>3 番目の問いの答えは「起きうる」です。</strong>
+     その理由は <code>&sect;07</code> のソース 1 行に書いてあります。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>式を 1 行ずつ読む</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>「分散で割る」という操作の意味</strong>を掴みます。
+       ここが分かると、<code>0</code> と <code>1</code> とマイナスが<strong>なぜその意味になるか</strong>が
+       暗記ではなくなります。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch">
+      <span class="cn">新概念</span>
+      <span class="ct">説明された分散 (explained variance)</span>
+    </div>
+    <dl>
+      <dt>ひとことで</dt>
+      <dd><strong>データのばらつきのうち、何割を予測器が言い当てたか</strong>の割合。</dd>
+      <dt>なぜ割合か</dt>
+      <dd>誤差の大きさ（<code>Var(y &minus; ŷ)</code>）を<strong>そのまま見ても良し悪しが判断できない</strong>から。
+          誤差 5 は、収益が &plusmn;1000 動く環境なら優秀、&plusmn;2 の環境なら論外。
+          <strong>「その環境でそもそもどれだけばらついているか」で割って初めて比較できる</strong>。</dd>
+      <dt>基準となる<br>ダメな予測器</dt>
+      <dd><strong>いつも同じ定数を返す予測器</strong>。
+          これの誤差分散はちょうど <code>Var(y)</code>（分母）になる。
+          つまり<strong>分母＝「何も学習していない予測器」の成績</strong>。</dd>
+      <dt>だから</dt>
+      <dd><code>EV = 0</code> は <strong>「定数を返すのと同点」</strong>、
+          <code>EV &lt; 0</code> は<strong>「定数を返すより下手」</strong>という意味になる。</dd>
+    </dl>
+  </div>
+
+  <div class="formula">
+    <div class="fl">
+      EV &nbsp;=&nbsp; 1 &nbsp;&minus;&nbsp;
+      <span class="fr">
+        <span class="top hi-num">Var( y &minus; ŷ )</span>
+        <span class="bot hi-den">Var( y )</span>
+      </span>
+    </div>
+    <div class="legend2">
+      <span><b>y</b> = 実際の収益（正解）</span>
+      <span><b>ŷ</b> = <code>V</code> の予測</span>
+      <span class="n"><b>分子</b> = 予測器が残した誤差のばらつき</span>
+      <span class="d"><b>分母</b> = そもそも正解がどれだけばらついているか</span>
+    </div>
+  </div>
+
+  <p><b>分数の部分だけ見ると読みやすくなります。</b>
+     <code>Var(y &minus; ŷ) / Var(y)</code> は
+     <strong>「説明できずに残ったばらつきの割合」</strong>です。
+     これが <code>0.006</code> なら、残ったのは <code>0.6&thinsp;%</code>。
+     <code>1</code> から引いた <code>0.994</code> が<strong>説明できた割合</strong>——
+     これが <code>explained_variance</code> という名前の由来です。</p>
+
+  <div class="callout tip">
+    <span class="k">分散 Var を忘れていたら</span>
+    <p><code>Var(x) = mean( (x &minus; mean(x))<sup>2</sup> )</code>。
+       <strong>平均からのズレを 2 乗して平均したもの</strong>。
+       <strong>重要なのは「平均を引く」ところ</strong>——
+       だから <code>Var</code> は<strong>全体が何点ずれていても変わりません</strong>。
+       この性質が <code>&sect;05</code> の落とし穴に直結します。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>「正解」とは何か</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>式の <code>y</code> を「実際の収益（正解）」と書きましたが、
+       <strong>強化学習に、教師あり学習のような外から与えられる正解は存在しません。</strong>
+       <strong>では何を正解として採点しているのか。</strong>
+       ここを曖昧にしたまま <code>EV</code> の数字を読むと、必ず読み違えます。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch">
+      <span class="cn">新概念</span>
+      <span class="ct">本当に欲しいもの — 真の価値 V<sup>&pi;</sup>(s)</span>
+    </div>
+    <dl>
+      <dt>定義</dt>
+      <dd><code>V<sup>&pi;</sup>(s) = E[ G | 状態 s から方策 &pi; で動いたとき ]</code>。
+          5-c でやった価値そのものです。<strong>注目すべきは <code>E[ ]</code>——期待値である</strong>点。</dd>
+      <dt>なぜ期待値か</dt>
+      <dd>同じ状態から出発しても、<strong>毎回まったく同じ未来にはならない</strong>から。
+          方策が行動をサンプリングし、環境も揺れる。
+          <strong>「起こりうる未来すべての平均」が価値</strong>です。</dd>
+      <dt>観測<br>できるか</dt>
+      <dd><strong>できません。</strong>期待値を直接見る手段はありません。
+          手に入るのは<strong>そこから引いた 1 本のくじ</strong>だけ。</dd>
+      <dt>だから</dt>
+      <dd><code>EV</code> の <code>y</code> は<strong>真の正解ではなく、正解の 1 サンプル</strong>です。
+          <strong>ラベルではなく、推定値で推定値を採点している。</strong></dd>
+    </dl>
+  </div>
+
+  <h3>教師あり学習との違い</h3>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>教師あり学習</th><th>強化学習の Critic</th></tr></thead>
+    <tbody>
+      <tr><td><b>正解の出どころ</b></td>
+          <td>人間が貼ったラベル。<strong>外部の事実</strong></td>
+          <td class="ng"><strong>自分が集めたデータから作る</strong>。外部の事実はない</td></tr>
+      <tr><td><b>正解のばらつき</b></td>
+          <td>ない（猫の画像は何度見ても猫）</td>
+          <td class="ng"><strong>ある。</strong>同じ状態から引くたび違う収益が出る</td></tr>
+      <tr><td><b>正解は動くか</b></td>
+          <td>動かない</td>
+          <td class="ng"><strong>動く。</strong><code>V<sup>&pi;</sup></code> は <code>&pi;</code> 次第で、
+              <code>&pi;</code> は毎イテレーション変わる</td></tr>
+      <tr><td><b>満点は取れるか</b></td>
+          <td>原理的には取れる</td>
+          <td class="ng"><strong>取れないことがある</strong>（次の項）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 番目が特に効きます</b>
+     <code>V<sup>&pi;</sup></code> は<strong>方策 <code>&pi;</code> ごとに違う関数</strong>です。
+     PPO は毎イテレーション <code>&pi;</code> を更新するので、
+     <strong>Critic が追いかけている的そのものが、毎回少し動きます。</strong>
+     <code>EV</code> が学習中に上下するのは、Critic が下手になったのではなく
+     <strong>的が動いた直後だから</strong>、ということが普通に起きます。</p>
+
+  <h3>完璧な Critic でも EV は 1 に届かない</h3>
+
+  <p>ここが一番大事な帰結です。仮に Critic が<strong>真の期待値 <code>V<sup>&pi;</sup></code> を
+     完全に言い当てた</strong>としましょう。それでも残差 <code>G &minus; V<sup>&pi;</sup></code> は
+     <strong>0 になりません</strong>。<code>G</code> はくじ引きの結果で、
+     <code>V<sup>&pi;</sup></code> はその平均だからです。</p>
+
+  <div class="formula">
+    <div class="fl">
+      EV の天井 &nbsp;=&nbsp; 1 &nbsp;&minus;&nbsp;
+      <span class="fr">
+        <span class="top hi-num">E[ Var( G | s ) ]</span>
+        <span class="bot hi-den">Var( G )</span>
+      </span>
+    </div>
+    <div class="legend2">
+      <span class="n"><b>分子</b> = 状態を知っても<strong>消えない</strong>ばらつき（くじの揺れ）</span>
+      <span class="d"><b>分母</b> = 収益全体のばらつき</span>
+    </div>
+  </div>
+
+  <p><strong><code>EV</code> は「収益のばらつきのうち、そもそも状態から予測できる分を、
+     どれだけ取り切ったか」</strong>を測っている——これが正確な言い方です。
+     <strong>予測できない分は、誰にも取れません。</strong></p>
+
+  <h3>あなたの環境で天井を測る</h3>
+
+  <p>天井は測れます。<strong>同じ状態から何度も分岐させて、収益がどれだけばらつくか</strong>を見ればよい。
+     <code>ppo_semi_long_s0</code> で実測しました
+     （軌道上の 20 点から分岐、各 24 本、500 ステップ、&gamma;=0.99）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>行動の選び方</th><th class="num">E[Var(G|s)]</th>
+      <th class="num">Var(G)</th><th class="num">EV の天井</th></tr></thead>
+    <tbody>
+      <tr><td><b>確率的</b>（学習中はこちら）</td>
+          <td class="num">4.77</td><td class="num">1983.6</td>
+          <td class="num ok">0.9976</td></tr>
+      <tr><td><b>決定的</b>（<code>deterministic=True</code>）</td>
+          <td class="num">0.000</td><td class="num">1801.4</td>
+          <td class="num ok">1.0000</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>決定的方策でぴったり 0 になる理由</b>
+     <code>envs/pendulum_env.py</code> の <code>step()</code> に<strong>乱数が 1 つもない</strong>からです。
+     MuJoCo の積分は決定的で、ランダムなのは <code>reset()</code> の初期角度だけ。
+     <strong>状態と行動が決まれば未来が完全に決まる</strong>ので、
+     <code>G</code> は <code>s</code> の関数になり、原理的に 100&thinsp;% 説明できます。</p>
+
+  <div class="callout">
+    <span class="k">だから 0.997 が出た</span>
+    <p><code>&sect;08</code> で測った MC 基準の <code>EV = 0.9962</code> は、
+       天井 <code>1.0000</code> に対する成績です。
+       学習中（確率的方策）の天井は <code>0.9976</code>。
+       <strong>どちらの見方でも、この Critic は天井に張り付いています。</strong></p>
+    <p><strong>そしてこれは「振り子だから」出た数字です。</strong>
+       風が吹く、センサにノイズが載る、相手が動く——
+       そういう環境では天井が <code>0.6</code> や <code>0.3</code> まで落ちます。
+       <strong>別の環境で <code>EV</code> が 0.6 でも、天井が 0.62 なら満点です。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実務ルール（2 つ目）</span>
+    <p><code>&sect;07</code> で「設定をまたいで比べるな」と書きました。もう 1 つ——
+       <strong>環境をまたいでも比べてはいけません。</strong>
+       <code>EV</code> の絶対値に意味があるのは、<strong>その環境の天井とセットで見たときだけ</strong>です。</p>
+    <p><strong>新しい環境を作ったら、まず天井を測ってください。</strong>
+       同じ状態から N 本分岐させて収益の分散を見る、それだけです。
+       <strong>目標値が分かってから学習を回すのと、分からずに回すのとでは、
+       デバッグの効率がまったく違います。</strong></p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>手計算で 3 例</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>5 個だけのデータで<strong>実際に数字を出します</strong>。
+       <strong><code>0</code> とマイナスが「たまたまそうなる」のではなく、
+       式から必然的にそうなる</strong>ことを確認します。</p>
+  </div>
+
+  <p>正解の収益を <code>y = [&minus;10, &minus;6, &minus;2, 2, 6]</code> とします。
+     平均は <code>&minus;2.0</code>、<strong><code>Var(y) = 32.0</code></strong>（これが全例の分母）。</p>
+
+  <div class="tw"><table>
+    <thead><tr>
+      <th>Critic</th><th>予測 ŷ</th><th>残差 y&minus;ŷ</th>
+      <th class="num">Var(残差)</th><th class="num">EV</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td><b>まとも</b></td>
+        <td class="num">[&minus;9, &minus;7, &minus;1, 1, 6]</td>
+        <td class="num">[&minus;1, 1, &minus;1, 1, 0]</td>
+        <td class="num">0.8</td>
+        <td class="num ok">+0.975</td>
+      </tr>
+      <tr>
+        <td><b>平均だけ返す</b></td>
+        <td class="num">[&minus;4, &minus;4, &minus;4, &minus;4, &minus;4]</td>
+        <td class="num">[&minus;6, &minus;2, 2, 6, 10]</td>
+        <td class="num">32.0</td>
+        <td class="num ng">0.000</td>
+      </tr>
+      <tr>
+        <td><b>逆向き</b></td>
+        <td class="num">[&minus;1, &minus;3, &minus;5, &minus;7, &minus;9]</td>
+        <td class="num">[&minus;9, &minus;3, 3, 9, 15]</td>
+        <td class="num">72.0</td>
+        <td class="num ng">&minus;1.250</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>2 行目に注目してください</b>
+     予測した定数は <code>&minus;4</code> で、<strong>正解の平均 <code>&minus;2</code> ではありません</strong>。
+     それでも <code>EV</code> はぴったり <code>0.000</code> です。
+     <code>Var</code> が平均を引いてから測るので、
+     <strong>定数なら何を返そうと <code>Var(y &minus; 定数) = Var(y)</code> になる</strong>ためです。</p>
+
+  <p class="why"><b>3 行目の &minus;1.25 も計算で出せます</b>
+     残差のばらつきが <code>72.0</code>、正解のばらつきが <code>32.0</code> なので
+     <code>1 &minus; 72/32 = &minus;1.25</code>。
+     <strong>マイナスは「下手」の度合いを線形に表す</strong>ので、
+     <code>&minus;0.1</code> と <code>&minus;3</code> は全然違う深刻さです。</p>
+
+  <div class="callout">
+    <span class="k">下限はない</span>
+    <p><code>EV</code> の上限は <code>1</code> ですが、<strong>下限はありません</strong>。
+       予測の符号をすべて反転させた <code>ŷ = &minus;y</code> なら
+       <code>Var(y &minus; (&minus;y)) = Var(2y) = 4&thinsp;Var(y)</code> なので
+       <strong><code>EV = 1 &minus; 4 = &minus;3</code></strong>。
+       スケールが 10 倍ずれていれば <code>&minus;81</code> まで落ちます。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>ラボ: Critic を壊す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Critic の壊し方には<strong>3 種類</strong>あります——<b>ズレ</b>・<b>縮み</b>・<b>ノイズ</b>。
+       <strong><code>EV</code> はこのうち 1 つを完全に無視します。</strong>
+       どれかを、動かして突き止めてください。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="sA">スケール a</label><span class="val" id="vA">1.00</span></div>
+        <input type="range" id="sA" min="-1" max="1.5" step="0.05" value="1">
+        <span class="hint">予測の振れ幅。<code>1</code> で正解と同じ、<code>0</code> で定数になる</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="sB">バイアス b</label><span class="val" id="vB">0</span></div>
+        <input type="range" id="sB" min="-60" max="60" step="1" value="0">
+        <span class="hint">全体を上下にずらす量。<strong>ここが今回の主役</strong></span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="sN">ノイズ &sigma;</label><span class="val" id="vN">0.0</span></div>
+        <input type="range" id="sN" min="0" max="20" step="0.5" value="0">
+        <span class="hint">1 点ごとのランダムな外し。当てずっぽうの成分</span>
+      </div>
+      <div class="btns">
+        <button class="preset" type="button" data-p="1,0,0">完璧</button>
+        <button class="preset" type="button" data-p="1,50,0">ズレだけ</button>
+        <button class="preset" type="button" data-p="0.5,0,0">縮みだけ</button>
+        <button class="preset" type="button" data-p="1,0,12">ノイズだけ</button>
+        <button class="preset" type="button" data-p="0,0,0">定数</button>
+        <button class="preset" type="button" data-p="-1,0,0">逆向き</button>
+      </div>
+      <span class="hint"><code>ŷ = a &times; y + b + &sigma;&thinsp;&epsilon;</code> で Critic を作り、
+        正解 <code>y</code>（固定の 200 点）と比べています。</span>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">explained_variance</span><span class="rv" id="rEV">1.000</span></div>
+        <div><span class="rk">R&sup2; （参考）</span><span class="rv" id="rR2">1.000</span></div>
+        <div><span class="rk">Var(y)</span><span class="rv" id="rVy">—</span></div>
+        <div><span class="rk">Var(y &minus; ŷ)</span><span class="rv" id="rVr">—</span></div>
+      </div>
+      <canvas id="cv" width="640" height="420" role="img"
+              aria-label="予測と正解の散布図。斜めの線に乗るほど予測が当たっている"></canvas>
+      <p class="hint" id="labNote" style="font-size:12.5px;color:var(--muted);margin:0;"></p>
+    </div>
+  </div>
+
+  <details>
+    <summary>答え合わせ — EV が無視するのはどれか</summary>
+    <div class="dbody">
+      <p><b>バイアス b です。</b>
+         <code>b</code> を <code>&minus;60</code> から <code>+60</code> まで振っても、
+         <strong><code>EV</code> は <code>1.000</code> のまま動きません</strong>
+         （<code>R&sup2;</code> は同時に崖から落ちます）。</p>
+      <p><code>Var</code> は平均を引いてから測るので、
+         <strong>全点を同じだけずらしても残差の「ばらつき」は変わらない</strong>——
+         <code>&sect;01</code> の注意書きがここに効いています。</p>
+      <p>一方 <b>スケール a</b> と <b>ノイズ &sigma;</b> はまともに効きます。
+         <code>a = 0.5</code>（ノイズ 0）なら
+         <code>EV = 1 &minus; (1 &minus; 0.5)&sup2; = <b>0.75</b></code>、
+         <code>a = 0</code> で <code>0</code>、<code>a = &minus;1</code> で <code>&minus;3</code>。
+         <strong>すべて式から手で出せます。</strong></p>
+    </div>
+  </details>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>EV が見ないもの — R&sup2; との違い</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「決定係数 <code>R&sup2;</code> と同じでは？」という疑問に決着をつけます。
+       <strong>違います。そして違いが出るのは、まさに Critic が壊れやすい方向です。</strong></p>
+  </div>
+
+  <div class="formula">
+    <div class="fl">
+      EV = 1 &minus;
+      <span class="fr"><span class="top">Var( y &minus; ŷ )</span><span class="bot">Var( y )</span></span>
+      &nbsp;&nbsp;&nbsp;&nbsp;
+      R&sup2; = 1 &minus;
+      <span class="fr"><span class="top">&Sigma;( y &minus; ŷ )&sup2;</span><span class="bot">&Sigma;( y &minus; ȳ )&sup2;</span></span>
+    </div>
+    <div class="legend2">
+      <span>違いは<b>分子だけ</b>: <b>Var</b> は平均を引いてから 2 乗、<b>&Sigma;</b> は引かずに 2 乗</span>
+    </div>
+  </div>
+
+  <p>この差は <code>Var(r) = mean(r&sup2;) &minus; mean(r)&sup2;</code> の
+     <strong>第 2 項ぶん</strong>です。つまり
+     <strong><code>R&sup2;</code> は残差の平均（＝系統的なズレ）を罰し、<code>EV</code> は罰しない</strong>。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>予測 ŷ</th><th class="num">EV</th><th class="num">R&sup2;</th><th>読み方</th></tr></thead>
+    <tbody>
+      <tr><td class="num">y（完璧）</td><td class="num ok">+1.0000</td><td class="num ok">+1.0000</td>
+          <td>一致する</td></tr>
+      <tr><td class="num">y + 100</td><td class="num ok">+1.0000</td><td class="num ng">&minus;98.9605</td>
+          <td><strong>全点 100 ずれていても EV は満点</strong></td></tr>
+      <tr><td class="num">y &times; 0.5</td><td class="num">+0.7500</td><td class="num">+0.7498</td>
+          <td>縮みは両方が捉える</td></tr>
+      <tr><td class="num">定数 0</td><td class="num ng">0.0000</td><td class="num ng">&minus;0.0008</td>
+          <td>ほぼ同じ（平均が 0 に近いため）</td></tr>
+      <tr><td class="num">定数 999</td><td class="num ng">0.0000</td><td class="num ng">&minus;9981.67</td>
+          <td><strong>EV は 999 という出鱈目を見ない</strong></td></tr>
+      <tr><td class="num">&minus;y</td><td class="num ng">&minus;3.0000</td><td class="num ng">&minus;3.0031</td>
+          <td>平均がほぼ 0 なので一致する</td></tr>
+    </tbody>
+  </table></div>
+  <p class="hint" style="font-size:12.5px;color:var(--muted);">
+    ※ <code>y</code> は平均 0・標準偏差 10 の正規乱数 2000 点。
+    <code>stable_baselines3.common.utils.explained_variance</code> で実測した値です。</p>
+
+  <div class="callout">
+    <span class="k">実務での意味</span>
+    <p><strong><code>V</code> の絶対値が全体的にずれていても <code>EV</code> は気づきません。</strong>
+       報酬のスケールを途中で変えた、<code>VecNormalize</code> の統計がずれている、
+       といった不具合は <strong><code>EV</code> では検出できない</strong>ということです。</p>
+    <p>ただし PPO では<strong>それでも実害が小さい</strong>のがポイントです。
+       方策の更新に使われるのは <code>A = 収益 &minus; V</code> の<strong>相対的な大小</strong>で、
+       しかも <code>A</code> はミニバッチごとに平均 0・分散 1 に正規化されます
+       （<code>normalize_advantage=True</code> が既定）。
+       <strong><code>EV</code> がバイアスを無視するのは、PPO がバイアスを気にしないからです。</strong>
+       指標の設計が、使われ方と揃っている。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>SB3 の実装を読む</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここまでは数学でした。ここからは<strong>あなたのログに出ている数字そのもの</strong>です。
+       <strong>SB3 が「実際の収益」として何を渡しているか</strong>を、ソースで確かめます。</p>
+  </div>
+
+  <h3>指標の定義そのもの</h3>
+  <div class="code"><pre><span class="cmt"># stable_baselines3/common/utils.py</span>
+def explained_variance(y_pred, y_true):
+  var_y = np.var(y_true)
+  return np.nan if var_y == 0 else float(1 - np.var(y_true - y_pred) / var_y)
+</pre></div>
+
+  <p>式は <code>&sect;01</code> のとおり。
+     <strong>付け足しは 1 つだけ</strong>——
+     <code>Var(y) == 0</code> なら <code>nan</code> を返します。
+     <strong>収益がまったくばらつかないとき、この指標は定義できない</strong>からです
+     （0 で割ることになる）。
+     <strong>TensorBoard で <code>explained_variance</code> の線が突然消えたら、まずこれを疑ってください。</strong></p>
+
+  <h3>誰がこの関数を呼んでいるか</h3>
+  <div class="code"><pre><span class="cmt"># stable_baselines3/ppo/ppo.py  （train() の末尾、n_epochs のループを抜けた後）</span>
+explained_var = explained_variance(
+  self.rollout_buffer.values.flatten(),   <span class="cmt"># ← y_pred</span>
+  self.rollout_buffer.returns.flatten(),  <span class="cmt"># ← y_true</span>
+)
+self.logger.record("train/explained_variance", explained_var)
+</pre></div>
+
+  <div class="concept">
+    <div class="ch">
+      <span class="cn">この 2 行から読めること</span>
+      <span class="ct">SB3 の explained_variance の正体</span>
+    </div>
+    <dl>
+      <dt>y_pred は<br>いつの V か</dt>
+      <dd><code>rollout_buffer.values</code> は<strong>データを集めた時点</strong>で記録された予測です。
+          <code>train()</code> は<strong>これを書き換えません</strong>。
+          つまりログに出るのは<strong>今回の更新を行う<u>前</u>の Critic の成績</strong>。
+          <strong>1 イテレーション遅れて表示されている</strong>と思ってください。</dd>
+      <dt>y_true は<br>何か</dt>
+      <dd><code>rollout_buffer.returns</code>。
+          これは<strong>環境から得た収益をそのまま足したものではありません</strong>。
+          次の節で開けます——<strong>今回いちばん重要な落とし穴です</strong>。</dd>
+      <dt>いつ<br>記録されるか</dt>
+      <dd><code>n_epochs</code> の学習ループを<strong>抜けた後</strong>。
+          ただし中身は更新前の値なので、<strong>記録のタイミングと中身の時点はずれています</strong>。</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>「実際の収益」の正体</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong><code>EV = 0.99</code> でも Critic を褒めきれない理由</strong>を示します。
+       <strong>この指標は、自分で自分を採点している部分がある</strong>——
+       それがどれくらいかを数字で見ます。</p>
+  </div>
+
+  <div class="code"><pre><span class="cmt"># stable_baselines3/common/buffers.py  compute_returns_and_advantage()</span>
+for step in reversed(range(self.buffer_size)):
+  delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
+  last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+  self.advantages[step] = last_gae_lam
+
+self.returns = self.advantages + self.values   <span class="cmt"># ← ここ</span>
+</pre></div>
+
+  <p><b>最後の 1 行がすべてです。</b>
+     <code>returns</code>（＝採点の「正解」）は
+     <strong><code>values</code>（＝採点される「予測」）を足して作られています</strong>。
+     Step 8 で扱う <b>GAE</b> の &lambda;-収益がこれです。</p>
+
+  <div class="formula">
+    <div class="fl">
+      returns &minus; values = advantages &nbsp;&nbsp;&rArr;&nbsp;&nbsp;
+      EV = 1 &minus;
+      <span class="fr"><span class="top">Var( A )</span><span class="bot">Var( returns )</span></span>
+    </div>
+    <div class="legend2">
+      <span><b>A</b> = アドバンテージ（正規化前、バッファに入っている生の値）</span>
+    </div>
+  </div>
+
+  <p class="why"><b>つまり PPO の explained_variance とは</b>
+     <strong>「アドバンテージのばらつきが、&lambda;-収益のばらつきに比べてどれだけ小さいか」</strong>
+     を測った数字に等しい、ということです。定義から導ける恒等式で、近似ではありません。
+     <strong><code>EV</code> が低い＝ <code>A</code> がばらついている＝方策の更新方向がうるさい</strong>。
+     7-b で「低いと方策の更新方向が信用できない」と書いたのは、この意味です。</p>
+
+  <h3>何が問題になるのか</h3>
+  <p>&lambda; が小さいほど、正解 <code>returns</code> は
+     <strong><code>r + &gamma;V(次の状態)</code> に近づきます</strong>——
+     <strong>正解の中身のほとんどが <code>V</code> 自身</strong>になる。
+     <strong><code>V</code> が下手でも、下手な <code>V</code> を基準に採点すれば当たって見えます。</strong></p>
+
+  <p>わざと下手な Critic（真の <code>V</code> を <code>0.7</code> 倍に縮め、
+     さらに標準偏差 5 のノイズを載せたもの）を用意し、
+     <strong>Critic は一切変えずに <code>gae_lambda</code> だけ</strong>動かして測りました。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">gae_lambda</th><th class="num">EV</th><th>正解 returns の中身</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.00</td><td class="num">+0.698</td><td><code>r + &gamma;V'</code>。<strong>ほぼ V 自身</strong></td></tr>
+      <tr><td class="num">0.25</td><td class="num">+0.733</td><td>—</td></tr>
+      <tr><td class="num">0.50</td><td class="num">+0.750</td><td>—</td></tr>
+      <tr><td class="num">0.75</td><td class="num">+0.739</td><td>—</td></tr>
+      <tr><td class="num">0.95</td><td class="num">+0.622</td><td>SB3 の既定値</td></tr>
+      <tr><td class="num">1.00</td><td class="num ng">+0.477</td><td>実際の割引収益（モンテカルロ）。<strong>V を一切含まない</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p class="hint" style="font-size:12.5px;color:var(--muted);">
+    ※ 20 本 &times; 100 ステップ &times; 200 試行、&gamma;=0.99、全 &lambda; で同一の乱数系列。
+    試行間のばらつきは &lambda;=1.0 で標準偏差 0.05、他は 0.01〜0.03。</p>
+
+  <div class="callout">
+    <span class="k">読み取ること</span>
+    <ul>
+      <li><strong>同じ Critic が、<code>0.477</code> とも <code>0.750</code> とも採点される。</strong>
+          変えたのは <code>gae_lambda</code> だけ</li>
+      <li><strong><code>&lambda;=1</code>（モンテカルロ）が最も厳しい。</strong>
+          正解に <code>V</code> が混ざらない唯一の設定だから</li>
+      <li>ただし<strong>単調ではありません</strong>。<code>&lambda;=0</code> でも
+          1 ステップ報酬のノイズをまともに受けるため、
+          この設定では <code>&lambda;=0.5</code> 付近が最も甘くなりました</li>
+    </ul>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実務ルール</span>
+    <p><strong><code>gae_lambda</code> や <code>gamma</code> が違う実験の <code>EV</code> を横に並べて比べないでください。</strong>
+       採点基準そのものが変わっています。
+       <strong>比べてよいのは、同じ設定の中での時間変化だけ</strong>です。</p>
+  </div>
+</section>
+
+<section id="s09">
+  <div class="sec-head">
+    <span class="eyebrow">08</span>
+    <h2>自分のログで読む</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここまでの道具で、<strong>あなたが実際に回した <code>semi_long_2</code> のログ</strong>を読み直します。
+       <strong>報酬がまだ伸びているのに EV が動かない区間</strong>——これが何を意味するか。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">step</th><th class="num">explained_variance</th>
+      <th class="num">ep_rew_mean</th><th>この時点で起きていること</th></tr></thead>
+    <tbody>
+      <tr><td class="num">16,384</td><td class="num ng">&minus;0.001</td><td class="num">&minus;497.9</td>
+          <td>Critic は<strong>まだ何も学んでいない</strong>。正常</td></tr>
+      <tr><td class="num">32,768</td><td class="num ng">+0.064</td><td class="num">&minus;497.2</td>
+          <td>ほぼ定数を返している状態</td></tr>
+      <tr><td class="num">49,152</td><td class="num">+0.213</td><td class="num">&minus;496.1</td>
+          <td>立ち上がり始めた</td></tr>
+      <tr><td class="num">57,344</td><td class="num ok">+0.762</td><td class="num">&minus;493.2</td>
+          <td><strong>一気に跳ねる。</strong>報酬はまだ動いていない</td></tr>
+      <tr><td class="num">90,112</td><td class="num ok">+0.945</td><td class="num">&minus;451.6</td>
+          <td><strong>EV が先、報酬が後</strong></td></tr>
+      <tr><td class="num">131,072</td><td class="num ok">+0.987</td><td class="num">&minus;347.5</td>
+          <td>Critic はほぼ完成</td></tr>
+      <tr><td class="num">253,952</td><td class="num ok">+0.995</td><td class="num">&minus;302.5</td>
+          <td>EV は飽和。報酬は伸び続ける</td></tr>
+      <tr><td class="num">507,904</td><td class="num ok">+0.997</td><td class="num">&minus;113.8</td>
+          <td><strong>EV は 0.002 しか動いていないのに報酬は 189 改善</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>読み 1: 最初の 5 万ステップの「0 付近」は異常ではない</b>
+     報酬もほぼ動いていません。方策がまだ振り子を立てられず、
+     <strong>収益にばらつき自体が乏しい</strong>段階です。
+     <code>&sect;06</code> のとおり分母が小さいと <code>EV</code> は不安定になります。
+     <strong>この区間の低さで判断しないでください。</strong></p>
+
+  <p class="why"><b>読み 2: EV が先に立ち上がり、報酬が後から追う</b>
+     <code>57,344</code> で <code>EV</code> が <code>0.21 &rarr; 0.76</code> に跳ねた時点で、
+     報酬はまだ <code>&minus;493</code> です。
+     <strong>Critic が世界を理解してから、Actor がそれを使って伸びる。</strong>
+     Step 8 で見る<strong>「Critic が Actor を導く」構造</strong>が、そのまま時間差として出ています。</p>
+
+  <p class="why"><b>読み 3: 25 万ステップ以降の改善は Actor 側の成果</b>
+     <code>EV</code> は <code>0.995 &rarr; 0.997</code> でほぼ止まっているのに、
+     報酬は <code>&minus;302 &rarr; &minus;113</code> と伸びています。
+     <strong>この区間で <code>EV</code> を見ても何も分かりません。</strong>
+     見るべきは <code>std</code>（探索の残量）と <code>approx_kl</code> の側です。
+     <strong>指標には「効く区間」がある</strong>——これが今回いちばん実務的な教訓です。</p>
+
+  <div class="callout">
+    <span class="k">では 0.997 は本物か</span>
+    <p><code>&sect;07</code> の話があるので、<strong>確かめました</strong>。
+       学習済みモデル <code>ppo_semi_long_s0</code> を 10 エピソード走らせ、
+       <strong><code>V</code> を一切使わない本物の割引収益</strong>（&lambda;=1 相当）に対して
+       <code>EV</code> を計算した結果が <strong><code>0.9962</code></strong>（5000 点）。</p>
+    <p><strong>この環境では、ログの <code>0.997</code> は下駄を履いていませんでした。</strong>
+       Critic は本当に当てています。
+       &mdash;&mdash; ただし<strong>それは測って初めて言えること</strong>です。次の課題でやります。</p>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sec-head">
+    <span class="eyebrow">09</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>2 つとも<strong>「ログの数字を鵜呑みにしない手段」を自分の手元に作る</strong>課題です。
+       <strong>指標を読めるだけでは足りず、指標を検算できる必要があります。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 1</span>
+    <h3>本物の収益基準で EV を測る <code>train/ev_check.py</code></h3>
+
+    <div class="goal">
+      <span class="k">この課題の狙い</span>
+      <p><b>SB3 の <code>EV</code> は &lambda;-収益基準</b>でした（<code>&sect;07</code>）。
+         <strong>V を含まない正解</strong>を自分で作って比べることで、
+         <strong>Critic の実力と、採点基準の甘さを分離</strong>できます。
+         <strong>これは「TensorBoard を疑う」ための道具</strong>で、
+         Step 8 で PPO を自分で実装したあとの<strong>デバッグでそのまま使えます</strong>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 1</span><h4>収益を後ろから積む</h4></div>
+      <p>各エピソードの報酬列 <code>r[0..T-1]</code> から
+         <code>G[t] = r[t] + &gamma;&thinsp;G[t+1]</code> を<strong>逆順に</strong>計算します。
+         <code>&gamma;</code> は <strong><code>model.gamma</code> から取ってください</strong>（決め打ちしない）。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 2</span><h4>同じ観測に対する V を取り出す</h4></div>
+      <p><code>model.policy.predict_values()</code> に観測のテンソルを渡します。
+         <strong><code>torch.no_grad()</code> の中で呼ぶこと。</strong></p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 3</span><h4>SB3 と同じ関数で採点する</h4></div>
+      <p>自作せず <code>stable_baselines3.common.utils.explained_variance</code> を使います。
+         <strong>比較対象と同じ実装を使う</strong>のが検算の鉄則です。</p>
+    </div>
+
+    <div class="code"><pre>import numpy as np
+import torch
+from gymnasium.wrappers import TimeLimit
+from stable_baselines3 import PPO
+from stable_baselines3.common.utils import explained_variance, obs_as_tensor
+
+from envs.pendulum_env import PendulumEnv
+
+model = PPO.load("train/ppo_semi_long_s0.zip", device="cpu")
+gamma = model.gamma
+
+V_all, G_all = [], []
+for ep in range(10):
+  env = TimeLimit(PendulumEnv(), max_episode_steps=500)
+  obs, _ = env.reset(seed=1000 + ep)
+  obs_list, rew_list = [], []
+  for t in range(500):
+    obs_list.append(obs)
+    act, _ = model.predict(obs, deterministic=True)
+    obs, r, term, trunc, _ = env.step(act)
+    rew_list.append(float(r))
+    if term or trunc:
+      break
+
+  <span class="cmt"># TODO STEP 2: obs_list をまとめて V を予測する</span>
+  <span class="cmt">#   with torch.no_grad():</span>
+  <span class="cmt">#     v = model.policy.predict_values(obs_as_tensor(..., model.device))</span>
+
+  <span class="cmt"># TODO STEP 1: rew_list から G を逆順に積む</span>
+
+  V_all.append(v.cpu().numpy().flatten())
+  G_all.append(G)
+
+V_all = np.concatenate(V_all)
+G_all = np.concatenate(G_all).astype(np.float32)
+print("MC 基準 EV =", explained_variance(V_all, G_all))
+print("Var(G) =", np.var(G_all), " Var(G - V) =", np.var(G_all - V_all))
+</pre></div>
+
+    <div class="callout">
+      <span class="k">数字が出たら考えること</span>
+      <ul>
+        <li>TensorBoard の最終値（<code>0.997</code>）と比べてどうか。
+            <strong>近ければ Critic は本物</strong>、大きく下なら &lambda; の下駄がある</li>
+        <li><strong>この測り方には 2 つのバイアスがあります。</strong>
+            (1) <code>deterministic=True</code> なので<strong>学習時と行動分布が違う</strong>、
+            (2) 500 ステップで切るので<strong>終盤の <code>G</code> は続きの報酬が欠けている</strong>。
+            <strong>どちらも <code>EV</code> を下げる向きに効きます</strong>——
+            それでも高く出たなら、結論は強い</li>
+      </ul>
+    </div>
+
+    <details>
+      <summary>参考: 講師が同じ手順で測った値</summary>
+      <div class="dbody">
+        <p><code>ppo_semi_long_s0</code>、10 エピソード &times; 500 ステップ = 5000 点、&gamma;=0.99。</p>
+        <div class="tw"><table>
+          <thead><tr><th>量</th><th class="num">値</th></tr></thead>
+          <tbody>
+            <tr><td>MC 基準 EV</td><td class="num ok">0.9962</td></tr>
+            <tr><td><code>Var(G)</code></td><td class="num">1511.6</td></tr>
+            <tr><td><code>Var(G &minus; V)</code></td><td class="num">5.7</td></tr>
+            <tr><td><code>mean(G)</code> / <code>mean(V)</code></td><td class="num">&minus;6.5 / &minus;8.5</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong><code>mean</code> が 2.0 ずれているのに <code>EV</code> は 0.996 です。</strong>
+           <code>&sect;05</code> のバイアス無視が、あなた自身の数字で再現しています。
+           このズレの正体は、上に書いた<strong>打ち切りによる収益の欠け</strong>です。</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 2</span>
+    <h3>採点基準を変えて、同じものを測り直す</h3>
+
+    <div class="goal">
+      <span class="k">この課題の狙い</span>
+      <p><code>&sect;07</code> の &lambda; 依存を<strong>合成データではなく自分の環境で</strong>確認します。
+         <strong>「指標が上がった」と「モデルが良くなった」は別のこと</strong>——
+         これを一度自分のログで見ておくと、
+         7-d で扱った<strong>比較の作法</strong>が腑に落ちます。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 1</span><h4><code>gae_lambda</code> を引数にする</h4></div>
+      <p><code>train/train_ppo.py</code> に <code>--gae-lambda</code> を足し、
+         <code>PPO(...)</code> に渡します。<code>--tag</code> も分けること。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 2</span><h4>2 本回す</h4></div>
+      <p><code>1.0</code> と既定の <code>0.95</code>。
+         <strong>シードは揃えてください</strong>（7-d のとおり、揃えないと何も言えません）。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">STEP 3</span><h4>2 つの指標を並べる</h4></div>
+      <p>TensorBoard で <code>train/explained_variance</code> と
+         <code>rollout/ep_rew_mean</code> を重ねます。</p>
+    </div>
+
+    <div class="code"><pre>uv run python -m train.train_ppo --steps 300000 --seed 0 --gae-lambda 0.95 --tag lam095
+uv run python -m train.train_ppo --steps 300000 --seed 0 --gae-lambda 1.0  --tag lam100
+</pre></div>
+
+    <div class="callout tip">
+      <span class="k">予想を立ててから回すこと</span>
+      <p><code>&lambda;=1.0</code> のほうが <code>EV</code> は<strong>低く出る</strong>はずです。
+         では <strong><code>ep_rew_mean</code> はどちらが上になるでしょうか。</strong></p>
+      <p><strong>先に紙に書いてから走らせてください。</strong>
+         当たっても外れても、その差が
+         <strong>「EV は方策の性能ではない」の一番わかりやすい証拠</strong>になります。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sec-head">
+    <span class="eyebrow">10</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><code>EV</code> は<strong>「ばらつきの何割を説明したか」</strong>。
+          分母は<strong>定数を返すだけの予測器</strong>の成績なので、
+          <code>0</code>＝同点、負＝それ以下、という意味になる</li>
+      <li><strong>RL に外から与えられる正解はない。</strong>
+          欲しいのは期待値 <code>V<sup>&pi;</sup></code>、手にあるのはその 1 サンプル。
+          <strong>しかも <code>&pi;</code> が変わるたび正解も動く</strong></li>
+      <li><strong>完璧な Critic でも 1 には届かない。</strong>
+          天井は <code>1 &minus; E[Var(G|s)]/Var(G)</code>。
+          あなたの振り子は環境が決定的なので天井が高く
+          （確率的方策で <code>0.9976</code>、決定的方策で <code>1.0000</code>）、
+          <strong>だから <code>0.997</code> が出た。別の環境の <code>0.6</code> と比べても意味がない</strong></li>
+      <li><strong>バイアスを見ない。</strong>
+          <code>ŷ = y + 100</code> でも <code>EV = 1.000</code>（<code>R&sup2;</code> は <code>&minus;98.96</code>）。
+          PPO はアドバンテージを正規化して使うので、<strong>これは欠陥ではなく設計の一致</strong></li>
+      <li>SB3 の <code>y_pred</code> は<strong>収集時の <code>V</code></strong>。
+          ログの値は<strong>更新前の Critic の成績</strong>で、1 手遅れている</li>
+      <li><code>returns = advantages + values</code> なので
+          <strong><code>EV = 1 &minus; Var(A)/Var(returns)</code></strong>。
+          <strong>低い EV ＝ アドバンテージがうるさい ＝ 更新方向が信用できない</strong></li>
+      <li><strong>正解に <code>V</code> 自身が混ざっている。</strong>
+          同じ Critic が <code>gae_lambda</code> 次第で <code>0.477</code> とも <code>0.750</code> とも採点される。
+          <strong>設定をまたいで横比較してはいけない</strong></li>
+      <li><strong>指標には効く区間がある。</strong>
+          あなたのログでは 25 万ステップ以降、<code>EV</code> は <code>0.995 &rarr; 0.997</code> しか動かないのに
+          報酬は <code>189</code> 改善した。<strong>そこから先は Actor 側を見る</strong></li>
+      <li><code>Var(y) == 0</code> のとき <code>nan</code>。
+          <strong>線が消えたら、収益がばらついていないことを疑う</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="e1"><span><code>EV = 0</code> が「定数を返すのと同点」である理由を式で説明できる</span></label>
+    <label><input type="checkbox" data-ck="e8"><span>この環境の <code>EV</code> の天井を測り、目標値を知っている</span></label>
+    <label><input type="checkbox" data-ck="e2"><span><code>EV</code> がバイアスを無視することと、それが PPO で問題になりにくい理由を言える</span></label>
+    <label><input type="checkbox" data-ck="e3"><span>SB3 が <code>y_true</code> に何を渡しているかをソースで指させる</span></label>
+    <label><input type="checkbox" data-ck="e4"><span><code>EV = 1 &minus; Var(A)/Var(returns)</code> を導出できる</span></label>
+    <label><input type="checkbox" data-ck="e5"><span><code>train/ev_check.py</code> を書き、MC 基準の <code>EV</code> を出した</span></label>
+    <label><input type="checkbox" data-ck="e6"><span><code>gae_lambda</code> を変えて <code>EV</code> と報酬の動きを比べた</span></label>
+    <label><input type="checkbox" data-ck="e7"><span>自分のログで「EV を見るべき区間」がどこまでか言える</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 8 への接続</span>
+    <p>8-a で <code>Critic</code> の損失を自分で書くと、
+       <strong>この教材で読んだ <code>returns</code> が、そのまま学習の教師信号として現れます</strong>。
+       <code>value_loss = MSE(V, returns)</code> ——
+       <strong><code>EV</code> はこの損失を「環境ごとに意味のあるスケール」に直したもの</strong>だと分かります。</p>
+    <p>そして GAE の &lambda; を自分で実装したとき、
+       <strong>今日見た「正解に V が混ざる」構造を、自分のコードの中に見つけてください。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 7 補助教材</span>
+  <span>stable-baselines3 2.9.0 のソースと semi_long_2 のログで検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var cv = document.getElementById("cv");
+  if (!cv) return;
+  var ctx = cv.getContext("2d");
+
+  // ---- 固定の正解データ（毎回同じ 200 点） ----
+  var seed = 20260923;
+  function rnd() {                       // 線形合同法
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  }
+  function gauss() {                     // Box-Muller
+    var u = Math.max(rnd(), 1e-9), v = rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  var N = 200, Y = [], E = [];
+  for (var i = 0; i < N; i++) { Y.push(gauss() * 30); E.push(gauss()); }
+
+  function mean(a) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+  function vari(a) { var m = mean(a), s = 0; for (var i = 0; i < a.length; i++) s += (a[i] - m) * (a[i] - m); return s / a.length; }
+
+  var sA = document.getElementById("sA"), sB = document.getElementById("sB"), sN = document.getElementById("sN");
+  var vA = document.getElementById("vA"), vB = document.getElementById("vB"), vN = document.getElementById("vN");
+  var rEV = document.getElementById("rEV"), rR2 = document.getElementById("rR2");
+  var rVy = document.getElementById("rVy"), rVr = document.getElementById("rVr");
+  var note = document.getElementById("labNote");
+
+  var LIM = 130;                         // 軸の範囲 [-LIM, LIM]
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  function draw(P) {
+    var dpr = window.devicePixelRatio || 1;
+    var W = cv.clientWidth || 640, H = Math.round(W * 0.66);
+    cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var pad = 42, w = W - pad - 16, h = H - pad - 16;
+    var X = function (v) { return pad + (v + LIM) / (2 * LIM) * w; };
+    var Yp = function (v) { return 16 + h - (v + LIM) / (2 * LIM) * h; };
+
+    ctx.strokeStyle = css("--grid"); ctx.lineWidth = 1;
+    for (var g = -100; g <= 100; g += 50) {
+      ctx.beginPath(); ctx.moveTo(X(g), 16); ctx.lineTo(X(g), 16 + h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pad, Yp(g)); ctx.lineTo(pad + w, Yp(g)); ctx.stroke();
+    }
+    ctx.strokeStyle = css("--rule-strong");
+    ctx.strokeRect(pad, 16, w, h);
+
+    // ŷ = y の線（ここに乗るほど当たっている）
+    ctx.strokeStyle = css("--real"); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(X(-LIM), Yp(-LIM)); ctx.lineTo(X(LIM), Yp(LIM)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = css("--sim");
+    for (var i = 0; i < N; i++) {
+      if (Math.abs(P[i]) > LIM || Math.abs(Y[i]) > LIM) continue;
+      ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.arc(X(P[i]), Yp(Y[i]), 3, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = css("--muted");
+    ctx.font = "11px ui-monospace, Menlo, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("V の予測  ŷ  →", pad + w / 2, H - 8);
+    ctx.save();
+    ctx.translate(13, 16 + h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText("← 実際の収益  y", 0, 0);
+    ctx.restore();
+    ctx.textAlign = "left";
+    ctx.fillStyle = css("--real");
+    ctx.fillText("ŷ = y", X(LIM) - 46, Yp(LIM) + 16);
+  }
+
+  function update() {
+    var a = parseFloat(sA.value), b = parseFloat(sB.value), s = parseFloat(sN.value);
+    vA.textContent = a.toFixed(2);
+    vB.textContent = (b > 0 ? "+" : "") + b.toFixed(0);
+    vN.textContent = s.toFixed(1);
+
+    var P = [], R = [], i;
+    for (i = 0; i < N; i++) { P.push(a * Y[i] + b + s * E[i]); R.push(Y[i] - P[i]); }
+
+    var vy = vari(Y), vr = vari(R);
+    var ev = 1 - vr / vy;
+    var my = mean(Y), sse = 0, sst = 0;
+    for (i = 0; i < N; i++) { sse += R[i] * R[i]; sst += (Y[i] - my) * (Y[i] - my); }
+    var r2 = 1 - sse / sst;
+
+    function fmt(x) { return Math.abs(x) >= 1000 ? x.toFixed(0) : x.toFixed(3); }
+    rEV.textContent = fmt(ev);
+    rR2.textContent = fmt(r2);
+    rVy.textContent = vy.toFixed(1);
+    rVr.textContent = vr.toFixed(1);
+    rEV.style.color = ev > 0.8 ? css("--sim") : (ev > 0.2 ? css("--ink") : css("--bad"));
+    rR2.style.color = r2 > 0.8 ? css("--sim") : (r2 > 0.2 ? css("--ink") : css("--bad"));
+
+    var msg = "";
+    if (Math.abs(b) > 5 && Math.abs(a - 1) < 0.01 && s < 0.01) {
+      msg = "点の雲がまるごと横にずれているのに EV は 1.000 のまま。R² だけが落ちる。";
+    } else if (Math.abs(a) < 0.01 && s < 0.01) {
+      msg = "定数しか返していない状態。EV はちょうど 0 になる。";
+    } else if (a < 0 && s < 0.01) {
+      msg = "符号が逆。a = -1 のとき EV = 1 - (1-(-1))² = -3。";
+    } else if (Math.abs(a - 1) > 0.05 && s < 0.01) {
+      msg = "ノイズ 0 なら EV = 1 - (1 - a)² ちょうど。手計算と突き合わせてみること。";
+    } else if (s > 0.01) {
+      msg = "ノイズは雲を斜め線の周りに太らせる。EV も R² も同じだけ下がる。";
+    } else {
+      msg = "完璧な Critic。すべての点が破線の上に乗っている。";
+    }
+    note.textContent = msg;
+
+    draw(P);
+  }
+
+  [sA, sB, sN].forEach(function (el) { el.addEventListener("input", update); });
+  Array.prototype.forEach.call(document.querySelectorAll("button.preset[data-p]"), function (btn) {
+    btn.addEventListener("click", function () {
+      var p = btn.getAttribute("data-p").split(",");
+      sA.value = p[0]; sB.value = p[1]; sN.value = p[2];
+      update();
+    });
+  });
+  window.addEventListener("resize", update);
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", update);
+  }
+  update();
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-ev-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

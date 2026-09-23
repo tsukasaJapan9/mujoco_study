@@ -1,34 +1,18 @@
 import numpy as np
-from gymnasium.wrappers import TimeLimit
+from stable_baselines3 import PPO
 
-from envs.pendulum_env import PendulumEnv
+from train.eval import evaluate
+
+model = PPO.load("train/ppo_semi_long_s0")
 
 
-def evaluate(policy, n_ep=10, steps=500):
-  totals, ups = [], []
-  for ep in range(n_ep):
-    env = TimeLimit(PendulumEnv(), max_episode_steps=steps)
-    obs, info = env.reset(seed=ep)
-    env.action_space.seed(ep)  # これが無いと毎回結果が変わる
-    total, up = 0.0, 0
-    for t in range(steps):
-      obs, reward, terminated, truncated, info = env.step(policy(env, obs))
-      total += reward
-      if -np.cos(env.unwrapped.data.qpos[0]) > 0.95:
-        up += 1
-      if terminated or truncated:
-        break
-    totals.append(total)
-    ups.append(up)
-  return np.mean(totals), np.mean(ups)
+def trained_policy(env, obs):
+  action, _ = model.predict(obs, deterministic=True)
+  return action
 
 
 def random_policy(env, obs):
   return env.action_space.sample()
-
-
-# total, up = evaluate(random_policy)
-# print(f"ランダム方策: 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
 
 
 # ============================================
@@ -54,5 +38,8 @@ def expert(env, obs):
   return np.array([u / TAU], dtype=np.float32)  # [-1,1] に直す
 
 
-total, up = evaluate(expert)
-print(f"古典制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
+# total, up = evaluate(expert)
+# print(f"古典制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
+
+total, up = evaluate(trained_policy)
+print(f"PPO制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")

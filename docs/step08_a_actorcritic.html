@@ -1,0 +1,969 @@
+<title>Actor-Critic とガウス方策</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">自分で書くことになるもの</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">Actor-Critic</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">対角ガウス方策</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 8-a</span>
+  <h1>Actor-Critic とガウス方策</h1>
+  <p><code>PPO("MlpPolicy", venv)</code> の中身を開ける。
+     まず<strong>ネットワークが何を出しているか</strong>から。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 8 の 1/5</span>
+    <span class="chip">algos/ppo_min.py</span>
+    <span class="chip">前提: Step 7</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>PPO で振り子を立てられた（<b>+24.55</b>、古典制御 +28.31 と実質同等）</li>
+      <li>中で何が起きているかは<strong>4 つの指標を通してしか見ていない</strong></li>
+      <li><code>explained_variance</code> が測る Critic も、<code>approx_kl</code> が制限する更新も、
+          <strong>実体を知らないまま使ってきた</strong></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> <code>"MlpPolicy"</code> という文字列は、具体的に何を作っているのか？</p>
+    <p><b>2.</b> 連続的な行動を「確率的に」選ぶとは、どういう計算なのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題に答えたあと、<strong>PPO を 5 つの部品に分解</strong>します。
+     そのうち今回書くのは<strong>1 つ目（ネットワーク）だけ</strong>です。
+     <strong>学習はまだ回しません。</strong>形と値を確かめるところまで。</p>
+
+  <div class="callout tip">
+    <span class="k">この Step の補助教材</span>
+    <p>今回出てくる数学まわりは、<strong>別冊に分けてあります</strong>。
+      詰まったらそちらを先に読んでください。</p>
+    <ul>
+      <li><a href="network_shapes_explained.html"><b>ネットワークの形を読む</b></a>
+        —— <code>(4, 3)</code> の 2 つの数字、<code>nn.Linear</code>、<code>squeeze(-1)</code></li>
+      <li><a href="logstd_explained.html"><b>log_std を理解する</b></a>
+        —— <code>exp</code> と <code>log</code> から、なぜ標準偏差を対数で持つのか</li>
+      <li><a href="density_explained.html"><b>確率密度とは何か</b></a>
+        —— なぜ連続値では確率が使えないのか</li>
+    </ul>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">なぜ自分で書くのか</span>
+    <p>SB3 は<strong>よくできたライブラリ</strong>で、普通に使うぶんには中を知らなくても困りません。
+       それでも書く理由は、<strong>Phase D の Sim2Real でカスタマイズが要る</strong>からです。</p>
+    <p>実機に載せる段階では「観測に遅延を入れる」「特定の状態で学習を止める」
+       「複数の環境で別々の報酬を使う」といった改造が必要になります。
+       <strong>中を知らないと、ライブラリが想定していない改造はできません。</strong></p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題に答えます。<strong>答えはすでに 5-e で書いていました</strong>——
+       名前が変わっているだけです。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>5-c で <code>A = Q &minus; V</code> と習いましたが、<code>Q</code> は表として持っていません。
+       持っているのは <code>V</code> と、実際に歩いて得た報酬の列だけ。
+       <strong>そこから <code>A</code> をどう計算すればいいでしょうか。</strong></p>
+  </div>
+
+  <p><b>答え：1 歩あるいた結果で <code>Q</code> を推定します。</b></p>
+
+  <p><code>Q(s,a)</code> は「<code>s</code> で <code>a</code> を取り、その後は方策に従ったときの収益」でした。
+     <strong>実際に <code>a</code> を取って 1 歩あるけば</strong>、報酬 <code>r</code> と次の状態 <code>s'</code> が手に入ります。
+     その先は <code>V(s')</code> で代用できます。</p>
+
+  <div class="code"><pre>Q(s,a) &asymp; r + &gamma;&middot;V(s')
+
+A(s,a) = Q(s,a) - V(s)
+       &asymp; r + &gamma;&middot;V(s') - V(s)
+</pre></div>
+
+  <div class="callout">
+    <span class="k">この式、5-e で見ています</span>
+    <p>Q 学習の更新式はこうでした。</p>
+    <div class="code"><pre>target = r + &gamma;&middot;max_{a'} Q(s', a')
+TD 誤差 = target - Q(s,a)
+</pre></div>
+    <div class="callout">
+      <span class="k">この <code>a'</code> は SARSA の <code>a'</code> とは別物です</span>
+      <p>5-f で SARSA の式を <code>r + &gamma;&middot;Q(s', a')</code> と書きました。
+        <strong>同じ <code>a'</code> という記号が出てきますが、役割がまったく違います。</strong></p>
+      <div class="tw"><table>
+        <thead><tr><th></th><th>式</th><th><code>a'</code> の正体</th></tr></thead>
+        <tbody>
+          <tr><td>Q 学習</td><td class="num">max<sub>a'</sub> Q(s', a')</td>
+              <td><strong>すべての行動を動かすための仮の名前。</strong>式の外に出てこない</td></tr>
+          <tr><td>SARSA</td><td class="num">Q(s', a')</td>
+              <td><strong>実際に次に選ぶ行動。</strong>具体的な 1 つの値</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>コードで見れば一目瞭然です。</strong></p>
+      <div class="code"><pre>max(Q[s_next])          <span class="cmt"># Q 学習。4 つ全部見て最大を取る。添字が無い</span>
+Q[s_next][a_next]       <span class="cmt"># SARSA。a_next という具体的な行動を指定している</span>
+</pre></div>
+      <p class="why"><b>だから 5-f の主張が成り立ちます</b>
+        「Q 学習が<strong>でたらめに歩いても学べる</strong>のは <code>max</code> のおかげ。
+        右辺に<strong>実際の行動が出てこない</strong>から」——
+        <code>max<sub>a'</sub></code> の <code>a'</code> は実際の行動ではないので、矛盾しません。</p>
+    </div>
+    <p>形が同じです。<strong>「予想していた値」と「1 歩あるいて分かった値」のズレ</strong>——
+       5-e で <b>TD 誤差</b> と呼んだものが、<strong>そのままアドバンテージの推定値</strong>になります。</p>
+    <p>違いは <code>Q</code> の表を持っているか <code>V</code> だけ持っているかで、
+       <strong>発想は同じ</strong>です。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">学習途中は両側とも外れています</span>
+    <p><code>V(s')</code> も <code>V(s)</code> も学習中のネットの出力なので、
+      <strong>片方だけ正しいということはありません</strong>。
+      Q 学習で実際に記録するとこうなります
+      （gridworld の <code>(2,0)</code> で <code>up</code> を選んだときの更新）。</p>
+    <div class="code"><pre>  ep    Q(s,a)   max Q(s')    r    target      TD誤差
+   0   0.00000    0.00000   0.0   0.00000  +0.00000   <span class="cmt"># 両方ゼロ。何も起きない</span>
+  21   0.02884    0.09735   0.0   0.08761  +0.05878   <span class="cmt"># 両方とも正解から遠い</span>
+  51   0.37327    0.54655   0.0   0.49190  +0.11863   <span class="cmt"># 誤差のピーク</span>
+ 399   0.65610    0.72900   0.0   0.65610  +0.00000   <span class="cmt"># ようやく収束</span>
+</pre></div>
+    <p class="why"><b>それでも target のほうが「わずかに正しい」</b>
+      <code>r</code> という<strong>実測値が 1 個だけ混ざっている</strong>からです。
+      その 1 個の差を頼りに、少しずつ全体が正しくなっていきます。</p>
+    <p class="why"><b><code>r = 0</code> の場所では、最初は本当に何も起きません</b>
+      <code>ep 0</code> の行を見てください。両方ゼロなので TD 誤差もゼロ、更新しても値が変わらない。
+      <strong>5-e で <code>&epsilon;=0</code> のとき表が動かなかったのと同じ現象</strong>です。
+      学習を始めるのは<strong>ゴールに入った 1 歩の <code>r = 1.0</code> だけ</strong>——
+      そこには推測が混ざらないので確実に更新され、隣へ、また隣へと伝わります。
+      <strong>5-d の「波が広がる」絵がこれです。</strong></p>
+    <p class="why"><b>TD 誤差は単調には減りません</b>
+      <code>ep 51</code> でいったん大きくなってからゼロに向かっています。
+      <strong>情報が届いた瞬間に修正が始まる</strong>ためで、
+      <strong>「誤差が大きい ＝ 悪い」とは限りません</strong>。
+      7-b で <code>explained_variance</code> がマイナスから 0.91 へ急上昇したのと同じ構図です。</p>
+  </div>
+
+  <p class="why"><b>ただしこの推定は「1 歩先しか見ていません」</b>
+     <code>r + &gamma;V(s') &minus; V(s)</code> は、実際の報酬を 1 個だけ使い、
+     残りはすべて <code>V</code> の予想に頼っています。
+     <strong><code>V</code> が外れていれば、その誤差をまるごと引き継ぎます。</strong></p>
+  <p class="why">逆に、最後まで歩いて収益を測れば <code>V</code> に頼らずに済みますが、
+     <strong>5-c で見たとおりモンテカルロはぶれが大きい</strong>。
+     <strong>「どこまで実際の報酬を使い、どこから <code>V</code> に任せるか」</strong>——
+     このつまみが <b>GAE の &lambda;</b> です。<strong>次回 8-b の主題</strong>になります。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>自分で書くことになるもの</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>PPO を<strong>5 つの部品</strong>に分解します。
+       全体像を持っておくと、<strong>いま何を書いているのか</strong>で迷いません。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">部品</th><th>やること</th><th>Step 5〜7 のどこ</th><th>扱う教材</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><strong>ネットワーク</strong><br>観測から行動と価値を出す</td>
+          <td><code>&pi;</code> と <code>V</code>（5-c）</td><td><strong>8-a（今回）</strong></td></tr>
+      <tr><td class="num">2</td><td><strong>データ収集</strong><br>環境を回して <code>(s,a,r,s')</code> を溜める</td>
+          <td>5-a の <code>step()</code> ループ</td><td>8-d</td></tr>
+      <tr><td class="num">3</td><td><strong>アドバンテージ計算</strong><br>集めた報酬から <code>A</code> を作る</td>
+          <td><code>A = Q &minus; V</code>（5-c）</td><td>8-b</td></tr>
+      <tr><td class="num">4</td><td><strong>損失の計算</strong><br>方策と価値をどう更新するか決める</td>
+          <td>——（新しい）</td><td>8-c</td></tr>
+      <tr><td class="num">5</td><td><strong>学習ループ</strong><br>1〜4 を繰り返す</td>
+          <td>——</td><td>8-d</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>本当に新しいのは 4 番だけです</b>
+     1・3 は Step 5 で概念として学んだもの、2・5 は Step 5〜6 で書いたループの形。
+     <strong>PPO 固有の発明は「損失をどう作るか」だけ</strong>で、
+     それが 8-c の<strong>クリップ目的関数</strong>です。</p>
+
+  <div class="callout tip">
+    <span class="k">300 行の内訳</span>
+    <p>ロードマップで「単一ファイル 300 行程度」と書きました。目安はこうです。</p>
+    <div class="tw"><table>
+      <thead><tr><th>部品</th><th class="num">行数の目安</th></tr></thead>
+      <tbody>
+        <tr><td>1. ネットワーク</td><td class="num">30</td></tr>
+        <tr><td>2. データ収集</td><td class="num">50</td></tr>
+        <tr><td>3. アドバンテージ（GAE）</td><td class="num">20</td></tr>
+        <tr><td>4. 損失</td><td class="num">40</td></tr>
+        <tr><td>5. 学習ループ</td><td class="num">60</td></tr>
+        <tr><td>設定・評価・その他</td><td class="num">100</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>核心部分は 140 行ほど</strong>です。思ったより小さいはずです。</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>Actor-Critic — 1 つのネットで 2 つを出す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>"MlpPolicy"</code> が作っているものの正体を見ます。
+       <strong>2 つの役割が 1 つのネットに同居している</strong>のが要点です。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>呼び名</th><th>役割</th><th>Step 5 では</th><th>7-b の指標</th></tr></thead>
+    <tbody>
+      <tr><td><b>Actor</b>（演者）</td><td>観測を見て<strong>行動を決める</strong></td><td>方策 <code>&pi;</code></td><td><code>entropy_loss</code></td></tr>
+      <tr><td><b>Critic</b>（評論家）</td><td>観測を見て<strong>価値を予想する</strong></td><td>価値関数 <code>V</code></td><td><code>explained_variance</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>名前のとおりです</b>
+     演者が動き、評論家が「その場面はどれくらい良いか」を採点する。
+     <strong>採点結果（アドバンテージ）を見て演者が改善します。</strong></p>
+
+  <h3>構造</h3>
+  <div class="code"><pre>観測 (3) ─→ Linear(3,64) ─→ Tanh ─→ Linear(64,64) ─→ Tanh ─┬─→ Linear(64,1) → mu   (行動の平均)
+                    共通部分（shared）                      └─→ Linear(64,1) → V    (価値)
+
+                                                  別に持つ: log_std (行動のばらつき)
+</pre></div>
+
+  <p><strong>途中まで同じ計算を使い、最後だけ枝分かれします。</strong></p>
+
+  <div class="callout">
+    <span class="k">なぜ途中を共有するのか</span>
+    <p>「今どういう状況か」を読み取る部分は、<strong>行動を決めるのにも価値を測るのにも要ります</strong>。
+       別々に持つと同じことを 2 回学ぶことになり、データが余計に必要です。</p>
+    <p>ただし<strong>共有には副作用があります</strong>——
+       Critic の学習が Actor の内部表現を壊すことがあります。
+       <strong>SB3 の既定は実は「共有しない」</strong>（<code>net_arch</code> で別々に指定）で、
+       共有するかどうかはタスク次第です。
+       <strong>8-d では共有版で書きます</strong>——短くて、振り子では十分動くので。</p>
+  </div>
+
+  <h3>実際の大きさ</h3>
+  <div class="tw"><table>
+    <thead><tr><th>パラメータ</th><th class="num">形</th><th class="num">個数</th></tr></thead>
+    <tbody>
+      <tr><td><code>shared.0.weight</code> / <code>bias</code></td><td class="num">(64, 3) / (64,)</td><td class="num">256</td></tr>
+      <tr><td><code>shared.2.weight</code> / <code>bias</code></td><td class="num">(64, 64) / (64,)</td><td class="num">4160</td></tr>
+      <tr><td><code>mu.weight</code> / <code>bias</code></td><td class="num">(1, 64) / (1,)</td><td class="num">65</td></tr>
+      <tr><td><code>v.weight</code> / <code>bias</code></td><td class="num">(1, 64) / (1,)</td><td class="num">65</td></tr>
+      <tr><td><code>log_std</code></td><td class="num">(1,)</td><td class="num">1</td></tr>
+      <tr><td><strong>合計</strong></td><td class="num">——</td><td class="num"><strong>4,547</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>4,547 個です</b>
+     画像認識のネットが数千万個のパラメータを持つのと比べると<strong>桁違いに小さい</strong>。
+     7-a で「GPU が要らない」と書いた理由がこれです。
+     <strong>この規模なら GPU に送る手間のほうが高くつきます。</strong></p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>対角ガウス方策 — 連続行動をどう「選ぶ」か</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>5-e の <code>&epsilon;-greedy</code> にあたるものが、連続行動でどう実装されるかを見ます。
+       <strong>7-b で読んだ <code>entropy_loss</code> と <code>std</code> の正体</strong>がここで分かります。</p>
+  </div>
+
+  <p>マス目では行動が 4 択だったので、「上 25%、右 25%...」と<strong>確率を並べれば</strong>方策になりました。
+     <strong>トルクは連続値なので、並べられません。</strong></p>
+
+  <p>そこで<strong>正規分布</strong>を使います。ネットは分布の<strong>平均 <code>&mu;</code></strong> を出し、
+     <strong>ばらつき <code>&sigma;</code></strong> を別に持ち、そこから行動をサンプリングします。</p>
+
+  <div class="code"><pre>mu     = ネットの出力          <span class="cmt"># 「だいたいこれくらいが良い」</span>
+std    = exp(log_std)          <span class="cmt"># 「どれくらい散らすか」</span>
+action ~ Normal(mu, std)       <span class="cmt"># そこから 1 つ引く</span>
+</pre></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">log_std</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>行動のばらつき <code>&sigma;</code> を、<strong>対数で持つパラメータ</strong>。
+        実際に使うときは <code>exp()</code> して <code>&sigma;</code> に戻します。</dd>
+      <dt>なぜ対数で持つのか</dt>
+      <dd><code>&sigma;</code> は<strong>必ず正</strong>でなければなりません（負のばらつきは意味がない）。
+        直接学習すると負になる危険がありますが、
+        <strong><code>exp()</code> を通せば何を入れても正になります</strong>。
+        制約を式の形で満たす、という常套手段です。</dd>
+      <dt>どこに効くか</dt>
+      <dd>7-b で読んだ <code>train/std</code> がこの <code>exp(log_std)</code> です。
+        <strong>30 万ステップ時点で 0.602</strong> でした。
+        <code>ent_coef</code> はこの値を下がりにくくするパラメータ（7-c）。</dd>
+    </dl>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">log_std</th><th class="num">std</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.0</td><td class="num">1.000</td><td>初期値。行動が <code>[-1,1]</code> なので<strong>かなり広く探索</strong></td></tr>
+      <tr><td class="num">&minus;0.5</td><td class="num">0.607</td><td>7-b の 30 万ステップ時点（0.602）がこのあたり</td></tr>
+      <tr><td class="num">&minus;1.0</td><td class="num">0.368</td><td>かなり絞られてきた</td></tr>
+      <tr><td class="num">&minus;3.0</td><td class="num">0.050</td><td><strong>ほぼ探索していない</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>「対角」とは何か</h3>
+  <p>行動が複数ある場合（12 関節など）、<strong>それぞれ独立した正規分布</strong>として扱います。
+     関節どうしの相関を考えない、という意味で<strong>対角</strong>（共分散行列が対角）と呼びます。</p>
+  <p class="why"><b>相関を考えないのは近似です</b>
+     実際には「肩を上げるなら肘も曲げる」のような相関がありますが、
+     <strong>それは分布ではなくネットワークが学びます</strong>——
+     観測に応じて <code>&mu;</code> をまとめて出すので。
+     <strong>分布の形を単純にしておくほうが計算も実装も楽で、実用上ほとんど困りません。</strong></p>
+
+  <div class="callout">
+    <span class="k">log_prob と entropy が必要になります</span>
+    <p>8-c の損失計算で使うので、<strong>分布から 2 つの量を取り出せる</strong>ことを確認しておきます。</p>
+    <div class="tw"><table>
+      <thead><tr><th>量</th><th>意味</th><th>どこで使うか</th></tr></thead>
+      <tbody>
+        <tr><td><code>log_prob(a)</code></td><td>その行動を選ぶ確率の対数</td><td><strong>8-c のクリップ目的関数</strong></td></tr>
+        <tr><td><code>entropy()</code></td><td>分布の広がり</td><td><code>ent_coef</code> を掛けて損失に足す</td></tr>
+      </tbody>
+    </table></div>
+    <p><code>std = 1.0</code> のときのエントロピーは <strong>1.4189</strong> です
+      （<code>0.5&middot;log(2&pi;e)</code>）。
+      <strong>7-b で学習開始直後の <code>entropy_loss</code> が <code>&minus;1.401</code> だったのは、
+      これに符号を付けた値</strong>です。</p>
+  </div>
+</section>
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>部品 1（ネットワーク）を作る</strong>ため。
+      8-b 以降はこのファイルに足していくので、ここが土台になります。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<code>"MlpPolicy"</code> が何を作っていたか、<strong>パラメータの個数まで含めて</strong>説明できる。
+      そして<strong>7-b で読んだ <code>std</code> と <code>entropy</code> が、
+      どの変数から出ていたか</strong>を指させる。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      <code>algos/ppo_min.py</code> を新規作成します（<code>algos/</code> フォルダも）。
+      <strong>学習は回しません。</strong>形と値を確かめるところまでです。</p>
+    <p>PyTorch は <code>stable-baselines3</code> と一緒に入っているので、追加は不要です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>ネットワークを書く</h3>
+    <p class="why"><b>この段階ですること</b> &sect;03 の図をコードにします。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>import torch
+import torch.nn as nn
+
+
+class ActorCritic(nn.Module):
+  def __init__(self, obs_dim, act_dim, hidden=64):
+    super().__init__()
+    self.shared = nn.Sequential(
+      nn.Linear(obs_dim, hidden), nn.Tanh(),
+      nn.Linear(hidden, hidden), nn.Tanh(),
+    )
+    self.mu = nn.Linear(hidden, act_dim)        <span class="cmt"># Actor: 行動の平均</span>
+    self.v = nn.Linear(hidden, 1)               <span class="cmt"># Critic: 価値</span>
+    self.log_std = nn.Parameter(torch.zeros(act_dim))   <span class="cmt"># 観測に依存しない</span>
+
+  def forward(self, obs):
+    h = self.shared(obs)
+    return self.mu(h), self.v(h).squeeze(-1), self.log_std
+</pre></div>
+    <p class="why"><b><code>log_std</code> だけ <code>nn.Parameter</code> です</b>
+      <code>mu</code> は <code>nn.Linear</code>、つまり<strong>観測から計算されます</strong>
+      （状況に応じて狙う値が変わるので）。
+      一方 <code>log_std</code> は<strong>観測に依存しない、ただの学習される数</strong>です。</p>
+    <p class="why"><b>なぜばらつきは状況に依存しなくていいのか</b>
+      「上端付近では慎重に、下では大胆に」と変えられれば理想的ですが、
+      <strong>PPO の標準実装では状態非依存にします</strong>——
+      そのほうが学習が安定するからです。
+      <strong>状態依存にする実装もあります</strong>（SAC がそう）。</p>
+    <p class="why"><b><code>squeeze(-1)</code> の意味</b>
+      <code>self.v(h)</code> の形は <code>(バッチ, 1)</code> ですが、
+      価値はスカラー 1 個なので <code>(バッチ,)</code> にします。
+      <strong>この 1 次元の食い違いは、あとで損失計算のときに
+      ブロードキャストの事故を起こします</strong>——ここで潰しておきます。</p>
+    <p><b>確認方法</b> 形とパラメータ数を出します。</p>
+    <div class="code"><pre>net = ActorCritic(obs_dim=3, act_dim=1)
+obs = torch.randn(4, 3)
+mu, v, log_std = net(obs)
+print("mu:", tuple(mu.shape), " v:", tuple(v.shape), " log_std:", tuple(log_std.shape))
+print("パラメータ数:", sum(p.numel() for p in net.parameters()))
+</pre></div>
+    <div class="code"><pre>mu: (4, 1)  v: (4,)  log_std: (1,)
+パラメータ数: 4547
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>行動をサンプリングする</h3>
+    <p class="why"><b>この段階ですること</b> &sect;04 の 3 行をコードにします。
+      <strong>今回の本題はここだけ</strong>です。</p>
+    <div class="code"><pre>  def dist(self, obs):
+    mu, v, log_std = self(obs)
+    std = ???                              <span class="cmt"># ← ここだけ考える</span>
+    return torch.distributions.Normal(mu, std), v
+
+  def act(self, obs):
+    d, v = self.dist(obs)
+    action = d.sample()
+    log_prob = d.log_prob(action).sum(-1)
+    return action, log_prob, v
+</pre></div>
+    <p>&sect;04 で「<code>log_std</code> は対数で持つ」と書きました。
+      <strong>実際に分布に渡すときは何をすればいいでしょうか。</strong></p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    std = log_std.exp()
+</pre></div>
+      <p class="why"><b>これだけです</b>
+        <code>log_std = -0.5</code> なら <code>std = 0.607</code>。
+        <strong><code>exp()</code> を通すので、<code>log_std</code> がどんな値でも <code>std</code> は必ず正</strong>になります。</p>
+      <p class="why"><b>なぜ <code>dist()</code> を分けたのか</b>
+        <strong>8-c で分布だけが欲しくなる</strong>からです——
+        すでに選んだ行動の <code>log_prob</code> を、更新後のネットで測り直す場面があります。
+        そこでは<strong>サンプリングしたくありません</strong>。
+        <code>dist()</code> を分けておくと、<code>act()</code> と共用できます。</p>
+      <p class="why"><b><code>.sum(-1)</code> が付いている理由</b>
+        <code>log_prob</code> は<strong>行動の次元ごとに出ます</strong>。
+        振り子は 1 次元なので違いが見えませんが、12 関節なら 12 個返ります。
+        &sect;04 で「対角＝各次元が独立」と書いたので、
+        <strong>同時に起きる確率は掛け算</strong>——対数なら<strong>足し算</strong>です。
+        <strong>これを忘れると 12 関節にしたとき静かに壊れます。</strong></p>
+    </div></details>
+    <p><b>確認方法</b> 出てくる値を見ます。</p>
+    <div class="code"><pre>torch.manual_seed(0)
+net = ActorCritic(3, 1)
+obs = torch.randn(4, 3)
+action, log_prob, v = net.act(obs)
+print("std     :", net.log_std.exp().detach().numpy())
+print("action  :", action.detach().numpy().ravel().round(4))
+print("log_prob:", log_prob.detach().numpy().round(4))
+</pre></div>
+    <p class="why"><b><code>std = 1.0</code> から始まります</b>
+      <code>log_std</code> の初期値が <code>0</code> なので。
+      行動が <code>[-1, 1]</code> の範囲であることを思うと、
+      <strong>標準偏差 1.0 はかなり広い</strong>——
+      最初はほぼでたらめに動く、ということです。
+      <strong>5-e の <code>&epsilon;</code> を 1.0 から始めるのに相当します。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>7-b の指標と突き合わせる</h3>
+    <p class="why"><b>この段階ですること</b> コードは少しだけです。
+      <strong>7-b で読んだ数字が、いま書いた変数から出ていた</strong>ことを確認します。</p>
+    <div class="code"><pre>mu, v, log_std = net(obs)
+dist = torch.distributions.Normal(mu, log_std.exp())
+print("entropy:", dist.entropy().sum(-1).detach().numpy().round(4))
+</pre></div>
+    <p><b>確認方法</b> <code>1.4189</code> が 4 つ並びます。</p>
+    <p class="why"><b>7-b の表を見返してください</b>
+      16k ステップ時点の <code>entropy_loss</code> が <strong><code>&minus;1.401</code></strong> でした。
+      <strong>符号を除けばほぼ一致</strong>します（<code>1.4189</code> は <code>std=1.0</code> ちょうどのとき、
+      16k 時点では既に少し下がっていたので 1.401）。</p>
+    <p class="why"><b>なぜ符号が逆なのか</b>
+      SB3 が記録しているのは「損失」だからです。
+      <strong>エントロピーは大きいほど良い</strong>（探索が続く）ので、
+      <strong>損失としては符号を反転</strong>させます。
+      <strong>7-b で「<code>entropy_loss</code> が下がる＝探索が減る」と読んだのは、
+      絶対値が小さくなる方向という意味</strong>でした。</p>
+    <div class="callout tip">
+      <span class="k">ここが今回のいちばんの収穫です</span>
+      <p>7-b では 4 つの指標を<strong>「そういうものだ」として読んでいました</strong>。
+        いまは <code>entropy_loss</code> が
+        <strong><code>log_std</code> という 1 個のパラメータから出ている</strong>と分かります。</p>
+      <p><code>explained_variance</code> も同じで、
+        <strong><code>self.v</code> という 65 個のパラメータの成績表</strong>です。
+        8-b 以降で残りも同様に開きます。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>宿題の答え: <code>A &asymp; r + &gamma;V(s') &minus; V(s)</code>。
+          <strong>5-e の TD 誤差そのもの</strong>。ただし<strong>1 歩先しか見ていない</strong></li>
+      <li>PPO は <strong>5 つの部品</strong>。本当に新しいのは<strong>4 番（損失）だけ</strong></li>
+      <li><b>Actor</b>（行動を決める）と <b>Critic</b>（価値を予想する）が
+          <strong>1 つのネットに同居</strong>。合計 <strong>4,547 パラメータ</strong></li>
+      <li>連続行動は<strong>正規分布からサンプリング</strong>。
+          ネットが <code>&mu;</code>、<code>log_std</code> が <code>&sigma;</code></li>
+      <li><code>log_std</code> を対数で持つのは<strong><code>&sigma;</code> を必ず正にするため</strong></li>
+      <li>7-b の <code>entropy_loss</code> は <code>log_std</code> から、
+          <code>explained_variance</code> は <code>self.v</code> から出ていた</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="o1"><span><code>algos/ppo_min.py</code> に <code>ActorCritic</code> を書き、パラメータ数 <code>4547</code> を確認した</span></label>
+    <label><input type="checkbox" data-ck="o2"><span><code>act()</code> を書き、<code>std = 1.0</code> から始まることを確認した</span></label>
+    <label><input type="checkbox" data-ck="o3"><span>エントロピー <code>1.4189</code> が 7-b の <code>entropy_loss</code> と対応することを確かめた</span></label>
+    <label><input type="checkbox" data-ck="o4"><span><code>log_std</code> を対数で持つ理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="o5"><span><code>.sum(-1)</code> が何をしているか、12 関節の場合で説明できる</span></label>
+    <label><input type="checkbox" data-ck="o6"><span>PPO の 5 部品を言える</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（8-b）でやること</span>
+    <p>部品 3——<strong>アドバンテージの計算</strong>です。
+       &sect;01 で「1 歩先しか見ていない」という弱点を指摘しました。
+       <strong>何歩先まで実際の報酬を使うか</strong>を調整する仕組みが <b>GAE</b> で、
+       そのつまみが <b>&lambda;</b> です。</p>
+    <p>先に考えておいてください——
+       <strong><code>A &asymp; r + &gamma;V(s') &minus; V(s)</code> は 1 歩先まで実際の報酬を使いました。
+       2 歩先まで使うとどういう式になるでしょうか。</strong>
+       そして<strong>最後まで使ったら、それは何と同じになるでしょうか。</strong>
+       （ヒント: 5-c でやった測り方です）</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 8-a</span>
+  <span>PyTorch 2.14.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step08a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

@@ -413,6 +413,17 @@
     <p>記録を取るのは <strong>1 引数</strong>です。先に仕組みだけ通します。</p>
   </div>
 
+  <div class="callout tip">
+    <span class="k">先に入れておくもの</span>
+    <div class="code"><pre>uv add tensorboard
+</pre></div>
+    <p>入れずに <code>tensorboard_log</code> を指定すると、
+      <strong>学習が始まる直前に落ちます</strong>。</p>
+    <div class="code"><pre>ImportError: Trying to log data to tensorboard but tensorboard is not installed.
+</pre></div>
+    <p><strong>SB3 本体には含まれていません。</strong>記録を取るときだけ必要なので別扱いになっています。</p>
+  </div>
+
   <div class="code"><pre>model = PPO("MlpPolicy", venv, verbose=1, seed=0, device="cpu",
             tensorboard_log="tb_logs")        <span class="cmt"># ← これだけ</span>
 
@@ -532,6 +543,15 @@ model.learn(total_timesteps=300_000, tb_log_name="ppo")
           <strong>同じ状態から毎回まったく違う収益が返っていないか</strong>——
           6-a で見たマルコフ性の問題（観測に必要な情報が入っていない）が典型</li>
     </ul>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">もっと深く</span>
+    <p>この式の分母がなぜ <code>Var(実際の収益)</code> なのか、
+       <strong>SB3 が「実際の収益」として何を渡しているのか</strong>、
+       <code>0.99</code> でも Critic を褒めきれない場合があるのはなぜか——
+       <a href="explained_variance_explained.html">補助教材「explained_variance の中身」</a>で
+       式・ソース・ラボまで開けてある。<strong>ここを飛ばしても Step 7 は進められる。</strong></p>
   </div>
 
   <div class="callout tip">
@@ -744,7 +764,8 @@ model.learn(total_timesteps=300_000, tb_log_name="ppo")
 model.learn(total_timesteps=300_000, tb_log_name="ppo")
 model.save("train/ppo_pendulum")
 </pre></div>
-    <div class="code"><pre>uv run python -m train.train_ppo
+    <div class="code"><pre>uv add tensorboard          <span class="cmt"># まだなら先にこれ</span>
+uv run python -m train.train_ppo
 </pre></div>
     <p><b>確認方法</b> <code>tb_logs/ppo_1/</code> ができていれば成功です。
       <code>.gitignore</code> に <code>tb_logs/</code> を足しておいてください。</p>
@@ -839,6 +860,7 @@ model.save("train/ppo_pendulum")
   </div>
 
   <div class="check">
+    <label><input type="checkbox" data-ck="l0"><span><code>uv add tensorboard</code> を実行した</span></label>
     <label><input type="checkbox" data-ck="l1"><span><code>tensorboard_log</code> を足して学習し直した</span></label>
     <label><input type="checkbox" data-ck="l2"><span>TensorBoard をブラウザで開き、4 つの指標を見つけた</span></label>
     <label><input type="checkbox" data-ck="l3"><span>自分の 4 つの値を書き出し、それぞれの判定を付けた</span></label>

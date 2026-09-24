@@ -846,12 +846,21 @@ reward = (0.6 * exp(-5.0  * e**2)       # 角度  e_half = 21 度
 
 def k_from_half(e_half):
   """報酬が半分になる誤差 e_half から、指数型報酬の k を返す"""
-  return ___                          # <- ここだけ考える
+  return ???                          <span class="cmt"># ← ここだけ考える</span>
 
 print(k_from_half(0.35))   # -> 5.66    角度 20 度
 print(k_from_half(2.0))    # -> 0.17    角速度 2 rad/s
 print(k_from_half(0.25))   # -> 11.09   トルク 0.25 N*m
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>def k_from_half(e_half):
+  """報酬が半分になる誤差 e_half から、指数型報酬の k を返す"""
+  return np.log(2) / e_half**2</pre></div>
+      <p class="why"><b>導き方</b>
+        <code>exp(-k &times; e_half&sup2;) = 0.5</code> の両辺の対数を取ると <code>-k &times; e_half&sup2; = ln(0.5) = -ln2</code>。<strong>両辺を <code>-e_half&sup2;</code> で割れば出ます。</strong></p>
+      <p class="why"><b><code>np.log</code> は自然対数です</b>
+        <code>np.log10</code> や <code>np.log2</code> ではありません。<strong><code>np.log(2)</code> は 0.6931</strong>。<code>k_from_half(0.35)</code> が <strong>5.66</strong> になれば合っています。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong><code>k</code> を直接さわる習慣を捨てます。</strong>
        これ以降、考えるのは<strong>「何度まで許すか」だけ</strong>になります。</p>
@@ -870,7 +879,7 @@ def check3(reward_fn):
   rest = reward_fn(0.0, 0.0, 0.0)                 # 真下でじっと静止
   swing = reward_fn(np.pi - 1.8, 6.0, 0.5)        # 振り上げの最中
   top = reward_fn(np.pi, 0.0, 0.0)                # 上端でじっと静止
-  gap = ___                                       # <- ここだけ考える
+  gap = ???                                       <span class="cmt"># ← ここだけ考える</span>
   print(f"静止 {rest:+.4f}  途中 {swing:+.4f}  成功 {top:+.4f}   差 {gap:+.4f}")
   if gap &lt;= 0:
     print("  危険: 動き出すこと自体が損になっている")
@@ -878,6 +887,13 @@ def check3(reward_fn):
     print("  危険: 差が小さすぎる。学習しない可能性が高い")
   return gap
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  gap = swing - rest</pre></div>
+      <p class="why"><b>引く順番を間違えないでください</b>
+        <strong>「やってほしい動作」&minus;「何もしない」</strong>です。逆にすると符号が反転し、<strong>危険な報酬を「安全」と判定します</strong>。</p>
+      <p class="why"><b><code>top</code> は判定に使いません</b>
+        <code>top</code>（成功時の点）が一番高いのは<strong>当たり前</strong>で、そこは問題になりません。<strong>問題は、そこに行き着くまでの道のり</strong>です。&sect;05 の 2 回目は <code>top</code> が正しかったのに失敗しました。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>報酬を書いた直後に、学習させずに判定できる</strong>ようにします。
        &sect;05 の 3 回の実験は<strong>合計 40 分</strong>かかりましたが、
@@ -899,6 +915,23 @@ def check3(reward_fn):
        &sect;05 で効いたのは<strong>「接近係」の幅を広げる</strong>ことでした。
        <strong>精密係（指数型）は上端の近くでしか働きません。</strong>
        遠くを担当する項に、どれだけの幅を与えるかが勝負です。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>e = theta % (2 * np.pi) - np.pi
+
+reward = (0.7 * (1 - np.cos(theta)) / 2        # 接近係: 幅 0.7
+          + 0.3 * np.exp(-5.0 * e**2)          # 精密係: 上端の近くだけ
+          + 0.03 * (np.exp(-0.2 * omega**2) - 1)
+          + 0.01 * (np.exp(-11.0 * torque**2) - 1))
+
+# check3 の出力
+#   静止 +0.0000  途中 +0.2311  成功 +1.0000   差 +0.2311</pre></div>
+      <p class="why"><b>直したのは 2 か所だけです</b>
+        <strong>接近係の幅を 0.4 &rarr; 0.7 に広げ</strong>、<strong>罰の重みを 0.1/0.05 &rarr; 0.03/0.01 に縮め</strong>ました。<strong>指数型の部分は一切いじっていません。</strong></p>
+      <p class="why"><b>これで学習しました（実測、3 シード）</b>
+        成功 <strong>1/3</strong>、成功時 <strong>+30.73</strong>、失敗した回も <strong>0.6〜2.8 周</strong>動く。<strong>元の報酬（成功 1/3、+32.11）とまったく同じ傾向</strong>です。</p>
+      <p class="why"><b>これが唯一の正解ではありません</b>
+        <strong><code>check3</code> の差が +0.2 以上</strong>で、<strong>3 点がなだらかに上がっていれば</strong>別の形でも通ります。</p>
+    </div></details>
   </div>
 </section>
 

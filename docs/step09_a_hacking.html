@@ -846,10 +846,22 @@ omega 罰なし: -cos(theta)                  - 0.001 * torque**2
     truncated = False
     info = {
       "upright": upright,
-      ___,                                # <- ここだけ考える（3 つ足す）
+      ???,                                <span class="cmt"># ← ここだけ考える（3 つ足す）</span>
     }
     return self._obs(), reward, terminated, truncated, info
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    info = {
+      "upright": upright,
+      "r_angle": r_angle,
+      "r_omega": r_omega,
+      "r_torque": r_torque,
+    }</pre></div>
+      <p class="why"><b>キーの名前は自由ですが、統一してください</b>
+        課題 2 の <code>breakdown()</code> が<strong>このキーで引きます</strong>。<code>keys = ("r_angle", "r_omega", "r_torque")</code> と合わせます。</p>
+      <p class="why"><b>値は <code>float</code> にしておくと安全です</b>
+        NumPy の型のまま入れると、あとで <code>np.mean</code> に渡したときに<strong>型が混ざって見づらくなります</strong>。<code>reward</code> と同じく <code>float(...)</code> で包んでおくと揃います。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>合計を分解しても、合計は変わらない</strong>ことを確かめます。
        報酬の値は 1 ミリも変えずに、<strong>観測できる情報だけを増やしています</strong>。</p>
@@ -878,13 +890,21 @@ omega 罰なし: -cos(theta)                  - 0.001 * torque**2
     for t in range(steps):
       obs, reward, terminated, truncated, info = env.step(policy(env, obs))
       for k in keys:
-        ___                               # <- ここだけ考える（info から足す）
+        ???                               <span class="cmt"># ← ここだけ考える（info から足す）</span>
       if terminated or truncated:
         break
     for k in keys:
       acc[k].append(sums[k])
   return {k: float(np.mean(v)) for k, v in acc.items()}
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>      for k in keys:
+        sums[k] += float(info[k])</pre></div>
+      <p class="why"><b><code>info</code> は毎ステップ新しい辞書です</b>
+        <code>step()</code> が返す <code>info</code> は<strong>そのステップぶんだけ</strong>。<strong>足し込むのは呼ぶ側の仕事</strong>です。</p>
+      <p class="why"><b>合計が <code>evaluate()</code> と一致するか確かめてください</b>
+        <code>r_angle + r_omega + r_torque</code> が <strong>&minus;109.77</strong> になれば、<strong>分解が正しい</strong>と言えます。ずれたら式のどこかが違います。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>評価は必ず <code>eval.py</code> に置く</strong>という 7-d のルールを守ります。
        採点する道具が 1 か所にあるから、<strong>比較が信用できます</strong>。</p>
@@ -917,9 +937,17 @@ class RewardVariant(gym.Wrapper):
     omega = self.env.unwrapped.data.qvel[0]
     torque = float(self.env.unwrapped.data.ctrl[0])
     if self.mode == "swing":
-      reward = ___                        # <- ここだけ考える
+      reward = ???                        <span class="cmt"># ← ここだけ考える</span>
     return obs, float(reward), terminated, truncated, info
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    if self.mode == "swing":
+      reward = -np.cos(theta) + 0.1 * abs(omega) - 0.001 * torque**2</pre></div>
+      <p class="why"><b><code>+</code> であることが全てです</b>
+        <code>-0.01 * omega**2</code> を <code>+0.1 * abs(omega)</code> に変えます。<strong>罰ではなく報酬</strong>にするのがこの実験の要点です。</p>
+      <p class="why"><b>学習させる前に &sect;04 の算数をやってください</b>
+        <code>0.1 &times; |&omega;|</code> が <strong>1.0</strong> を超えるのは <code>|&omega;| &gt; 10</code>。この振り子は <strong>16.3 rad/s</strong> まで出ます。<strong>この 1 行で結果が予測できます。</strong></p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>Wrapper は報酬を試す最短の道具</strong>です。
        環境本体を毎回書き換えると、<strong>どれがどの設定だったか分からなくなります</strong>。

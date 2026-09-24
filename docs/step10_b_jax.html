@@ -738,13 +738,20 @@ I, MGL, DT = 0.0567, 1.6231, 0.01
 def step_one(state, torque):
   """state = [theta, omega] の 1 体ぶんを 1 歩進める"""
   theta, omega = state[0], state[1]
-  alpha = ___                          # <- ここだけ考える（運動方程式）
+  alpha = ???                          <span class="cmt"># ← ここだけ考える（運動方程式）</span>
   omega = omega + alpha * DT
   theta = theta + omega * DT
   return jp.array([theta, omega])
 
 print(step_one(jp.array([0.3, 0.0]), 0.0))
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  alpha = (torque - MGL * jp.sin(theta)) / I</pre></div>
+      <p class="why"><b>Step 4 の式そのものです</b>
+        <code>I&middot;&alpha; = &tau; - mgl&middot;sin&theta;</code> を <code>&alpha;</code> について解きます。<strong>重力が戻そうとする向きなので符号はマイナス</strong>です。</p>
+      <p class="why"><b><code>np</code> を <code>jp</code> に変えるだけで通ります</b>
+        <code>jp.sin</code> は <code>np.sin</code> と<strong>同じ使い方</strong>。<strong>四則演算もそのまま</strong>です。ここが JAX の親切なところです。</p>
+    </div></details>
     <p class="why"><b>ヒント</b>
        Step 4 で使った式です。<code>I&middot;&alpha; = &tau; - mgl&middot;sin&theta;</code>。
        <strong>NumPy とまったく同じ書き方で通ります</strong>（<code>np</code> が <code>jp</code> になるだけ）。</p>
@@ -755,11 +762,20 @@ print(step_one(jp.array([0.3, 0.0]), 0.0))
     <p><code>for</code> ではなく <code>fori_loop</code> で書きます。</p>
     <div class="code"><pre>@jax.jit
 def roll(state, torque, n=100):
-  return jax.lax.fori_loop(0, n, ___, state)    # <- ここだけ考える
+  return jax.lax.fori_loop(0, n, ???, state)    <span class="cmt"># ← ここだけ考える</span>
 
 print(roll(jp.array([0.3, 0.0]), 0.0))
 # -> [0.17825 1.31012]
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  return jax.lax.fori_loop(0, n, lambda i, s: step_one(s, torque), state)</pre></div>
+      <p class="why"><b>引数は必ず <code>(i, 今の状態)</code> の 2 つです</b>
+        <code>i</code> は使いませんが<strong>受け取る必要があります</strong>。<code>lambda s: ...</code> と書くと<strong>引数の数が合わずエラー</strong>になります。</p>
+      <p class="why"><b><code>torque</code> はループの外から見えます</b>
+        <code>roll</code> の引数なので、<strong>lambda の中から普通に参照できます</strong>。<code>fori_loop</code> に渡す必要はありません。</p>
+      <p class="why"><b>答えの確かめ方</b>
+        素の <code>for</code> で 100 回まわした結果と<strong>完全に一致</strong>します。<strong>一致しないなら、状態を引き回せていません</strong>（<code>s</code> ではなく <code>state</code> を使ってしまうミスが多いです）。</p>
+    </div></details>
     <p class="why"><b><code>fori_loop</code> に渡す関数の形</b>
        <code>(i, 今の状態) -&gt; 次の状態</code> です。
        <strong><code>i</code> を使わなくても、引数には必ず要ります。</strong></p>
@@ -777,7 +793,7 @@ states = jp.stack([jax.random.uniform(key, (B,), minval=-0.5, maxval=0.5),
                    jp.zeros(B)], axis=1)          # (1000, 2)
 torques = jp.zeros(B)                             # (1000,)
 
-vroll = ___                                       # <- ここだけ考える
+vroll = ???                                       <span class="cmt"># ← ここだけ考える</span>
 out = vroll(states, torques)
 print(out.shape)      # -> (1000, 2)
 print(out[:3])
@@ -785,6 +801,15 @@ print(out[:3])
 #     [ 0.2666   2.13795]
 #     [-0.10235 -0.72444]]
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>vroll = jax.jit(jax.vmap(roll, in_axes=(0, 0)))</pre></div>
+      <p class="why"><b><code>jit</code> が外、<code>vmap</code> が内です</b>
+        <strong><code>jax.jit(jax.vmap(f))</code></strong> の順。逆でも動きますが、<strong>この順が定番</strong>です。</p>
+      <p class="why"><b><code>in_axes=(0, 0)</code> の意味</b>
+        <strong>1 つ目も 2 つ目も、先頭の軸で並べる</strong>という指定です。<code>states</code> が <code>(1000, 2)</code>、<code>torques</code> が <code>(1000,)</code> なのでどちらも先頭。<strong>この場合は省略しても同じ</strong>です。</p>
+      <p class="why"><b><code>n=100</code> はどうなるのか</b>
+        <code>roll(state, torque, n=100)</code> の <code>n</code> は<strong>既定値のまま使われます</strong>。<code>vmap</code> は<strong>渡した引数だけ</strong>を並べます。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>これが Step 10 のすべてです。</strong>
        1 体ぶんの物理を書いて、<code>vmap</code> で包む。

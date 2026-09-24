@@ -646,6 +646,32 @@ print(env.mjx_model.nq, env.mjx_model.nv)   # -> 19 18
 for name, w in sorted(cfg.reward_config.scales.items(), key=lambda kv: -abs(kv[1])):
   print(f"{name:&lt;24} {float(w):+.4f}")
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>{'privileged_state': (123,), 'state': (48,)}
+12
+19 18
+
+orientation              -5.0000
+feet_clearance           -2.0000
+tracking_lin_vel         +1.0000
+dof_pos_limits           -1.0000
+stand_still              -1.0000
+termination              -1.0000
+lin_vel_z                -0.5000
+tracking_ang_vel         +0.5000
+pose                     +0.5000
+feet_height              -0.2000
+feet_air_time            +0.1000
+feet_slip                -0.1000
+ang_vel_xy               -0.0500
+action_rate              -0.0100
+energy                   -0.0010
+torques                  -0.0002</pre></div>
+      <p class="why"><b>重みの大きい順に並べると、意外なものが上に来ます</b>
+        1 位は主目的ではなく <code>orientation</code>（&minus;5.0）です。<strong>&sect;03 で扱った「ほとんどの時間 0 になる項」</strong>がこれです。</p>
+      <p class="why"><b><code>nq=19, nv=18</code> のずれに注意</b>
+        胴体が<strong>自由に動く（free joint）</strong>ので、姿勢が <strong>クォータニオン 4 個</strong>で表されます。速度側は<strong>角速度 3 個</strong>なので 1 つ少なくなります。<strong>あなたの振り子は <code>nq=nv=1</code></strong> でした。</p>
+    </div></details>
     <p class="why"><b>まず <code>action_size = 12</code> を見てください</b>
        <strong>脚 4 本 &times; 関節 3 個</strong>です。
        <strong>あなたの振り子は 1 個</strong>でした。</p>
@@ -736,6 +762,19 @@ print(f"{B * N / dt:,.0f} env-steps/s")
   if k.startswith("reward/"):
     print(f"{k:&lt;32} {float(state.metrics[k]):+.5f}")
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>reward/action_rate               -0.00000
+reward/ang_vel_xy                -0.00000
+reward/dof_pos_limits            -0.00000
+reward/energy                    -0.00000
+reward/feet_air_time             +0.00000
+reward/feet_clearance            -0.00000
+...</pre></div>
+      <p class="why"><b>リセット直後はほとんど 0 です</b>
+        行動を <code>zeros</code> にして 1 歩だけ進めた状態なので、<strong>まだ何も起きていません</strong>。<strong>学習後のロールアウトで見ると、はっきり差が出ます。</strong></p>
+      <p class="why"><b>キーの名前が Go1 の報酬項そのものです</b>
+        &sect;02 の表と<strong>1 対 1 で対応</strong>しています。<strong>実務の環境は、報酬の内訳を最初から出す作りになっている</strong>——9-a &sect;05 で「内訳は誰も見ていない」と書いたのは<strong>自分で書いた環境の話</strong>でした。</p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>9-a &sect;05 で「内訳は誰も見ていない」と書きました。</strong>
        実務で使われている環境は<strong>最初から内訳を出す作りになっています</strong>。

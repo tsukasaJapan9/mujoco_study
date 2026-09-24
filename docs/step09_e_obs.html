@@ -1,0 +1,1044 @@
+<title>観測と初期状態を設計する</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">観測の 3 原則</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">なぜ cos と sin なのか</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">実機で取れない量</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">初期状態をばらけさせる</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">観測を削る・履歴を足す</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">失敗診断表</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 9-e</span>
+  <h1>観測と初期状態を設計する</h1>
+  <p>方策に<strong>何を見せるか</strong>、そして<strong>どこから始めさせるか</strong>。
+     <strong>9-c で見つけた「3 回に 1 回しか成功しない」を、ここで直します。</strong></p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 9 の 5/5</span>
+    <span class="chip">前提: 9-d</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">ここまでで分かっていること</span>
+    <ol>
+      <li>報酬を書いたら<strong>「動き出す得」を計算</strong>してから学習させる（9-b）</li>
+      <li><strong>ベースライン自身が 3 回に 1 回しか成功していない</strong>（9-c）</li>
+      <li><strong>ばらつきが大きいなら、比べるより先に減らす</strong>（9-c &sect;05）</li>
+      <li>実機で困る量は<strong>実機で困る量として測る</strong>（9-d）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 観測に<strong>何を入れ、何を入れてはいけない</strong>のか？</p>
+    <p><b>2.</b> <strong>学習のばらつきを減らす</strong>にはどうするのか？</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 9 の最後です</span>
+    <p>9-a から 9-d まで<strong>報酬と行動</strong>を扱ってきました。
+       残っているのは<strong>観測</strong>と<strong>初期状態</strong>です。</p>
+    <p><strong>そして初期状態こそが、9-c の問題の原因でした。</strong></p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>観測の 3 原則</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>観測を決めるときの<strong>判断基準</strong>を 3 つだけ持ちます。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">観測を決める基準</span><span class="ct">3 つだけ</span></div>
+    <dl>
+      <dt>原則 1 &mdash; 実機で取れるか</dt>
+      <dd><strong>センサで測れない量を入れてはいけません。</strong>
+        シミュレータでは何でも読めるので、<strong>うっかり入ります</strong>。
+        入れると<strong>シミュレータでだけ動く方策</strong>ができます（&sect;03）。</dd>
+      <dt>原則 2 &mdash; 判断に足りるか</dt>
+      <dd>方策は<strong>観測だけを見て行動を決めます</strong>。
+        必要な情報が<strong>観測に無ければ、絶対に正しく動けません</strong>。
+        <strong>報酬で罰する量は、観測から分かるようにする</strong>（9-d 課題 2）もこれです。</dd>
+      <dt>原則 3 &mdash; 不連続にならないか</dt>
+      <dd>同じ状態なのに<strong>数値が飛ぶ</strong>表現を使ってはいけません。
+        ニューラルネットは<strong>滑らかな関数</strong>しか素直に学べません（&sect;02）。</dd>
+    </dl>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>いまの振り子の観測</th><th>原則 1</th><th>原則 2</th><th>原則 3</th></tr></thead>
+    <tbody>
+      <tr><td><code>cos&theta;</code></td><td class="ok">エンコーダで取れる</td>
+          <td class="ok">角度が分かる</td><td class="ok">滑らか</td></tr>
+      <tr><td><code>sin&theta;</code></td><td class="ok">同上</td>
+          <td class="ok"><code>cos</code> と組で向きが確定</td><td class="ok">滑らか</td></tr>
+      <tr><td><code>&omega;</code></td><td class="ok">差分で取れる（雑音は乗る）</td>
+          <td class="ok">速度が分かる</td><td class="ok">滑らか</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 つとも通っています</b>
+     6-a で何気なく決めた観測ですが、<strong>3 原則を満たしています</strong>。
+     <strong>なぜそれでよかったのかを、&sect;02 以降で確かめます。</strong></p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>なぜ cos と sin なのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>原則 3（不連続にしない）</strong>の実例です。
+       <code>&theta;</code> をそのまま入れると何が壊れるのか。</p>
+  </div>
+
+  <h3><code>&theta;</code> をそのまま入れた場合</h3>
+  <div class="tw"><table>
+    <thead><tr><th>物理的な状態</th><th class="num"><code>&theta;</code> の値</th>
+      <th class="num"><code>cos&theta;</code></th><th class="num"><code>sin&theta;</code></th></tr></thead>
+    <tbody>
+      <tr><td>真上（少し右）</td><td class="num">+3.14</td><td class="num">&minus;1.000</td><td class="num">+0.002</td></tr>
+      <tr><td><strong>真上（少し左）</strong></td><td class="num bad"><strong>&minus;3.14</strong></td>
+          <td class="num ok">&minus;1.000</td><td class="num ok">&minus;0.002</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">ほとんど同じ状態なのに、<code>&theta;</code> は 6.28 も離れています</span>
+    <p>方策から見ると<strong>まったく別の状況</strong>に見えます。
+       <strong>右に少し傾いた真上</strong>と<strong>左に少し傾いた真上</strong>で、
+       <strong>学んだことが共有されません。</strong></p>
+    <p><code>cos</code> と <code>sin</code> なら<strong>0.004 しか違いません</strong>。
+       <strong>ほぼ同じ状態として扱われます。</strong>これが欲しい性質です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">覚えておく型</span><span class="ct">角度は必ず cos と sin の組で入れる</span></div>
+    <dl>
+      <dt>なぜ 2 つ要るのか</dt>
+      <dd><code>cos</code> だけだと<strong>上か下かは分かるが、右か左かが分からない</strong>
+        （<code>cos(+1.0) = cos(-1.0)</code>）。<strong>2 つで向きが一意に決まります。</strong></dd>
+      <dt>次元は増えるが</dt>
+      <dd>1 次元 &rarr; 2 次元に増えます。
+        <strong>それでも必ずこうします。</strong>
+        <strong>次元を 1 つ節約して学習を壊すのは割に合いません。</strong></dd>
+      <dt>回らない関節では</dt>
+      <dd>ロボットの膝のように<strong>&plusmn;90 度しか動かない関節</strong>なら、
+        <strong>不連続点に到達しない</strong>ので角度をそのまま入れて構いません。
+        <strong>Go1 の観測も、関節角はそのまま</strong>入っています。</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>実機で取れない量</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>原則 1</strong>です。<strong>Sim2Real で最も多い失敗</strong>がこれです。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">今回の新しい語</span><span class="ct">特権情報（privileged information）</span></div>
+    <dl>
+      <dt>何か</dt>
+      <dd><strong>シミュレータでは読めるが、実機では測れない量。</strong>
+        摩擦係数、各リンクの正確な質量、外から加わっている力、地形の高さ、
+        <strong>他の物体の正確な位置</strong>など。</dd>
+      <dt>なぜ危険か</dt>
+      <dd>方策がそれを頼りに動くと、<strong>実機では入力が無くなります</strong>。
+        <strong>シミュレータでは完璧、実機ではまったく動かない</strong>——
+        <strong>いちばん徒労感のある失敗</strong>です。</dd>
+      <dt>うっかり入る例</dt>
+      <dd><code>self.data.qpos</code> や <code>self.data.qvel</code> を
+        <strong>何も考えずに全部観測に入れる</strong>。
+        浮いている胴体の<strong>絶対位置</strong>は、実機では測れません。</dd>
+    </dl>
+  </div>
+
+  <h3>それでも特権情報を使う方法がある</h3>
+  <p><strong>Critic にだけ見せます。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>見せるもの</th><th>実機で必要か</th></tr></thead>
+    <tbody>
+      <tr><td><b>Actor</b>（方策）</td><td>実機で取れる量<strong>だけ</strong></td>
+          <td class="bad"><strong>必要</strong></td></tr>
+      <tr><td><b>Critic</b>（価値関数）</td><td>特権情報を<strong>含めてよい</strong></td>
+          <td class="ok">不要（学習中しか使わない）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>Critic は実機に載りません</b>
+     8-a で学んだとおり、<strong>Critic は学習のためだけにあります</strong>。
+     実機で動くのは <code>mu</code> を出す Actor だけ。
+     <strong>だから Critic には何を見せても構いません。</strong></p>
+
+  <p class="why"><b>Critic が賢くなると、Advantage が正確になります</b>
+     8-b で見たとおり、<strong>Advantage = 実際の結果 &minus; Critic の予想</strong>。
+     Critic が「この地面は滑りやすいから、こけても方策のせいではない」と分かれば、
+     <strong>ノイズの少ない学習信号</strong>になります。</p>
+
+  <div class="callout tip">
+    <span class="k">Playground の Go1 がまさにこれです</span>
+    <div class="code"><pre>env.observation_size
+# -> {'privileged_state': (123,), 'state': (48,)}
+</pre></div>
+    <p><strong><code>state</code> が 48 次元</strong>——Actor が見る、実機で取れる量。<br>
+       <strong><code>privileged_state</code> が 123 次元</strong>——Critic が見る、シミュレータだけの量。</p>
+    <p><strong>2.5 倍の情報を Critic だけが持っています。</strong>
+       <strong>この作りは「非対称 Actor-Critic」と呼ばれ、四足歩行では標準です。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">振り子では要りません</span>
+    <p>観測 3 つが全部実機で取れるので、<strong>分ける必要がありません</strong>。</p>
+    <p><strong>Step 12 で実機に向かうとき、この節に戻ってきてください。</strong>
+       <strong>「その観測、実機で取れますか」</strong>——これを毎回問うのが習慣です。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>初期状態をばらけさせる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>9-c で見つけた「3 回に 1 回しか成功しない」を直します。</strong>
+       Step 9 でいちばん効果が大きかった 1 行です。</p>
+  </div>
+
+  <h3>いまの初期状態</h3>
+  <div class="code"><pre>self.data.qpos[0] = self.np_random.uniform(-0.1, 0.1)    <span class="cmt"># 真下から ±0.1 rad</span>
+self.data.qvel[0] = self.np_random.uniform(-0.1, 0.1)
+</pre></div>
+
+  <p class="why"><b>&plusmn;0.1 rad は約 5.7 度です</b>
+     <strong>毎回ほぼ同じ場所から始まります。</strong>
+     真下でぶら下がった状態から、<strong>自力で振り上げを発見しなければいけません</strong>。</p>
+
+  <div class="callout warn">
+    <span class="k">なぜこれが問題なのか</span>
+    <p>方策は<strong>上端の近くに行ったことがない</strong>ので、
+       <strong>上端でどう振る舞えばいいか、まったく学べません</strong>。</p>
+    <p>学習の順番はこうなります。
+       <strong>(1) 偶然、上端の近くに来る &rarr; (2) そこで報酬が高いと気づく &rarr;
+       (3) 上端を目指すようになる</strong>。</p>
+    <p><strong>(1) が起きるかどうかが、乱数任せ</strong>です。これが 9-c で見た二値の正体です。</p>
+  </div>
+
+  <h3>全周からスタートさせる</h3>
+  <div class="code"><pre>self.data.qpos[0] = self.np_random.uniform(-np.pi, np.pi)   <span class="cmt"># どの角度からでも</span>
+self.data.qvel[0] = self.np_random.uniform(-2.0, 2.0)
+</pre></div>
+
+  <p class="why"><b>これだけです</b>
+     <strong>学習中だけ</strong>、初期状態を全周に広げます。
+     <strong>上端の近くから始まる回が、最初から一定割合で混ざります。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">採点は既定のまま（&plusmn;0.1）でやります</span>
+    <p><strong>学習条件を変えても、ものさしは変えません。</strong>
+       広い初期状態で採点すると、<strong>簡単な場所から始まる分だけ点が上がってしまいます</strong>。</p>
+    <p>9-a &sect;05、9-c &sect;01 と同じ鉄則です。</p>
+  </div>
+
+  <h3>結果（実測、3 シード）</h3>
+  <div class="tw"><table>
+    <thead><tr><th>学習時の初期状態</th><th class="num">成功</th><th class="num">元の報酬（平均）</th>
+      <th class="num">標準偏差</th><th class="num">上端にいた歩数（3 シード）</th></tr></thead>
+    <tbody>
+      <tr><td>いまのまま <code>&plusmn;0.1</code></td><td class="num bad"><strong>1/3</strong></td>
+          <td class="num">&minus;267.61</td><td class="num bad"><strong>218.04</strong></td>
+          <td class="num">221.1 / 0.0 / 0.0</td></tr>
+      <tr><td><strong>全周 <code>&plusmn;&pi;</code></strong></td><td class="num ok"><strong>3/3</strong></td>
+          <td class="num ok"><strong>&minus;39.92</strong></td><td class="num ok"><strong>42.87</strong></td>
+          <td class="num ok"><strong>207.5 / 183.7 / 120.7</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">9-c の問題が解けました</span>
+    <p><strong>成功率 1/3 &rarr; 3/3。標準偏差 218.04 &rarr; 42.87（5 分の 1）。</strong></p>
+    <p>9-c &sect;05 で「50 シード必要」と計算した状況が変わります。
+       <strong>ばらつきが 5 分の 1 なら、必要なシード数は 25 分の 1</strong>（標準誤差は
+       標準偏差に比例し、シード数の平方根に反比例するため）。
+       <strong>50 本が 2 本で足りる計算になります。</strong></p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">ただし、いちばん良い回は悪くなりました</span>
+    <p>成功したときの上端時間を見てください。
+       <strong>いまのまま：221.1。全周：207.5 / 183.7 / 120.7。</strong>
+       <strong>最良の 1 回だけ比べると、負けています。</strong></p>
+    <p>理由ははっきりしています。
+       <strong>方策が「全周のどこからでも立てる」ことに能力を使っている</strong>からです。
+       採点は<strong>真下付近からしか始まらない</strong>ので、
+       <strong>その分は無駄になっています。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">覚えておく取引</span><span class="ct">確実さと、尖り</span></div>
+    <dl>
+      <dt>初期状態を広げると</dt>
+      <dd><strong>確実に学習する</strong>ようになる。<strong>ばらつきが激減</strong>する。</dd>
+      <dt>その代わり</dt>
+      <dd><strong>特定の状況に特化した強さ</strong>は落ちる。</dd>
+      <dt>どちらを取るか</dt>
+      <dd><strong>ほぼ常に「確実さ」です。</strong>
+        1 回だけ強い方策は<strong>再現できないので価値がありません</strong>（9-c）。
+        <strong>それに実機では、そもそも初期状態を選べません。</strong></dd>
+      <dt>Phase D への橋渡し</dt>
+      <dd>この「わざと条件をばらけさせて、確実さを買う」考え方が、
+        <strong>Step 11 のドメインランダム化そのもの</strong>です。
+        <strong>ばらけさせるのが初期状態か、質量・摩擦かの違いだけ</strong>です。</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>観測を削る・履歴を足す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>原則 2（判断に足りるか）</strong>を実験で確かめます。
+       <strong><code>&omega;</code> を観測から抜いたら、どうなるか。</strong></p>
+  </div>
+
+  <h3>なぜこれを試すのか</h3>
+  <p><code>&omega;</code>（角速度）は<strong>実機でいちばん汚れる観測</strong>です。
+     多くのロボットは<strong>角度しか直接測れず、角速度は差分で作ります</strong>。
+     <strong>差分は雑音を増幅します。</strong></p>
+
+  <div class="code"><pre>omega = (theta_now - theta_prev) / dt     <span class="cmt"># 角度の雑音が 1/dt 倍される</span>
+</pre></div>
+
+  <p class="why"><b><code>dt = 0.01</code> なら 100 倍です</b>
+     角度の測定誤差が 0.001 rad でも、<strong>角速度の誤差は 0.1 rad/s</strong>。
+     <strong>だから「角速度を観測に入れない設計」が検討されます。</strong></p>
+
+  <h3>2 つの案を試しました</h3>
+  <div class="tw"><table>
+    <thead><tr><th>案</th><th>観測</th><th class="num">次元</th><th>狙い</th></tr></thead>
+    <tbody>
+      <tr><td>いまのまま</td><td><code>cos&theta;, sin&theta;, &omega;</code></td><td class="num">3</td><td>&mdash;</td></tr>
+      <tr><td><strong>&omega; を抜く</strong></td><td><code>cos&theta;, sin&theta;</code></td><td class="num">2</td>
+          <td>汚れる観測を使わない</td></tr>
+      <tr><td><strong>履歴で代用</strong></td><td><code>cos&theta;, sin&theta;</code> + <strong>前回の <code>cos&theta;, sin&theta;</code></strong></td>
+          <td class="num">4</td><td>2 時刻あれば速度が分かるはず</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>観測</th><th class="num">成功</th><th class="num">元の報酬（平均）</th><th class="num">標準偏差</th></tr></thead>
+    <tbody>
+      <tr><td>いまのまま（3 次元）</td><td class="num">1/3</td><td class="num">&minus;267.61</td><td class="num">218.04</td></tr>
+      <tr><td><strong>&omega; を抜く（2 次元）</strong></td><td class="num bad"><strong>0/3</strong></td>
+          <td class="num bad">&minus;473.32</td><td class="num">0.21</td></tr>
+      <tr><td><strong>履歴で代用（4 次元）</strong></td><td class="num bad"><strong>0/3</strong></td>
+          <td class="num bad">&minus;473.32</td><td class="num">0.21</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">どちらも 1 回も成功しませんでした</span>
+    <p><code>&omega;</code> を抜くと学習できないのは<strong>予想どおり</strong>です。
+       <strong>速度が分からなければ、振り上げのタイミングを決められません。</strong></p>
+    <p><strong>予想外だったのは「履歴で代用」も失敗したこと</strong>です。
+       <code>cos&theta;</code> が 2 時刻ぶんあれば、<strong>原理的には速度が分かるはず</strong>でした。</p>
+  </div>
+
+  <h3>なぜ履歴では代用できなかったのか</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th><code>&omega;</code> を直接入れる</th><th>2 時刻の角度を入れる</th></tr></thead>
+    <tbody>
+      <tr><td>方策がやること</td><td class="ok">そのまま使う</td>
+          <td class="bad"><strong>引き算して 100 倍する</strong>のを学習する</td></tr>
+      <tr><td>値の大きさ</td><td class="ok"><code>&omega;</code> は &plusmn;10 程度</td>
+          <td class="bad">差は <strong>&plusmn;0.1</strong> 程度。<strong>他の入力に埋もれる</strong></td></tr>
+      <tr><td>必要な学習</td><td class="ok">なし</td><td class="bad">速度の概念を<strong>ゼロから</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>2 時刻の差は、とても小さい値です</b>
+     制御周期 <code>dt=0.01</code> で <code>&omega;=10</code> でも、
+     角度の変化は <strong>0.1 rad</strong>。
+     <code>cos&theta;</code> の変化はさらに小さくなります。
+     <strong>方策から見ると「ほとんど同じ 2 つの数字」</strong>で、
+     <strong>そこから速度を取り出すのは簡単ではありません。</strong></p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">覚えておく原則</span><span class="ct">計算できる情報でも、計算済みで渡す</span></div>
+    <dl>
+      <dt>よくある勘違い</dt>
+      <dd><strong>「情報が入っていれば、ネットワークが取り出してくれる」</strong>。
+        <strong>理論上は正しく、実務では間違いです。</strong></dd>
+      <dt>実際に起きること</dt>
+      <dd>取り出すこと自体を学習しなければならず、
+        <strong>本来の課題を学ぶ前に、そこで詰まります。</strong></dd>
+      <dt>だからどうするか</dt>
+      <dd><strong>計算できるものは、こちらで計算して渡します。</strong>
+        速度、加速度、目標との誤差、接触の有無。
+        <strong>ネットワークに推理させないでください。</strong></dd>
+      <dt>履歴が効く場面もあります</dt>
+      <dd><strong>「何が起きたか分からないが、履歴には出ている」</strong>とき。
+        たとえば<strong>地面の滑りやすさ</strong>は直接測れませんが、
+        <strong>過去の指令と実際の動きのズレ</strong>に現れます。
+        <strong>履歴は「計算式が書けないもの」のための道具</strong>です。</dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実機で角速度が汚いときの正解</span>
+    <p>観測から抜くのではなく、<strong>ローパスフィルタをかけて渡します</strong>。
+       <strong>そのうえで、学習時に同じ性質のノイズを混ぜます</strong>（Step 11）。</p>
+    <p><strong>「汚いから使わない」ではなく「汚いまま学習させる」</strong>のが Sim2Real の基本方針です。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>失敗診断表</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Step 9 の総まとめです。</strong>
+       「学習がうまくいかない」ときに<strong>上から順に見ていく表</strong>を作ります。
+       <strong>Phase D で何度も戻ってくる節になります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">使い方</span>
+    <p><strong>上から順に見てください。</strong>
+       下のほう（学習率やネットワーク）をいじりたくなりますが、
+       <strong>7-a のチェックリストで上位 5 つが全部環境側だった</strong>とおりです。</p>
+  </div>
+
+  <h3>症状から引く</h3>
+  <div class="tw"><table>
+    <thead><tr><th>症状</th><th>まず疑うこと</th><th>確かめ方</th><th>参照</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="3"><strong>まったく動かない</strong><br>（報酬が初期値から動かない）</td>
+          <td><strong>動き出す得が 0 以下</strong></td>
+          <td>「何もしない」と「やってほしい動作」の 1 歩の報酬を計算</td><td>9-b &sect;05</td></tr>
+      <tr><td>「動かないこと」に正の点</td><td>正則化項が <code>exp(...)</code> のまま（上限 0 の罰になっていない）</td><td>9-b &sect;05</td></tr>
+      <tr><td>行動変化への罰が強すぎる</td><td><code>action_rate</code> の重みを主目的の 1/100 まで下げる</td><td>9-d &sect;04</td></tr>
+      <tr><td rowspan="2"><strong>点は上がるが動きが変</strong></td>
+          <td><strong>報酬ハッキング</strong></td>
+          <td>報酬とは別のものさし（上端時間など）で採点し直す</td><td>9-a &sect;05</td></tr>
+      <tr><td>足した項が主目的を超えた</td><td>各項の<strong>最大値</strong>を計算して比べる</td><td>9-a &sect;04</td></tr>
+      <tr><td><strong>実行ごとに結果が全然違う</strong></td>
+          <td><strong>初期状態が狭すぎる</strong></td>
+          <td>初期状態をばらけさせる。学習ステップを増やす</td><td>9-e &sect;04</td></tr>
+      <tr><td><strong>条件を変えたのに差が出ない</strong></td>
+          <td><strong>ばらつきに埋もれている</strong></td>
+          <td>標準偏差を出す。差がそれ以下なら判定不能</td><td>9-c &sect;03</td></tr>
+      <tr><td><strong>成功と失敗しか無い（中間が無い）</strong></td>
+          <td>平均を取ってはいけない状態</td>
+          <td>成功率と成功時の点数を分けて出す</td><td>9-c &sect;04</td></tr>
+      <tr><td rowspan="2"><strong>シミュレータでは完璧なのに実機で動かない</strong></td>
+          <td><strong>特権情報が観測に入っている</strong></td>
+          <td>観測を 1 つずつ「実機で測れるか」で点検</td><td>9-e &sect;03</td></tr>
+      <tr><td>観測ノイズに弱い</td><td>観測にノイズを足して符号反転を数える</td><td>9-d &sect;03</td></tr>
+      <tr><td><strong>実機でモータが鳴く・発熱する</strong></td>
+          <td><strong>行動が高周波で振動</strong></td>
+          <td>符号反転を数える。<strong>報酬には現れない</strong></td><td>9-d &sect;03</td></tr>
+      <tr><td><strong>方策が必要な判断をできていない</strong></td>
+          <td>観測に情報が足りない</td>
+          <td>罰している量が観測から分かるか点検。履歴を足す</td><td>9-e &sect;01, &sect;05</td></tr>
+      <tr><td><strong>角度の境目で挙動が飛ぶ</strong></td>
+          <td>角度を生の値で入れている</td>
+          <td><code>cos</code>・<code>sin</code> の組に直す</td><td>9-e &sect;02</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>学習させる前に必ず通す 4 つの検査</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>検査</th><th>合格の目安</th><th>かかる時間</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b></td><td><strong>3 状態チェック</strong>（何もしない / 途中 / 成功）</td>
+          <td><strong>なだらかに上がる。差が +0.05 以上</strong></td><td class="num ok">1 秒</td></tr>
+      <tr><td><b>2</b></td><td>各項の<strong>最大値</strong>を出す</td>
+          <td>足した項が主目的を超えていない</td><td class="num ok">1 秒</td></tr>
+      <tr><td><b>3</b></td><td>観測を 1 つずつ<strong>「実機で測れるか」</strong></td>
+          <td>全部測れる（Critic 用は別扱い）</td><td class="num ok">1 分</td></tr>
+      <tr><td><b>4</b></td><td>お手本（古典制御やランダム）の点を測る</td>
+          <td>比べる基準がある</td><td class="num">数分</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>この 4 つで、Phase C の失敗はほぼ防げました</b>
+     9-b の 2 回の失敗は<strong>検査 1</strong>で、
+     9-a の <code>+0.1|&omega;|</code> は<strong>検査 2</strong>で、
+     学習させる前に分かったはずのものです。
+     <strong>合計 2 秒の検査で、40 分の学習を守れます。</strong></p>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>初期状態のランダム化</strong>を自分の環境に入れます。
+       Phase D で必ず使う形です。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 初期状態の範囲を設定で変えられるようにする</span>
+    <p><code>envs/pendulum_env.py</code> の <code>reset</code> を書き換えます。
+       <strong>いまは <code>&plusmn;0.1</code> が直接書いてあります。</strong></p>
+    <div class="code"><pre>class PendulumEnv(gym.Env):
+  def __init__(self, init_theta=0.1, init_omega=0.1):
+    ...
+    self.init_theta = init_theta        # 初期角度のばらつき幅 [rad]
+    self.init_omega = init_omega        # 初期角速度のばらつき幅 [rad/s]
+
+  def reset(self, *, seed=None, options=None):
+    super().reset(seed=seed)
+    mujoco.mj_resetData(self.model, self.data)
+    self.data.qpos[0] = ???                        <span class="cmt"># ← ここだけ考える</span>
+    self.data.qvel[0] = self.np_random.uniform(-self.init_omega, self.init_omega)
+    mujoco.mj_forward(self.model, self.data)
+    return self._obs(), {}
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    self.data.qpos[0] = self.np_random.uniform(-self.init_theta, self.init_theta)</pre></div>
+      <p class="why"><b><code>np.random</code> ではなく <code>self.np_random</code> です</b>
+        Gymnasium が <code>reset(seed=...)</code> で管理している乱数です。<strong><code>np.random</code> を使うと種が効かず、再現できなくなります</strong>（7-d）。</p>
+      <p class="why"><b>既定値を変えないでください</b>
+        <code>__init__(self, init_theta=0.1, init_omega=0.1)</code> のままにすれば、<strong>これまでの実験結果がそのまま再現できます</strong>。広げるのは<strong>呼び出し側</strong>の仕事です。</p>
+    </div></details>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>既定値を変えないこと</strong>が大事です。
+       <code>init_theta=0.1</code> を既定にしておけば、
+       <strong>これまでの実験結果がそのまま再現できます</strong>（9-c の教訓）。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">採点用の環境は絶対に変えないでください</span>
+    <p><code>train/eval.py</code> の <code>evaluate()</code> は
+       <strong>既定の <code>&plusmn;0.1</code> のまま</strong>にします。</p>
+    <p><strong>学習時の初期状態を広げても、採点は同じ条件でやる。</strong>
+       9-a &sect;05 の「ものさしを固定する」と同じ話です。
+       <strong>広い初期状態で採点すると、簡単な状態から始まる分だけ点が上がってしまいます。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 成功率で比べる</span>
+    <p>9-c 課題 2 の <code>summarize()</code> をそのまま使います。
+       <strong>3 シードずつ</strong>回して、成功率を比べてください。</p>
+    <div class="code"><pre># 学習時だけ初期状態を広げる
+def make_env():
+  return TimeLimit(PendulumEnv(init_theta=np.pi, init_omega=2.0),
+                   max_episode_steps=500)
+
+# 採点は既定のまま
+total, up = evaluate(trained_policy)
+</pre></div>
+    <p class="why"><b>見るのは平均ではなく成功率です</b>
+       9-c &sect;04 のとおり、この課題の結果は<strong>二値</strong>です。
+       <strong>平均を比べても、成功率の差を薄めて見ているだけ</strong>になります。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 観測を点検する</span>
+    <p>コードを書かない課題です。<strong>いまの観測 3 つを、3 原則で採点してください。</strong></p>
+    <div class="code"><pre>観測              原則1 実機で取れるか   原則2 判断に足りるか   原則3 不連続でないか
+cos(theta)        ?                     ?                     ?
+sin(theta)        ?                     ?                     ?
+omega             ?                     ?                     ?
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>観測              原則1 実機で取れるか   原則2 判断に足りるか   原則3 不連続でないか
+cos(theta)        OK  エンコーダ         OK  角度が分かる       OK  滑らか
+sin(theta)        OK  エンコーダ         OK  cos と組で向き確定 OK  滑らか
+omega             △   差分で作る(雑音大) OK  速度が分かる       OK  滑らか</pre></div>
+      <p class="why"><b><code>&omega;</code> だけ &#9651; です</b>
+        多くのロボットで<strong>角速度センサは無く、角度の差分で作ります</strong>。<strong>雑音が <code>1/dt</code> 倍される</strong>ので、実機では一番汚れます（&sect;05）。</p>
+      <p class="why"><b>それでも抜いてはいけません</b>
+        &sect;05 で実測したとおり、<strong>抜くと 3 シードとも学習しません</strong>。<strong>「汚いから使わない」ではなく「汚いまま学習させる」</strong>のが Step 11 の方針です。</p>
+      <p class="why"><b>原則 2 で見落としがちな点</b>
+        <strong>報酬で罰している量が、観測から分かるか</strong>も原則 2 です。9-d 課題 2 で <code>action_rate</code> の罰を足したなら、<strong>前回の行動を観測に入れる必要があります</strong>。</p>
+    </div></details>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>この 3 行を書く習慣</strong>が Phase D で効きます。
+       四足歩行では観測が 48 次元になります。
+       <strong>そのとき 1 つずつ点検できるかどうかで、実機に載るかが決まります。</strong></p>
+  </div>
+</section>
+
+<section id="s09">
+  <div class="sec-head">
+    <span class="eyebrow">08</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>観測の 3 原則</strong>——実機で取れるか / 判断に足りるか / 不連続でないか（&sect;01）</li>
+      <li><strong>角度は <code>cos</code> と <code>sin</code> の組で入れる</strong>。
+          <code>&theta;</code> のままだと同じ状態が 6.28 離れる（&sect;02）</li>
+      <li><strong>特権情報は Actor に見せない。Critic には見せてよい</strong>。
+          Go1 は <code>state</code> 48 次元 / <code>privileged_state</code> 123 次元（&sect;03）</li>
+      <li><strong>初期状態のばらつきが、学習の安定性を決める</strong>（&sect;04）</li>
+      <li><strong>失敗診断表</strong>——症状から原因を引く。Phase D で戻ってくる（&sect;06）</li>
+      <li><strong>学習前に通す 4 つの検査</strong>。合計 2 秒で 40 分を守る（&sect;06）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい一文</span>
+    <p><strong>その観測、実機で取れますか。</strong></p>
+    <p>Phase D に入ると、この問いだけで防げる失敗が大量に出てきます。
+       <strong>観測を 1 行足すたびに、声に出して確かめてください。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="e1"> 観測の 3 原則を言える</label>
+    <label><input type="checkbox" data-ck="e2"> 角度を <code>cos</code>・<code>sin</code> で入れる理由を説明できる</label>
+    <label><input type="checkbox" data-ck="e3"> 特権情報とは何か、なぜ Critic なら良いのか説明できる</label>
+    <label><input type="checkbox" data-ck="e4"> 初期状態を設定で変えられるようにした</label>
+    <label><input type="checkbox" data-ck="e5"> 採点用の環境を変えずに比較した</label>
+    <label><input type="checkbox" data-ck="e6"> 失敗診断表に目を通した</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 Step 10</span>
+    <p>Step 9 で<strong>設計</strong>は終わりました。Step 10 は<strong>速度</strong>です。</p>
+    <p>9-c で「50 シード必要」と計算しました。<strong>43 時間です。</strong>
+       ——<strong>1 本が 13 分ではなく 10 秒で終わるなら、話が変わります。</strong></p>
+    <p><strong>Step 10 では MJX で GPU に載せ、数千体を同時に回します。</strong>
+       速くなると、<strong>できる実験の種類そのものが変わります。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 9-e</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step09e-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

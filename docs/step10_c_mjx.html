@@ -751,6 +751,21 @@ for B in (1, 64, 128, 256, 1024, 4096, 16384):
   dt = time.perf_counter() - t0
   print(f"{B:>6} {B * STEPS * 5 / dt:>15,.0f} physics-steps/s")
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>     1           4,862 physics-steps/s
+    64         299,232
+   128         540,610
+   256       1,321,885
+  1024       4,677,327
+  4096      15,664,251
+ 16384      22,716,708</pre></div>
+      <p class="why"><b>並列数 1 の値に注目してください</b>
+        <strong>4,862</strong>。CPU 1 体の <strong>704,073</strong> と比べて<strong>145 分の 1</strong>です。<strong>「GPU に載せたら遅くなった」は正常な結果</strong>です。</p>
+      <p class="why"><b>16,384 で頭打ちになります</b>
+        8,192（20,890,867）から 16,384（22,716,708）で<strong>8.7% しか伸びません</strong>。<strong>GPU の演算器が埋まりきった</strong>ので、これ以上増やしてもメモリを食うだけです。</p>
+      <p class="why"><b>メモリに注意</b>
+        RTX 4050 は <strong>6GB</strong>。振り子（<code>nq=1</code>）だから 16,384 体が載ります。<strong>四足なら 4,096 体でも厳しくなります</strong>。</p>
+    </div></details>
     <p class="why"><b>2 つの <code>block_until_ready</code> を忘れないでください</b>
        1 つ目は<strong>コンパイルを測定に含めない</strong>ため。
        2 つ目は<strong>計算の完了を待つ</strong>ため。
@@ -769,6 +784,20 @@ for _ in range(N):
 cpu = N / (time.perf_counter() - t0)
 print(f"CPU 1 体: {cpu:,.0f} physics-steps/s")
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>CPU 1 体: 704,073 physics-steps/s
+
+     1           4,862   0.007x   <- CPU の 145 分の 1
+   128         540,610   0.8x     <- まだ負け
+   192         950,752   1.4x     <- ここで逆転
+ 16384      22,716,708  32.3x</pre></div>
+      <p class="why"><b>損益分岐点は 128〜192 体でした</b>
+        <strong>これより少ない並列数なら、CPU で回したほうが速い</strong>。<strong>MJX を使う意味がありません。</strong></p>
+      <p class="why"><b>あなたの環境では違う値になります</b>
+        <strong>GPU の並列度とモデルの重さ</strong>で決まります。<strong>モデルが重いほど、少ない並列数で逆転します</strong>（1 体あたりの計算量が増え、GPU が埋まりやすくなるため）。</p>
+      <p class="why"><b>CPU 側は他を止めてから測ってください</b>
+        学習を裏で回したまま測ったときは <strong>335,590</strong> でした。無負荷の <strong>704,073</strong> の<strong>半分以下</strong>です。<strong>この数字がずれると、損益分岐点もずれます。</strong></p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        <strong>「GPU だから速い」は嘘</strong>だと自分の手で確かめます。
        <strong>この数字は GPU とモデルによって変わります。</strong>

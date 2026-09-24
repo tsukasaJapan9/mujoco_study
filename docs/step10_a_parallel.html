@@ -794,6 +794,22 @@ if __name__ == "__main__":                 # SubprocVecEnv には必須
     print(f"n_envs={n:>2}: {40960 / (time.perf_counter() - t0):,.0f} env-steps/s")
     venv.close()
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>n_envs=1  (Dummy,   n_steps=8192):  3,433 env-steps/s
+n_envs=2  (Dummy,   n_steps=4096):  5,347
+n_envs=4  (Dummy,   n_steps=2048):  5,143
+n_envs=2  (Subproc, n_steps=4096):  3,152
+n_envs=4  (Subproc, n_steps=2048):  3,844
+n_envs=8  (Subproc, n_steps=1024):  5,565   <- 最速
+n_envs=12 (Subproc, n_steps= 682):  5,414
+n_envs=16 (Subproc, n_steps= 512):  5,196</pre></div>
+      <p class="why"><b><code>n_steps &times; n_envs</code> を 8192 に固定しています</b>
+        揃えないと<strong>更新の回数が変わって比較になりません</strong>。課題のコードでは <code>n_steps</code> を書いていないので、<strong><code>n_steps=8192 // n</code> を足してから測ってください</strong>。</p>
+      <p class="why"><b>絶対値はマシンによって変わります</b>
+        見てほしいのは <strong>(1) 天井が 1 体の 2 倍にも届かないこと</strong>、<strong>(2) <code>n_envs</code> が小さいうちは Dummy のほうが速いこと</strong>の 2 点です。</p>
+      <p class="why"><b>コア数を超えると落ちます</b>
+        12 コアのマシンで <code>n_envs=16</code> にすると <strong>5,196</strong> に低下。<strong>プロセスが順番待ちになる</strong>ためです。</p>
+    </div></details>
     <p class="why"><b><code>device="cpu"</code> を明示します</b>
        &sect;05 のとおり、GPU にしても速くなりません。
        <strong>明示しておかないと、環境によって結果が変わって比較になりません。</strong></p>
@@ -807,6 +823,16 @@ if __name__ == "__main__":                 # SubprocVecEnv には必須
   そのときの env-steps/s = ___
   物理だけなら           = ___ physics-steps/s
 </pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>自分のマシンの天井（この教材を書いた環境の場合）
+  最も速かった n_envs   = 8  (SubprocVecEnv)
+  そのときの env-steps/s = 5,565      -> physics-steps/s は 55,650
+  物理だけなら           = 704,073 physics-steps/s</pre></div>
+      <p class="why"><b>この 3 つ目が 10-c の比較相手です</b>
+        MJX は <strong>16,384 体で 22,716,708 physics-steps/s</strong> 出ます。<strong>物理だけの 704,073 と比べて 32.3 倍、学習中の 55,650 と比べて 408 倍</strong>。</p>
+      <p class="why"><b>「速くなった」と言うには、遅かったときの数字が要ります</b>
+        9-a &sect;05 の<strong>「ものさしを固定する」</strong>と同じ話です。<strong>先に測っておかないと、あとから比べられません。</strong></p>
+    </div></details>
     <p class="why"><b>この課題のねらい</b>
        10-c で MJX の速度を測ったとき、<strong>比べる相手がこれです。</strong>
        <strong>「速くなった」と言うには、遅かったときの数字が要ります。</strong>

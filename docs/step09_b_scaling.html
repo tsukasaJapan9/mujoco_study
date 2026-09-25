@@ -445,8 +445,177 @@
     </dl>
   </div>
 
-  <h3>形を数字で見る</h3>
-  <p><code>k</code> を変えると、どう変わるか（実測値）。</p>
+  <h3>形を目で見る</h3>
+  <p><code>k</code> を動かすと形がどう変わるか、<strong>触って確かめてください。</strong></p>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="kR">厳しさ <code>k</code></label><span class="val" id="kV">20</span></div>
+        <input type="range" id="kR" min="0" max="1000" value="697">
+        <p class="hint">大きいほど<strong>せっかち</strong>。少しズレただけで点をくれなくなる。</p>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="eR">誤差 <code>e</code></label><span class="val" id="eV">0.20</span></div>
+        <input type="range" id="eR" min="0" max="120" value="20">
+        <p class="hint">この誤差のときに<strong>何点もらえるか</strong>を下に出す。</p>
+      </div>
+      <div class="btns">
+        <button class="preset" type="button" data-k="1">k = 1</button>
+        <button class="preset" type="button" data-k="20">k = 20</button>
+        <button class="preset" type="button" data-k="100">k = 100</button>
+      </div>
+      <p class="hint" style="margin-top:4px">
+        許容誤差から決めるなら&mdash;&mdash;</p>
+      <div class="btns">
+        <button class="preset" type="button" data-k="5.66">角度 20 度</button>
+        <button class="preset" type="button" data-k="4">速度 0.42 m/s</button>
+        <button class="preset" type="button" data-k="0.17">速度 2 rad/s</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">k</span><span class="rv" id="r-k">20</span></div>
+        <div><span class="rk">e_half</span><span class="rv" id="r-eh">0.1862 <small>rad &middot; 10.67 度</small></span></div>
+        <div><span class="rk">この e での点</span><span class="rv" id="r-r">0.4493</span></div>
+        <div><span class="rk">この e での傾き</span><span class="rv" id="r-g">3.5946</span></div>
+      </div>
+      <canvas id="cvK" width="660" height="330" aria-label="exp(-k e^2) のグラフ"></canvas>
+      <p class="hint" style="font-size:12px;color:var(--muted)">
+        灰の 3 本は <strong>k = 1 / 20 / 100</strong> の固定。teal がスライダーで動かしている <code>k</code>。
+        縦の破線が <strong>e_half</strong>（点が半分になる誤差）、
+        オレンジの点が<strong>いま選んでいる誤差 <code>e</code></strong> の位置。
+      </p>
+    </div>
+  </div>
+
+  <p class="why"><b>触るとすぐ分かること</b>
+     <strong>どの <code>k</code> でも、左端（<code>e=0</code>）は必ず 1.0、外へ行くほど 0 に近づきます。</strong>
+     変わるのは<strong>「どのくらいの誤差で 0 に落ちるか」だけ</strong>。
+     <code>k</code> を上げると<strong>山が細くなります</strong>。</p>
+
+  <p class="why"><b><code>k=100</code> にしてみてください</b>
+     <strong>ほとんど針のような形</strong>になります。
+     <code>e=0.2</code> でもう <strong>0.018</strong>——<strong>ほぼ 0 点</strong>です。
+     <strong>「4.77 度以内に入れ」と言っているのと同じ</strong>ことです。</p>
+
+  <p class="why"><b>左右対称なのは <code>e</code> を二乗しているからです</b>
+     目標より<strong>上でも下でも、同じだけズレていれば同じ点</strong>。
+     <strong>山の頂上がとがらず、なめらかに 1.0 に届く</strong>のも二乗のおかげです。</p>
+
+<script>
+(function () {
+  "use strict";
+  var cv = document.getElementById("cvK");
+  if (!cv) return;
+  var ctx = cv.getContext("2d");
+  var kR = document.getElementById("kR"), eR = document.getElementById("eR");
+  var LN2 = Math.log(2), EMAX = 1.2, REFS = [1, 20, 100];
+
+  function kOf(v) { return 0.1 * Math.pow(2000, v / 1000); }      // 0.1 〜 200 の対数目盛
+  function vOf(k) { return Math.round(1000 * Math.log(k / 0.1) / Math.log(2000)); }
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  var curK = 20;                                   // k の真値。スライダーの粗さで丸めない
+
+  function draw() {
+    var k = curK, e = +eR.value / 100;
+    var W = cv.width, H = cv.height, PL = 46, PR = 14, PT = 14, PB = 34;
+    var w = W - PL - PR, h = H - PT - PB;
+    var X = function (ev) { return PL + (ev + EMAX) / (2 * EMAX) * w; };
+    var Y = function (r) { return PT + (1 - r) * h; };
+    var ink = css("--ink"), mut = css("--muted"), rule = css("--rule");
+    var sim = css("--sim"), real = css("--real"), grid = css("--grid");
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = css("--surface"); ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    ctx.font = "11px ui-monospace, monospace"; ctx.fillStyle = mut;
+    for (var gy = 0; gy <= 1.001; gy += 0.25) {                    // 横の目盛
+      ctx.beginPath(); ctx.moveTo(PL, Y(gy)); ctx.lineTo(W - PR, Y(gy)); ctx.stroke();
+      ctx.textAlign = "right"; ctx.fillText(gy.toFixed(2), PL - 7, Y(gy) + 4);
+    }
+    for (var gx = -1.2; gx <= 1.201; gx += 0.4) {                  // 縦の目盛
+      ctx.beginPath(); ctx.moveTo(X(gx), PT); ctx.lineTo(X(gx), PT + h); ctx.stroke();
+      ctx.textAlign = "center"; ctx.fillText(gx.toFixed(1), X(gx), PT + h + 16);
+    }
+    ctx.strokeStyle = rule; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(PL, PT + h); ctx.lineTo(W - PR, PT + h); ctx.stroke();
+    ctx.fillStyle = mut; ctx.textAlign = "center";
+    ctx.fillText("誤差 e", PL + w / 2, PT + h + 30);
+    ctx.save(); ctx.translate(13, PT + h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillText("報酬 r", 0, 0); ctx.restore();
+
+    function curve(kk, color, width, dash) {                       // 曲線を 1 本引く
+      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.setLineDash(dash || []); ctx.beginPath();
+      for (var i = 0; i <= 480; i++) {
+        var ev = -EMAX + 2 * EMAX * i / 480, r = Math.exp(-kk * ev * ev);
+        if (i === 0) ctx.moveTo(X(ev), Y(r)); else ctx.lineTo(X(ev), Y(r));
+      }
+      ctx.stroke(); ctx.restore();
+    }
+
+    REFS.forEach(function (kk) { curve(kk, mut, 1.3, [4, 3]); });  // 固定の 3 本
+
+    var lx = W - PR - 96, ly = PT + 10;                            // 右上に凡例
+    ctx.font = "11px ui-monospace, monospace"; ctx.textAlign = "left";
+    REFS.forEach(function (kk, i) {
+      var yy = ly + i * 15;
+      ctx.save(); ctx.strokeStyle = mut; ctx.lineWidth = 1.3; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(lx, yy); ctx.lineTo(lx + 22, yy); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = mut; ctx.fillText("k = " + kk, lx + 28, yy + 4);
+    });
+    var yy4 = ly + REFS.length * 15;
+    ctx.save(); ctx.strokeStyle = sim; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(lx, yy4); ctx.lineTo(lx + 22, yy4); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = sim; ctx.fillText("k = " + (k >= 10 ? k.toFixed(0) : k.toFixed(2)), lx + 28, yy4 + 4);
+
+    var eh = Math.sqrt(LN2 / k);                                   // e_half の破線
+    ctx.save(); ctx.strokeStyle = real; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(PL, Y(0.5)); ctx.lineTo(W - PR, Y(0.5)); ctx.stroke();
+    if (eh <= EMAX) {
+      ctx.beginPath(); ctx.moveTo(X(eh), Y(0.5)); ctx.lineTo(X(eh), PT + h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(-eh), Y(0.5)); ctx.lineTo(X(-eh), PT + h); ctx.stroke();
+    }
+    ctx.restore();
+
+    curve(k, sim, 2.6);                                            // いまの k
+
+    var r = Math.exp(-k * e * e);                                  // 選んでいる誤差
+    ctx.save(); ctx.strokeStyle = real; ctx.lineWidth = 1.4; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(X(e), PT + h); ctx.lineTo(X(e), Y(r)); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = real; ctx.beginPath(); ctx.arc(X(e), Y(r), 4.5, 0, 6.2832); ctx.fill();
+
+    document.getElementById("kV").textContent = k.toFixed(k >= 10 ? 0 : 2);
+    document.getElementById("eV").textContent = e.toFixed(2);
+    document.getElementById("r-k").textContent = k.toFixed(k >= 10 ? 0 : 2);
+    document.getElementById("r-eh").innerHTML = eh.toFixed(4)
+      + ' <small>rad &middot; ' + (eh * 180 / Math.PI).toFixed(2) + ' 度</small>';
+    document.getElementById("r-r").textContent = r.toFixed(4);
+    document.getElementById("r-g").textContent = (2 * k * e * r).toFixed(4);
+  }
+
+  kR.addEventListener("input", function () { curK = kOf(+kR.value); draw(); });
+  eR.addEventListener("input", draw);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-k]"), function (b) {
+    b.addEventListener("click", function () {
+      curK = +b.getAttribute("data-k");           // ボタンはぴったりの値を入れる
+      kR.value = vOf(curK); draw();
+    });
+  });
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", draw);
+  }
+  draw();
+})();
+</script>
+
+  <h3>数字でも押さえておく</h3>
+  <p>グラフで見た形を、<strong>表でも確かめます</strong>（実測値）。
+     <code>k=5</code> は上のスライダーには出していませんが、<strong>9-b で実際に使う値</strong>です。</p>
   <div class="tw"><table>
     <thead><tr><th></th>
       <th class="num">e=0</th><th class="num">e=0.05</th><th class="num">e=0.1</th>

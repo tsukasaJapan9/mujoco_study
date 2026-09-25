@@ -1,0 +1,982 @@
+<title>TensorBoard で学習を読む</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">TensorBoard を出す</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">ep_rew_mean — 成績</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">explained_variance — Critic の出来</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">entropy_loss — 探索の残量</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">approx_kl — 更新の大きさ</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 7-b</span>
+  <h1>TensorBoard で学習を読む</h1>
+  <p>報酬曲線だけでは「うまくいっていない」しか分からない。
+     4 つの指標を足すと、<strong>どこが悪いのか</strong>が分かる。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 7 の 2/4</span>
+    <span class="chip">train/train_ppo.py に追記</span>
+    <span class="chip">前提: 7-a</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>PPO で 30 万ステップ学習し、<strong>&minus;499.50 &rarr; &minus;227.51</strong> まで来た</li>
+      <li>しかし古典制御の <strong>+28.31</strong> には遠い。振り上げきれずに落ちている</li>
+      <li>失敗したら<strong>環境から疑う</strong>。環境は <code>check_env</code> を通してある</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 報酬が上がらないとき、<strong>方策・価値・探索</strong>のどれが悪いのかをどう切り分けるか？</p>
+    <p><b>2.</b> TensorBoard に並ぶ大量の数字のうち、<strong>どれを見ればいいのか</strong>？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     <strong>調整はしません。</strong>読み方だけを身につけます。
+     4 つの指標を 1 つずつ、<strong>何を測っているか・正常な値・異常なときのサイン</strong>
+     の順に見ていきます。</p>
+
+  <div class="callout tip">
+    <span class="k">なぜ調整より先に診断なのか</span>
+    <p>7-a のチェックリストで<strong>ハイパーパラメータは 7 番目</strong>でした。
+       そこまで来たとして、<strong>どのパラメータを触ればいいかは報酬曲線からは分かりません</strong>。</p>
+    <p><code>learning_rate</code> を下げるべきなのか、<code>ent_coef</code> を上げるべきなのか、
+       それとも単にステップ数が足りないのか——
+       <strong>指標を読めないと、当てずっぽうで何時間も溶かします。</strong></p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>今回見る 4 つの指標が、<strong>それぞれ何を切り分けるためのものか</strong>を先に示します。
+       この対応さえ頭にあれば、あとは個々の読み方だけです。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>学習曲線（報酬）が上がらないとき、それだけでは原因が分かりません。
+       方策が悪いのか、価値の見積もりが外れているのか、探索が足りないのか。
+       <strong>この 3 つを切り分けるには、報酬以外に何を見ればいいでしょうか。</strong></p>
+  </div>
+
+  <p><b>答え：PPO の部品ごとに 1 つずつ指標があります。</b></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>知りたいこと</th><th>見る指標</th><th>Step 5 の言葉では</th></tr></thead>
+    <tbody>
+      <tr><td><strong>結果</strong>は良くなっているか</td><td><code>ep_rew_mean</code></td><td>収益 <code>G</code> の平均</td></tr>
+      <tr><td><strong>価値の見積もり</strong>は当たっているか</td><td><code>explained_variance</code></td><td><code>V</code> の精度（Critic）</td></tr>
+      <tr><td><strong>探索</strong>はまだ続いているか</td><td><code>entropy_loss</code></td><td>5-e の <code>&epsilon;</code> にあたるもの</td></tr>
+      <tr><td><strong>更新</strong>は適切な大きさか</td><td><code>approx_kl</code></td><td>方策がどれだけ変わったか</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>4 つは Step 5 で学んだ部品にそのまま対応します</b>
+     PPO は<strong>方策（Actor）と価値関数（Critic）の 2 つを同時に学習</strong>します。
+     どちらが足を引っ張っているかは、<strong>別々の指標を見ないと分かりません</strong>。
+     報酬だけを見るのは、<strong>体温だけで病名を当てようとするようなもの</strong>です。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>TensorBoard を出す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>記録を取るのは <strong>1 引数</strong>です。先に仕組みだけ通します。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">先に入れておくもの</span>
+    <div class="code"><pre>uv add tensorboard
+</pre></div>
+    <p>入れずに <code>tensorboard_log</code> を指定すると、
+      <strong>学習が始まる直前に落ちます</strong>。</p>
+    <div class="code"><pre>ImportError: Trying to log data to tensorboard but tensorboard is not installed.
+</pre></div>
+    <p><strong>SB3 本体には含まれていません。</strong>記録を取るときだけ必要なので別扱いになっています。</p>
+  </div>
+
+  <div class="code"><pre>model = PPO("MlpPolicy", venv, verbose=1, seed=0, device="cpu",
+            tensorboard_log="tb_logs")        <span class="cmt"># ← これだけ</span>
+
+model.learn(total_timesteps=300_000, tb_log_name="ppo")
+</pre></div>
+
+  <p>学習中に <code>tb_logs/ppo_1/</code> のようなフォルダができます。別の端末で開きます。</p>
+  <div class="code"><pre>uv run tensorboard --logdir tb_logs
+</pre></div>
+  <p>ブラウザで <code>http://localhost:6006</code> を開くとグラフが見られます。
+     <strong>学習中でもリアルタイムに更新されます</strong>。</p>
+
+  <div class="callout">
+    <span class="k">tb_logs を git に入れないでください</span>
+    <p>実験ごとにフォルダが増え、すぐに数百 MB になります。
+       <code>.gitignore</code> に追加しておいてください。</p>
+    <div class="code"><pre>tb_logs/
+</pre></div>
+  </div>
+
+  <p class="why"><b><code>tb_log_name</code> を毎回変えると比較できます</b>
+     <code>"ppo"</code> のままだと <code>ppo_1</code>, <code>ppo_2</code>... と連番になり、
+     <strong>TensorBoard 上で重ねて表示されます</strong>。
+     設定を変えた実験に名前を付けておくと、<strong>あとで何を変えたか分かります</strong>——
+     <code>tb_log_name="ppo_lr3e-4"</code> のように。
+     <strong>これが実験管理のいちばん簡単な形</strong>です。</p>
+</section>
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>ep_rew_mean — 成績</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>いちばん基本の指標です。ただし<strong>単独で見ても情報が少ない</strong>ことを押さえます。</p>
+  </div>
+
+  <p><b>何を測っているか。</b>
+     <strong>直近 100 エピソードの、1 エピソードあたり合計報酬の平均</strong>です。
+     Step 5 の言葉では<strong>収益 <code>G</code> の平均</strong>——
+     5-b で「強化学習の目的は収益の平均を最大にすること」と言った、まさにその量です。</p>
+
+  <div class="callout tip">
+    <span class="k">必ず基準線と一緒に見てください</span>
+    <p><code>&minus;300</code> という数字だけでは<strong>良いのか悪いのか分かりません</strong>。
+       Step 6 で 2 本の基準線を作ったのはこのためです。</p>
+    <div class="tw"><table>
+      <thead><tr><th class="num">ep_rew_mean</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td class="num">&minus;499 付近から動かない</td><td class="ng">何も学習していない。<strong>7-a のチェックリストを上から確認</strong></td></tr>
+        <tr><td class="num">&minus;499 &rarr; &minus;250 あたり</td><td>学習は進んでいる。<strong>振り上げきれていない</strong></td></tr>
+        <tr><td class="num">+28 を超えた</td><td class="ok">古典制御に並んだ</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <p class="why"><b>学習中の値は実力より低く出ます</b>
+     5-e で見たとおり、<strong>学習中の方策は探索しています</strong>。
+     わざと下手に動く分だけ成績が下がるので、
+     <strong><code>ep_rew_mean</code> と <code>evaluate()</code> の結果は一致しません</strong>。
+     評価は必ず <code>deterministic=True</code> で別に測ってください（7-a 段階 3）。</p>
+
+  <div class="callout">
+    <span class="k">頭打ちに見えても、まだ伸びることがあります</span>
+    <p>PPO の学習曲線は<strong>長い停滞のあとに急に伸びる</strong>ことがあります。
+       特にこの振り子のように<strong>「振り上げる」という質的な飛躍</strong>が要るタスクでは、
+       できるようになるまで報酬がほとんど動きません。</p>
+    <p><strong>停滞しているときに「まだ伸びる余地があるか」を判断する材料が、次の 3 つの指標です。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>explained_variance — Critic の出来</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>今回いちばん重要な指標</strong>です。
+       報酬が伸びない原因が <b>Actor 側</b>か <b>Critic 側</b>かを切り分ける、唯一の手がかりです。</p>
+  </div>
+
+  <p><b>何を測っているか。</b>
+     <strong>価値関数 <code>V</code> の予測が、実際の収益をどれだけ説明できているか</strong>。
+     5-c で学んだ <code>V(s)</code> の精度そのものです。</p>
+
+  <div class="code"><pre>explained_variance = 1 - Var(実際の収益 - V の予測) / Var(実際の収益)
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">値</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.0</td><td class="ok">完璧に予測できている</td></tr>
+      <tr><td class="num">0.8 〜 0.95</td><td class="ok">健全。ここを目指す</td></tr>
+      <tr><td class="num">0 付近</td><td class="ng"><strong>平均を答えているのと変わらない</strong></td></tr>
+      <tr><td class="num">マイナス</td><td class="ng"><strong>平均を答えるより悪い</strong>。何かおかしい</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>なぜこれが方策に影響するのか</h3>
+  <p>5-c を思い出してください。<b>アドバンテージ</b> <code>A = Q &minus; V</code> は
+     「その行動が平均よりどれだけ良いか」でした。
+     PPO は<strong>この <code>A</code> の符号と大きさを見て方策を更新します</strong>。</p>
+
+  <p class="why"><b><code>V</code> が外れていると <code>A</code> も外れます</b>
+     <code>V</code> が信用できなければ「平均よりどれだけ良いか」も信用できない。
+     つまり<strong>方策を動かす方向そのものが間違います</strong>。
+     <strong>報酬が伸びないとき、原因が Critic 側にあることは珍しくありません。</strong></p>
+
+  <div class="callout">
+    <span class="k">低いときにどうするか</span>
+    <ul>
+      <li><strong>まだ学習の初期</strong>なら、低いのは正常。データが足りていないだけ</li>
+      <li><strong>ずっと 0 付近</strong>なら、<code>V</code> が学べていない。
+          報酬のスケールが大きすぎる／小さすぎる可能性（7-c の <code>VecNormalize</code>）</li>
+      <li><strong>マイナスに振れ続ける</strong>なら、環境側を疑う。
+          <strong>同じ状態から毎回まったく違う収益が返っていないか</strong>——
+          6-a で見たマルコフ性の問題（観測に必要な情報が入っていない）が典型</li>
+    </ul>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">もっと深く</span>
+    <p>この式の分母がなぜ <code>Var(実際の収益)</code> なのか、
+       <strong>SB3 が「実際の収益」として何を渡しているのか</strong>、
+       <code>0.99</code> でも Critic を褒めきれない場合があるのはなぜか——
+       <a href="explained_variance_explained.html">補助教材「explained_variance の中身」</a>で
+       式・ソース・ラボまで開けてある。<strong>ここを飛ばしても Step 7 は進められる。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 8 への伏線</span>
+    <p>Step 8 で PPO を自分で実装すると、<code>V</code> の学習と方策の学習が
+       <strong>別々の損失関数として並んでいる</strong>のが見えます。
+       <code>explained_variance</code> は<strong>そのうち片方だけの成績表</strong>です。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>entropy_loss — 探索の残量</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>5-e の <code>&epsilon;-greedy</code> にあたるものが、連続的な行動ではどう現れるかを見ます。
+       <strong>探索をやめた方策は、そこから先は伸びません。</strong></p>
+  </div>
+
+  <p><b>何を測っているか。</b>
+     方策の<strong>迷いの大きさ</strong>です。
+     連続行動の方策は「平均 <code>&mu;</code>、ばらつき <code>&sigma;</code> の正規分布」の形をしていて、
+     <strong><code>&sigma;</code> が大きいほど色々な行動を試します</strong>。
+     エントロピーはその <code>&sigma;</code> の大きさを表す量です。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Step 5 での対応物</th><th>連続行動では</th></tr></thead>
+    <tbody>
+      <tr><td><code>&epsilon;</code> が大きい（よく探索する）</td><td>エントロピーが大きい（<code>&sigma;</code> が大きい）</td></tr>
+      <tr><td><code>&epsilon; = 0</code>（探索しない）</td><td>エントロピーが小さい（<code>&sigma;</code> が小さい）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>学習が進むにつれて自然に下がります</b>
+     最初は手当たり次第に試し、良い行動が分かってくると<strong>そこに集中していく</strong>。
+     これは正常な進み方です。</p>
+
+  <div class="callout">
+    <span class="k">問題は「早すぎる収束」です</span>
+    <p>まだ良い方策を見つけていないのに <code>&sigma;</code> が小さくなると、
+       <strong>そこから抜け出せなくなります</strong>。
+       5-e で <code>&epsilon; = 0</code> にしたとき、
+       Q テーブルが全部 0 のまま動かなかったのと同じ構図です。</p>
+    <p><strong>症状</strong>: 報酬が途中で頭打ちになり、エントロピーも早い段階で下がりきっている。</p>
+    <p><strong>対処</strong>: <code>ent_coef</code> を上げます（既定は <code>0.0</code>）。
+       これは「探索をやめるな」という圧力を損失に足すパラメータで、
+       <strong>7-c で実際に触ります</strong>。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">あわせて <code>train/std</code> も見てください</span>
+    <p>SB3 は方策の <code>&sigma;</code> そのものも記録しています。
+       <strong>エントロピーより直感的に読めます</strong>——
+       行動が <code>[-1, 1]</code> なので、
+       <code>&sigma;</code> が <code>0.1</code> を切っていれば<strong>ほぼ探索していない</strong>と分かります。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>approx_kl — 更新の大きさ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>最後の 1 つは<strong>学習が壊れていないか</strong>の見張り役です。
+       PPO という手法の名前の由来にも関わります。</p>
+  </div>
+
+  <p><b>何を測っているか。</b>
+     <strong>1 回の更新で方策がどれだけ変わったか</strong>。
+     更新前と更新後の方策の「違いの大きさ」です。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">approx_kl</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.005 〜 0.02</td><td class="ok">健全な範囲</td></tr>
+      <tr><td class="num">0.05 以上</td><td class="ng">更新が大きすぎる。<strong>学習が不安定になる</strong></td></tr>
+      <tr><td class="num">0.001 以下</td><td class="ng">更新が小さすぎる。<strong>学習が進まない</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>なぜ大きすぎるとまずいのか</h3>
+  <p>5-f で学んだとおり、<strong>PPO は on-policy</strong> です。
+     集めたデータは<strong>そのときの方策で集めたもの</strong>なので、
+     方策が大きく変わるとデータが古くなります。</p>
+  <p class="why"><b>これが PPO の <b>P</b>（Proximal ＝ 近接）の意味です</b>
+     <strong>「一度に大きく変えない」</strong>——それが手法の名前になっています。
+     <code>clip_range</code>（既定 <code>0.2</code>）が更新幅に制限をかけており、
+     <code>approx_kl</code> はその制限が効いているかを見る指標です。</p>
+
+  <div class="callout">
+    <span class="k">どちらに転んでも対処は learning_rate</span>
+    <ul>
+      <li><strong>大きすぎる</strong>（0.05 以上）&rarr; <code>learning_rate</code> を下げる</li>
+      <li><strong>小さすぎる</strong>（0.001 以下）&rarr; <code>learning_rate</code> を上げる</li>
+    </ul>
+    <p>既定は <code>3e-4</code> です。<strong>2〜3 倍単位で動かす</strong>のが普通で、
+       10% の調整には意味がありません。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">あわせて <code>clip_fraction</code> も見てください</span>
+    <p><strong>更新のうち何割が制限に引っかかったか</strong>を表します。
+       <code>0.1 〜 0.3</code> くらいが普通で、
+       <strong>0.5 を超えていたら更新が大きすぎます</strong>。
+       <code>approx_kl</code> と同じことを別の角度から見ている指標です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>この環境での実測値</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;03〜&sect;06 の「正常な範囲」は一般論です。
+       <strong>この振り子で実際にどうなるか</strong>を並べます。
+       自分の値と比べる基準にしてください。</p>
+  </div>
+
+  <p>30 万ステップ（<code>seed=0</code>）の実測です。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">step</th><th class="num">ep_rew_mean</th><th class="num">explained_variance</th>
+      <th class="num">entropy_loss</th><th class="num">std</th><th class="num">approx_kl</th><th class="num">clip_fraction</th></tr></thead>
+    <tbody>
+      <tr><td class="num">16k</td><td class="num">&minus;497.9</td><td class="num ng">&minus;0.001</td><td class="num">&minus;1.401</td><td class="num">0.966</td><td class="num">0.0020</td><td class="num">0.008</td></tr>
+      <tr><td class="num">40k</td><td class="num">&minus;497.0</td><td class="num">0.159</td><td class="num">&minus;1.339</td><td class="num">0.920</td><td class="num">0.0047</td><td class="num">0.021</td></tr>
+      <tr><td class="num">65k</td><td class="num">&minus;489.4</td><td class="num ok">0.910</td><td class="num">&minus;1.264</td><td class="num">0.844</td><td class="num">0.0058</td><td class="num">0.036</td></tr>
+      <tr><td class="num">115k</td><td class="num">&minus;383.5</td><td class="num ok">0.981</td><td class="num">&minus;1.156</td><td class="num">0.762</td><td class="num">0.0027</td><td class="num">0.023</td></tr>
+      <tr><td class="num">164k</td><td class="num">&minus;329.7</td><td class="num ok">0.960</td><td class="num">&minus;1.044</td><td class="num">0.682</td><td class="num">0.0025</td><td class="num">0.017</td></tr>
+      <tr><td class="num">213k</td><td class="num">&minus;348.3</td><td class="num ok">0.981</td><td class="num">&minus;1.033</td><td class="num">0.682</td><td class="num">0.0036</td><td class="num">0.039</td></tr>
+      <tr><td class="num">262k</td><td class="num">&minus;280.9</td><td class="num ok">0.993</td><td class="num">&minus;0.995</td><td class="num">0.653</td><td class="num">0.0070</td><td class="num">0.076</td></tr>
+      <tr><td class="num">303k</td><td class="num">&minus;222.9</td><td class="num ok"><strong>0.994</strong></td><td class="num"><strong>&minus;0.919</strong></td><td class="num"><strong>0.602</strong></td><td class="num"><strong>0.0084</strong></td><td class="num"><strong>0.093</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4 つを順に読む</h3>
+
+  <p class="why"><b>explained_variance: 完璧です</b>
+     最初は <code>&minus;0.001</code>（平均を答えるのと同じ）でしたが、
+     <strong>65k で 0.91、最後は 0.994</strong>。
+     &sect;04 の基準（0.8〜0.95 が健全）を上回っています。
+     <strong>Critic は仕事をしています</strong>——報酬が伸びない原因はここではありません。</p>
+
+  <p class="why"><b>entropy_loss と std: まだ下がり続けています</b>
+     <code>std</code> が <code>0.966 &rarr; 0.602</code> と減っていますが、
+     <strong>まだ 0.6 あります</strong>。&sect;05 で「0.1 を切っていればほぼ探索していない」と書きましたが、
+     その水準には程遠い。<strong>探索は生きており、早すぎる収束は起きていません。</strong></p>
+
+  <p class="why"><b>approx_kl: 健全、やや小さめ</b>
+     全区間で <code>0.002 〜 0.008</code>。&sect;06 の健全な範囲 <code>0.005〜0.02</code> の
+     <strong>下寄り</strong>です。壊れてはいませんが、
+     <strong><code>learning_rate</code> を上げれば学習を速められる余地がある</strong>ことを示しています。</p>
+
+  <p class="why"><b>ep_rew_mean: 最後まで上がり続けています</b>
+     <code>&minus;497.9 &rarr; &minus;222.9</code>。
+     <strong>頭打ちになっていません</strong>——グラフの右端がまだ上を向いている。</p>
+
+  <div class="callout tip">
+    <span class="k">結論: 何も壊れていません。ステップ数が足りないだけです</span>
+    <p>4 つとも健全で、報酬も伸び続けている。
+       <strong>この状態で <code>learning_rate</code> や <code>ent_coef</code> を触るのは早すぎます。</strong></p>
+    <p>実際、<strong>100 万ステップまで伸ばすと報酬 <code>+24.55</code>、上端滞在 <code>207.5/500</code></strong>
+       に到達し、<strong>古典制御（<code>+28.31</code> / 216.2）にほぼ並びます</strong>（実測）。
+       7-a のチェックリストで<strong>6 番（学習量）が 7 番（ハイパーパラメータ）より先</strong>だったのは、
+       このためです。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">160k〜215k の停滞に注目してください</span>
+    <p><code>&minus;329.7 &rarr; &minus;348.3</code> と、<strong>50k ステップのあいだ悪化しています</strong>。
+       ここだけ見れば「学習が止まった」と判断してもおかしくありません。</p>
+    <p>しかし <code>explained_variance</code> は <code>0.96〜0.98</code> を保ち、
+       <code>std</code> も下がり続けていた。<strong>指標を見ていれば「まだ動いている」と分かります。</strong>
+       実際そのあと <code>&minus;222.9</code> まで伸びました。
+       <strong>報酬曲線だけを見て早々に打ち切るのが、いちばんもったいない失敗です。</strong></p>
+  </div>
+</section>
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>自分の学習の指標を、自分の目で読む</strong>ため。
+      教材の数字を眺めるのと、自分の実験のグラフを読むのとでは残り方が違います。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——報酬が伸びないとき、<strong>次にどのパラメータを触るべきか</strong>を
+      指標から根拠づけて言える。7-c の調整はここが土台になります。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めはありません。<strong>読むことが今回の課題</strong>です。
+      新しい学習は回さず、<strong>7-a で回したものに記録を足して回し直す</strong>だけです。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>記録を取りながら学習し直す</h3>
+    <p class="why"><b>この段階ですること</b> 引数を 2 つ足して 7-a と同じ学習を回します。</p>
+    <div class="code"><pre>model = PPO("MlpPolicy", venv, verbose=1, seed=0, device="cpu",
+            tensorboard_log="tb_logs")
+
+model.learn(total_timesteps=300_000, tb_log_name="ppo")
+model.save("train/ppo_pendulum")
+</pre></div>
+    <div class="code"><pre>uv add tensorboard          <span class="cmt"># まだなら先にこれ</span>
+uv run python -m train.train_ppo
+</pre></div>
+    <p><b>確認方法</b> <code>tb_logs/ppo_1/</code> ができていれば成功です。
+      <code>.gitignore</code> に <code>tb_logs/</code> を足しておいてください。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>TensorBoard を開いて 4 つを見る</h3>
+    <p class="why"><b>この段階ですること</b> 学習中でも構いません。ブラウザで開きます。</p>
+    <div class="code"><pre>uv run tensorboard --logdir tb_logs
+</pre></div>
+    <p><code>http://localhost:6006</code> を開き、次の 4 つを探してください。</p>
+    <ul>
+      <li><code>rollout/ep_rew_mean</code></li>
+      <li><code>train/explained_variance</code></li>
+      <li><code>train/entropy_loss</code></li>
+      <li><code>train/approx_kl</code></li>
+    </ul>
+    <p class="why"><b>グラフが階段状に見えたら</b>
+      右上の <b>Smoothing</b> を <code>0</code> にすると生の値が見えます。
+      既定では平滑化がかかっていて、<strong>実際より滑らかに見えています</strong>。
+      <strong>異常なスパイクを探すときは必ず 0 にしてください。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>自分の 4 つの値を書き出す</h3>
+    <p class="why"><b>この段階ですること</b> グラフを眺めるだけでなく、
+      <strong>学習の終わりごろの値を数字で書き出します</strong>。
+      次回この数字と比べることになります。</p>
+    <div class="tw"><table>
+      <thead><tr><th>指標</th><th class="num">あなたの値</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td><code>ep_rew_mean</code></td><td class="num">&nbsp;</td><td>上がり続けている？ 頭打ち？</td></tr>
+        <tr><td><code>explained_variance</code></td><td class="num">&nbsp;</td><td>0.9 以上？ 0 付近？</td></tr>
+        <tr><td><code>entropy_loss</code></td><td class="num">&nbsp;</td><td>まだ下がり続けている？</td></tr>
+        <tr><td><code>approx_kl</code></td><td class="num">&nbsp;</td><td>0.01 前後に収まっている？</td></tr>
+      </tbody>
+    </table></div>
+    <p class="why"><b>この 4 つから次の一手を決めます</b>
+      &sect;03〜&sect;06 の各節末に「この値ならこうする」を書いてあります。
+      <strong>自分の値がどのケースに当てはまるかを判断してください。</strong>
+      それが 7-c でいじるパラメータになります。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 4</span>
+    <h3>上端滞在ステップ数も記録する</h3>
+    <p class="why"><b>この段階ですること</b> 6-d で作った「上端にいたステップ数」を
+      <strong>学習中にも記録</strong>します。報酬は合成値なので内訳が見えないためです。</p>
+    <p><code>envs/pendulum_env.py</code> の <code>step()</code> で <code>info</code> に入れます。</p>
+    <div class="code"><pre>    upright = float(-np.cos(theta) &gt; 0.95)
+    return self._obs(), reward, False, False, {"upright": upright}
+</pre></div>
+    <p class="why"><b><code>info</code> は学習に使われません</b>
+      6-a で「デバッグ用の自由な辞書」と書いたとおりです。
+      <strong>方策はこれを見ませんが、人間とログは見られます</strong>。</p>
+    <p class="why"><b>なぜこれが要るのか</b>
+      報酬 <code>&minus;227</code> という数字からは、
+      <strong>振り上げに失敗しているのか、立ったあと落ちているのか</strong>が分かりません。
+      上端滞在が <strong>0 に近い</strong>なら前者、
+      <strong>大きいのに報酬が低い</strong>なら後者（暴れて角速度の罰を食っている）。
+      <strong>切り分けに必要な情報です。</strong></p>
+    <div class="callout">
+      <span class="k">TensorBoard に出すにはもう一手間かかります</span>
+      <p><code>info</code> に入れただけでは記録されません。
+        <code>Monitor</code> ラッパーの <code>info_keywords</code> を使うか、
+        独自の <code>Callback</code> を書く必要があります。
+        <strong>今回は <code>info</code> に入れるところまでで構いません</strong>——
+        7-d の評価プロトコルでこの値を使います。</p>
+    </div>
+  </div>
+</section>
+<section id="s09">
+  <div class="sec-head">
+    <span class="eyebrow">08</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>報酬だけでは<strong>「うまくいっていない」しか分からない</strong>。
+          PPO は Actor と Critic を同時に学習しているので、別々の指標が要る</li>
+      <li><b>ep_rew_mean</b>＝成績。<strong>基準線 2 本と一緒に見る</strong></li>
+      <li><b>explained_variance</b>＝Critic の出来。<strong>低いと方策の更新方向が信用できない</strong></li>
+      <li><b>entropy_loss</b>＝探索の残量。<strong>早く下がりきると探索をやめている</strong></li>
+      <li><b>approx_kl</b>＝更新の大きさ。<strong>大きすぎると壊れ、小さすぎると進まない</strong></li>
+      <li>記録は <code>tensorboard_log="tb_logs"</code> の<strong>1 引数</strong>。
+          <code>tb_log_name</code> に実験名を付けておくと後で比較できる</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="l0"><span><code>uv add tensorboard</code> を実行した</span></label>
+    <label><input type="checkbox" data-ck="l1"><span><code>tensorboard_log</code> を足して学習し直した</span></label>
+    <label><input type="checkbox" data-ck="l2"><span>TensorBoard をブラウザで開き、4 つの指標を見つけた</span></label>
+    <label><input type="checkbox" data-ck="l3"><span>自分の 4 つの値を書き出し、それぞれの判定を付けた</span></label>
+    <label><input type="checkbox" data-ck="l4"><span><code>explained_variance</code> が何を測っているか説明できる</span></label>
+    <label><input type="checkbox" data-ck="l5"><span><code>info</code> に上端滞在を入れた</span></label>
+    <label><input type="checkbox" data-ck="l6"><span>報酬が伸びないとき、次に触るべきパラメータを指標から根拠づけて言える</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（7-c）でやること</span>
+    <p>ようやく調整に入ります。7-a のチェックリストの
+       <strong>6 番（学習量）と 7 番（ハイパーパラメータ）</strong>です。</p>
+    <p>今回読んだ指標が、<strong>どれを触るべきかの根拠</strong>になります。
+       定番とされる <b>VecNormalize</b> も試しますが、
+       <strong>効くかどうかは自分の環境で測らないと分かりません</strong>——
+       実際、今回の振り子では意外な結果が出ます。</p>
+    <p>先に考えておいてください——
+       <strong>7-a で 30 万ステップでは届きませんでした。
+       単にステップ数を 3 倍にしたらどうなると思いますか。</strong>
+       そして<strong>それを試す前に、指標のどれを見れば「まだ伸びる余地があるか」が分かるでしょうか。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 7-b</span>
+  <span>stable-baselines3 2.9.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step07b-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

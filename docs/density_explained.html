@@ -1,0 +1,902 @@
+<title>確率密度とは何か</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">この教材について</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">離散なら簡単だった</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">連続にすると確率が消える</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">確率を幅で割る</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">実験室</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">密度が 1 を超える理由</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">log_prob に戻る</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">補助教材 · Step 8-a</span>
+  <h1>確率密度とは何か</h1>
+  <p>連続的な行動を扱うと「確率」が使えなくなる。
+     <strong>なぜ使えないのか</strong>と、<strong>代わりに何を使うのか</strong>を、
+     数字を追いながら確かめる。</p>
+  <div class="meta">
+    <span class="chip">35 分</span>
+    <span class="chip">Step 8-a の補助</span>
+    <span class="chip">数学の前提なし</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>この教材について</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この教材のねらい</span>
+    <p>8-a で <code>log_prob</code>（確率密度の対数）が出てきました。
+       <strong>「確率」ではなく「確率密度」</strong>と書きましたが、その違いを説明していませんでした。</p>
+    <p>この教材は<strong>1 つの問いだけ</strong>を追いかけます——
+       <strong>なぜ連続値では確率が使えないのか。</strong>
+       そこが分かれば、密度は自然に受け入れられます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">ゴール</span>
+    <p>この 3 つが言えるようになることです。</p>
+    <ol>
+      <li>連続値では「ちょうどこの値になる確率」は<strong>厳密に 0</strong></li>
+      <li>密度は<strong>高さ</strong>、確率は<strong>面積</strong></li>
+      <li>だから<strong>密度は 1 を超えてよい</strong>（確率は超えない）</li>
+    </ol>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>離散なら簡単だった</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>比較の出発点として、<strong>うまくいっていた場合</strong>を思い出します。
+       5-a の gridworld です。</p>
+  </div>
+
+  <p>マス目では行動が <strong>4 択</strong>でした。ランダム方策はこう書けます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>行動</th><th class="num">確率</th></tr></thead>
+    <tbody>
+      <tr><td><code>up</code></td><td class="num">0.25</td></tr>
+      <tr><td><code>right</code></td><td class="num">0.25</td></tr>
+      <tr><td><code>down</code></td><td class="num">0.25</td></tr>
+      <tr><td><code>left</code></td><td class="num">0.25</td></tr>
+      <tr><td><strong>合計</strong></td><td class="num"><strong>1.00</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>4 つの数を並べれば方策になりました</b>
+     それぞれが「その行動が選ばれる確率」で、<strong>足すと 1</strong>。
+     <code>up</code> が選ばれる確率は <strong>0.25</strong> と、はっきり言えます。</p>
+
+  <div class="callout">
+    <span class="k">5-a で書いたこと</span>
+    <p>「マス目では行動が 4 択なので、<strong>確率を並べれば</strong>方策になりました。
+       <strong>トルクは連続値なので、並べられません。</strong>」</p>
+    <p>並べられないのは<strong>選択肢が無限にある</strong>からです。
+       <code>0.3</code> も <code>0.30001</code> も <code>0.300000001</code> も全部別の行動。
+       <strong>表に書き出すことができません。</strong></p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>連続にすると確率が消える</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「並べられない」だけでなく、<strong>確率そのものが 0 になってしまう</strong>ことを数字で見ます。
+       <strong>ここが今回いちばん大事な節</strong>です。</p>
+  </div>
+
+  <p>方策が <code>N(平均 0, 標準偏差 1)</code> だとして、
+     <strong>トルクがちょうど 0.5 になる確率</strong>を考えます。</p>
+
+  <p>いきなり「ちょうど」は難しいので、<strong>幅のある範囲から始めて、だんだん狭めます</strong>。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">範囲の幅</th><th>範囲</th><th class="num">その範囲に入る確率</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.0</td><td class="num">0.0 &sim; 1.0</td><td class="num">0.3413447461</td></tr>
+      <tr><td class="num">0.1</td><td class="num">0.45 &sim; 0.55</td><td class="num">0.0351955335</td></tr>
+      <tr><td class="num">0.01</td><td class="num">0.495 &sim; 0.505</td><td class="num">0.0035206423</td></tr>
+      <tr><td class="num">0.001</td><td class="num">0.4995 &sim; 0.5005</td><td class="num">0.0003520653</td></tr>
+      <tr><td class="num">0.0001</td><td class="num">0.49995 &sim; 0.50005</td><td class="num">0.0000352065</td></tr>
+      <tr><td class="num"><strong>0</strong></td><td class="num"><strong>ちょうど 0.5</strong></td><td class="num ng"><strong>0</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>幅を 1/10 にすると、確率も 1/10 になります</b>
+     <code>0.0352 &rarr; 0.00352 &rarr; 0.000352</code>。
+     <strong>幅を 0 にすれば、確率も 0</strong>です。</p>
+
+  <div class="callout">
+    <span class="k">直感的にも納得できるはずです</span>
+    <p>「トルクがちょうど 0.5000000000... になる」というのは、
+      <strong>無限に続く桁が全部ぴったり一致する</strong>ということです。
+      <code>0.5000000001</code> ではダメ。<strong>そんなことは起こりません。</strong></p>
+    <p>ダーツの的に投げて「<strong>座標がちょうど (0, 0)</strong> に当たる確率」と同じです。
+      的には当たりますが、数学的な 1 点に当たる確率は 0 です。</p>
+  </div>
+
+  <p class="why"><b>これでは方策が作れません</b>
+     どの行動も確率 0 なら、<strong>「この行動のほうが選ばれやすい」が言えません</strong>。
+     8-c で使う「更新前と後で確率がどう変わったか」も計算できない
+     （<code>0 &divide; 0</code> になってしまう）。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>確率を幅で割る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;02 の表をもう一度見ます。<strong>確率は 0 に消えていきますが、
+       消えない量が隠れています。</strong></p>
+  </div>
+
+  <p>さっきの表に<strong>「確率 &divide; 幅」の列</strong>を足します。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">幅</th><th class="num">確率</th><th class="num">確率 &divide; 幅</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.0</td><td class="num">0.3413447461</td><td class="num">0.341345</td></tr>
+      <tr><td class="num">0.1</td><td class="num">0.0351955335</td><td class="num">0.351955</td></tr>
+      <tr><td class="num">0.01</td><td class="num">0.0035206423</td><td class="num">0.352064</td></tr>
+      <tr><td class="num">0.001</td><td class="num">0.0003520653</td><td class="num"><strong>0.352065</strong></td></tr>
+      <tr><td class="num">0.0001</td><td class="num">0.0000352065</td><td class="num"><strong>0.352065</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>右の列が落ち着きます</b>
+     確率は <code>0</code> へ消えていくのに、<strong>幅で割った値は <code>0.352065</code> に収束</strong>します。
+     <strong>これが確率密度です。</strong></p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">確率密度</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd><strong>「幅あたりの確率」</strong>。確率そのものではなく、<strong>確率の濃さ</strong>。
+        幅を掛けると確率に戻る。</dd>
+      <dt>なぜ必要か</dt>
+      <dd>連続値では<strong>1 点の確率が 0</strong> になってしまうから。
+        幅で割ることで<strong>消えずに残る量</strong>を取り出している。</dd>
+      <dt>どこに効くか</dt>
+      <dd><code>log_prob</code> はこれの対数。
+        <strong>8-c の PPO のクリップ目的関数</strong>が、
+        この量の<strong>比</strong>を使って更新の大きさを測る。</dd>
+    </dl>
+  </div>
+
+  <h3>人口密度とまったく同じ関係です</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>人口</th><th>確率</th></tr></thead>
+    <tbody>
+      <tr><td><strong>密度</strong></td><td>6,400 人/km&sup2;</td><td>0.352065（幅あたり）</td></tr>
+      <tr><td><strong>掛けるもの</strong></td><td>面積 [km&sup2;]</td><td>幅</td></tr>
+      <tr><td><strong>結果</strong></td><td>人数 [人]</td><td>確率</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>「6,400 人/km&sup2;」は 6,400 人がいるという意味ではありません</b>
+     同じように、<strong>「確率密度 0.352」は確率が 0.352 という意味ではありません</strong>。
+     どちらも<strong>掛け算しないと実際の量になりません</strong>。</p>
+
+  <div class="code"><pre>人口 = 人口密度 &times; 面積
+確率 = 確率密度 &times; 幅
+</pre></div>
+
+  <p><strong>検算してみます。</strong></p>
+  <div class="code"><pre>x = 0.5 での確率密度 = 0.352065
+
+密度 &times; 幅 = 0.352065 &times; 0.01 = 0.00352065
+正確な確率            = 0.00352064     <span class="cmt"># ほぼ一致</span>
+</pre></div>
+</section>
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04 · 実験室</span>
+    <h2>高さと面積を見比べる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>密度＝高さ、確率＝面積</strong>。この対応を目で確かめます。
+       <strong>幅を狭めると面積だけが消えて、高さは残る</strong>のを見てください。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-c">範囲の中心</label><span class="val" id="v-c">0.50</span></div>
+        <input type="range" id="s-c" min="-2" max="2" step="0.01" value="0.5">
+        <span class="hint">どの行動のあたりを見るか</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-w">範囲の幅</label><span class="val" id="v-w">0.100</span></div>
+        <input type="range" id="s-w" min="0" max="2" step="0.005" value="0.1">
+        <span class="hint"><strong>0 に近づけてみてください</strong></span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-s">std</label><span class="val" id="v-s">1.00</span></div>
+        <input type="range" id="s-s" min="0.05" max="2" step="0.01" value="1">
+        <span class="hint">山の細さ。小さいほど高くなる</span>
+      </div>
+      <div class="btns">
+        <button class="preset" type="button" data-p="0.5,0.1,1">教材の例</button>
+        <button class="preset" type="button" data-p="0.5,0.01,1">幅を 1/10</button>
+        <button class="preset" type="button" data-p="0,4,1">全範囲</button>
+        <button class="preset" type="button" data-p="0,0.2,0.1">細い山</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">密度（高さ）</span><span class="rv" id="r-d">&mdash;</span></div>
+        <div><span class="rk">確率（面積）</span><span class="rv" id="r-p">&mdash;</span></div>
+        <div><span class="rk">密度 x 幅</span><span class="rv" id="r-a">&mdash;</span></div>
+        <div><span class="rk">log_prob</span><span class="rv" id="r-l">&mdash;</span></div>
+      </div>
+      <canvas id="cv" width="640" height="250" aria-label="確率密度と面積"></canvas>
+      <p class="hint" style="font-size:12px;color:var(--muted)">
+        teal の曲線が確率密度。<strong>塗った部分の面積が確率</strong>。
+        縦の線が中心での<strong>高さ＝密度</strong>。
+      </p>
+    </div>
+  </div>
+
+  <p class="why"><b>触ってほしいところ</b>
+     ① <strong>幅を 0 に近づける</strong> &rarr; <strong>確率（面積）は 0 に消えるのに、密度（高さ）は変わりません</strong>。
+     これが &sect;02〜&sect;03 の話そのものです。
+     ② <strong>「密度 x 幅」と「確率」を見比べる</strong> &rarr; 幅が狭いほど 2 つが一致します。
+     ③ <strong>std を 0.05 まで下げる</strong> &rarr; <strong>密度が 8 を超えます</strong>。
+     確率は決して 1 を超えないのに、密度は超える——次の節で扱います。</p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>密度が 1 を超える理由</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>log_prob</code> が<strong>正の値</strong>になることがあります。
+       「確率の対数なら負のはずでは？」という疑問に答えます。</p>
+  </div>
+
+  <p>std を変えて、<strong>中心の高さ</strong>と<strong>全体の面積</strong>を並べます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">std</th><th class="num">中心の高さ（密度）</th><th class="num">全体の面積（確率）</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2.0</td><td class="num">0.1995</td><td class="num">1.000000</td></tr>
+      <tr><td class="num">1.0</td><td class="num">0.3989</td><td class="num">1.000000</td></tr>
+      <tr><td class="num">0.5</td><td class="num">0.7979</td><td class="num">1.000000</td></tr>
+      <tr><td class="num">0.1</td><td class="num ng"><strong>3.9894</strong></td><td class="num">1.000000</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>高さは変わるのに、面積はいつも 1 です</b>
+     <strong>山が細くなると高さが増え、幅が減る</strong>ので、面積は保たれます。
+     <strong>確率の合計が 1 になるのは絶対のルール</strong>ですが、
+     <strong>高さには上限がありません。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">人口密度で言えば</span>
+    <p>人口 100 人の村を考えます。</p>
+    <div class="tw"><table>
+      <thead><tr><th class="num">面積</th><th class="num">人口密度</th><th class="num">人口</th></tr></thead>
+      <tbody>
+        <tr><td class="num">10 km&sup2;</td><td class="num">10 人/km&sup2;</td><td class="num">100 人</td></tr>
+        <tr><td class="num">1 km&sup2;</td><td class="num">100 人/km&sup2;</td><td class="num">100 人</td></tr>
+        <tr><td class="num">0.01 km&sup2;</td><td class="num"><strong>10,000 人/km&sup2;</strong></td><td class="num">100 人</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>密度はいくらでも大きくなりますが、人数は 100 人のまま。</strong>
+      確率密度と確率の関係もこれと同じです。</p>
+  </div>
+
+  <h3>だから log_prob は正になりうる</h3>
+  <div class="code"><pre>std=1.0   中心の密度=0.3989   log_prob = -0.919   <span class="cmt"># 1 未満なので log は負</span>
+std=0.5   中心の密度=0.7979   log_prob = -0.226
+std=0.2   中心の密度=1.9947   log_prob = +0.691   <span class="cmt"># 1 を超えたので log が正</span>
+std=0.1   中心の密度=3.9894   log_prob = +1.384
+</pre></div>
+
+  <p class="why"><b>異常ではありません</b>
+     <code>logstd_explained.html</code> で見たとおり、
+     <strong><code>log</code> は「1 より大きいと正、1 より小さいと負」</strong>でした。
+     密度が 1 を超えれば、その対数は正になります。
+     <strong><code>log_prob</code> が正だからといってバグではありません。</strong></p>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>log_prob に戻る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>8-a のコードに戻って、<strong>いま何を計算していたのか</strong>を確認します。</p>
+  </div>
+
+  <div class="code"><pre>dist = torch.distributions.Normal(mu, std)
+action = dist.sample()                        <span class="cmt"># 分布から 1 つ引く</span>
+log_prob = dist.log_prob(action).sum(-1)      <span class="cmt"># その行動の「高さ」の対数</span>
+</pre></div>
+
+  <p class="why"><b>やっているのは高さを読むことです</b>
+     サンプリングした <code>action</code> の位置で、<strong>曲線の高さを読んで対数を取る</strong>。
+     実験室の縦線がその高さです。</p>
+
+  <h3>なぜ高さで十分なのか</h3>
+  <p>「確率が 0 なら比べられない」と &sect;02 で書きました。
+     <strong>高さなら比べられます。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>行動</th><th class="num">高さ（密度）</th><th>解釈</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.0</td><td class="num">0.3989</td><td>いちばん出やすいあたり</td></tr>
+      <tr><td class="num">1.0</td><td class="num">0.2420</td><td>その 6 割くらい</td></tr>
+      <tr><td class="num">3.0</td><td class="num">0.0044</td><td>ほとんど出ない</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>「どちらが出やすいか」は高さで判断できます</b>
+     確率はどちらも 0 ですが、<strong>高さには差があります</strong>。
+     <strong>比較に使うぶんには、高さで何も困りません。</strong></p>
+
+  <div class="callout tip">
+    <span class="k">8-c で使うのは「比」です</span>
+    <p>PPO は<strong>更新前と更新後で、その行動の出やすさがどれだけ変わったか</strong>を見ます。</p>
+    <div class="code"><pre>比 = 新しい密度 / 古い密度 = exp(log_prob_new - log_prob_old)</pre></div>
+    <p><strong>比を取ると幅が打ち消し合います</strong>——
+      どちらも同じ幅を掛けるはずだったので、割り算で消えるのです。
+      <strong>だから密度のままで正しい比が出ます。</strong></p>
+    <p>これが 7-b で読んだ <code>approx_kl</code>（更新の大きさ）の元になる量です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材のまとめ</span>
+    <ol>
+      <li>離散（4 択）なら<strong>確率を並べれば</strong>方策になった。合計 1</li>
+      <li>連続値では<strong>「ちょうどこの値」の確率は厳密に 0</strong>。
+          幅を 1/10 にすると確率も 1/10 になるので、幅 0 なら 0</li>
+      <li><strong>確率を幅で割ると消えずに残る</strong>。それが<b>確率密度</b>（<code>0.352065</code> に収束した値）</li>
+      <li><strong>人口密度と同じ関係。</strong>
+          <code>確率 = 密度 &times; 幅</code>／<code>人口 = 人口密度 &times; 面積</code></li>
+      <li><strong>密度＝高さ、確率＝面積。</strong>山が細くなると高さは 1 を超えるが、面積は必ず 1</li>
+      <li>だから <code>log_prob</code> は<strong>正になることがある</strong>。バグではない</li>
+      <li>比較には高さで十分。<strong>比を取れば幅が打ち消し合う</strong>ので 8-c でもこのまま使える</li>
+    </ol>
+  </div>
+
+  <div class="callout">
+    <span class="k">用語の整理</span>
+    <div class="tw"><table>
+      <thead><tr><th></th><th>離散（gridworld）</th><th>連続（振り子）</th></tr></thead>
+      <tbody>
+        <tr><td>方策の表し方</td><td>4 つの確率を並べる</td><td>正規分布の <code>mu</code> と <code>std</code></td></tr>
+        <tr><td>1 つの行動の値</td><td><strong>確率</strong>（0〜1）</td><td><strong>確率密度</strong>（1 を超えうる）</td></tr>
+        <tr><td>合計が 1 になるのは</td><td>4 つの<strong>和</strong></td><td>曲線の下の<strong>面積</strong></td></tr>
+        <tr><td>コード</td><td><code>Q[s]</code> の 4 要素</td><td><code>dist.log_prob(action)</code></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Step 8-a 補助教材</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-density-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var cv = document.getElementById("cv"); if (!cv) return;
+  var sC = document.getElementById("s-c"), sW = document.getElementById("s-w"), sS = document.getElementById("s-s");
+  var vC = document.getElementById("v-c"), vW = document.getElementById("v-w"), vS = document.getElementById("v-s");
+  var rD = document.getElementById("r-d"), rP = document.getElementById("r-p"),
+      rA = document.getElementById("r-a"), rL = document.getElementById("r-l");
+
+  function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function erf(x) {
+    var s = x < 0 ? -1 : 1; x = Math.abs(x);
+    var t = 1 / (1 + 0.3275911 * x);
+    var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
+    var y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    return s * y;
+  }
+  function pdf(x, s) { var z = x / s; return Math.exp(-0.5 * z * z) / (s * Math.sqrt(2 * Math.PI)); }
+  function cdf(x, s) { return 0.5 * (1 + erf(x / (s * Math.SQRT2))); }
+
+  function draw() {
+    var c = parseFloat(sC.value), w = parseFloat(sW.value), s = parseFloat(sS.value);
+    vC.textContent = c.toFixed(2);
+    vW.textContent = w.toFixed(3);
+    vS.textContent = s.toFixed(2);
+
+    var dens = pdf(c, s);
+    var prob = cdf(c + w / 2, s) - cdf(c - w / 2, s);
+    rD.textContent = dens.toFixed(4);
+    rP.textContent = prob.toFixed(6);
+    rA.textContent = (dens * w).toFixed(6);
+    rL.textContent = (dens > 0 ? Math.log(dens).toFixed(4) : "-inf");
+
+    var dpr = window.devicePixelRatio || 1, W = cv.clientWidth || 640, H = 250;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.height = H + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    var pad = { l: 42, r: 14, t: 16, b: 26 };
+    var XMIN = -3.2, XMAX = 3.2;
+    var YMAX = Math.max(pdf(0, s) * 1.12, 0.45);
+    function X(v) { return pad.l + (v - XMIN) / (XMAX - XMIN) * (W - pad.l - pad.r); }
+    function Y(v) { return pad.t + (1 - v / YMAX) * (H - pad.t - pad.b); }
+
+    /* 選んだ範囲を塗る = 確率 */
+    ctx.fillStyle = tok("--sim-soft");
+    ctx.beginPath();
+    ctx.moveTo(X(c - w / 2), Y(0));
+    for (var i = 0; i <= 120; i++) {
+      var x = c - w / 2 + w * i / 120;
+      ctx.lineTo(X(x), Y(Math.min(pdf(x, s), YMAX)));
+    }
+    ctx.lineTo(X(c + w / 2), Y(0));
+    ctx.closePath(); ctx.fill();
+
+    /* 軸 */
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(W - pad.r, Y(0)); ctx.stroke();
+
+    /* 分布 */
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var j = 0; j <= 320; j++) {
+      var xx = XMIN + (XMAX - XMIN) * j / 320;
+      var yy = Math.min(pdf(xx, s), YMAX);
+      if (j === 0) ctx.moveTo(X(xx), Y(yy)); else ctx.lineTo(X(xx), Y(yy));
+    }
+    ctx.stroke();
+
+    /* 中心の高さ = 密度 */
+    ctx.strokeStyle = tok("--real"); ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(X(c), Y(0)); ctx.lineTo(X(c), Y(Math.min(dens, YMAX))); ctx.stroke();
+    ctx.fillStyle = tok("--real");
+    ctx.beginPath(); ctx.arc(X(c), Y(Math.min(dens, YMAX)), 3.5, 0, 6.29); ctx.fill();
+
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillText("高さ=密度", X(c) + 6, Y(Math.min(dens, YMAX)) + 4);
+    ctx.fillStyle = tok("--muted");
+    [-3, -2, -1, 0, 1, 2, 3].forEach(function (v) { ctx.fillText(String(v), X(v) - 3, H - 9); });
+    ctx.fillText("行動", W - pad.r - 26, H - 9);
+  }
+
+  [sC, sW, sS].forEach(function (e) { e.addEventListener("input", draw); });
+  Array.prototype.forEach.call(document.querySelectorAll(".preset"), function (b) {
+    b.addEventListener("click", function () {
+      var p = b.dataset.p.split(",");
+      sC.value = p[0]; sW.value = p[1]; sS.value = p[2]; draw();
+    });
+  });
+  window.addEventListener("resize", draw);
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

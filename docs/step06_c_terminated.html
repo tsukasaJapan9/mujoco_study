@@ -1,0 +1,876 @@
+<title>terminated と truncated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">混同すると何が起きるか</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">2 つの終わり方の見分け方</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">時間切れは自分で書かない</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">振り子ではどうするか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 6-c</span>
+  <h1>terminated と truncated</h1>
+  <p>エピソードの終わり方には 2 種類ある。
+     混同してもエラーは出ないが、価値の見積もりが最大 65% ずれる。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 6 の 3/4</span>
+    <span class="chip">envs/pendulum_env.py に追記</span>
+    <span class="chip">前提: 6-b</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>行動は <code>[-1, 1]</code> で受け取り、環境側で実際のトルクに直す</li>
+      <li><code>Box</code> の <code>low</code>/<code>high</code> は<strong>申告であって強制ではない</strong>。
+          破っても実行時は黙って通る</li>
+      <li><code>step()</code> の戻り値のうち <code>terminated</code> と <code>truncated</code> を
+          <strong>ずっと <code>False</code> のままにしてきた</strong></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 「時間切れで打ち切った」とき、未来の価値は足すべきか、足さないべきか？</p>
+    <p><b>2.</b> 振り子では <code>terminated</code> をいつ <code>True</code> にすべきか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題に答えたあと、<strong>間違えたときに何が起きるかを最初に見ます</strong>。
+     6-b の「黙って通る」と同じ種類の厄介さですが、
+     <strong>今回は具体的な数字でずれを測れます</strong>。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題に答えます。<strong>5-d で書いた 1 行に立ち返る</strong>だけで結論が出ます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>5-d で <code>done</code> のとき未来の価値を足さないようにしました。
+       では「500 ステップに達したので打ち切った」という場合、
+       未来の価値は足すべきでしょうか、足さないべきでしょうか。</p>
+  </div>
+
+  <p><b>答え：足すべきです。</b></p>
+
+  <p>5-d の更新式を思い出してください。</p>
+  <div class="code"><pre>target = r + (0.0 if done else gamma * max(Q[s_next]))
+</pre></div>
+
+  <p class="why"><b>なぜ <code>done</code> のとき足さなかったのか</b>
+     <strong>その先が存在しないから</strong>です。ゴールに着いたら世界が終わる。
+     未来の報酬は文字通りゼロなので、足すものがありません。</p>
+
+  <p class="why"><b>打ち切りは違います</b>
+     500 ステップで止めたのは<strong>こちらの都合</strong>であって、
+     <strong>振り子の世界はその先も続いています</strong>。
+     501 ステップ目には報酬が発生するはずだった。
+     <strong>足さないと「そこで世界が終わる」と教えることになります。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th><code>terminated</code></th><th><code>truncated</code></th></tr></thead>
+    <tbody>
+      <tr><td>意味</td><td><strong>タスクとして終わった</strong></td><td><strong>こちらの都合で打ち切った</strong></td></tr>
+      <tr><td>例</td><td>ゴール到達、転倒、範囲外に出た</td><td>時間切れ、ステップ数上限</td></tr>
+      <tr><td>その先は</td><td><strong>存在しない</strong></td><td><strong>存在する</strong></td></tr>
+      <tr><td>未来の価値</td><td class="ng">足さない</td><td class="ok">足す</td></tr>
+      <tr><td>決めるのは</td><td>環境（タスクの定義）</td><td>実験の設定（学習の都合）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>だから 2 つに分かれているのです</b>
+     古い <code>gym</code> では <code>done</code> ひとつしかありませんでした。
+     <strong>この区別ができないので、多くの実装が静かに間違っていた</strong>——
+     それが Gymnasium で 2 つに分けられた理由です。</p>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>混同すると何が起きるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「間違えると壊れる」とよく言われますが、<strong>どれくらい壊れるのか</strong>を数字で見ます。
+       ここを見ておくと、この区別を軽視しなくなります。</p>
+  </div>
+
+  <h3>いちばん単純な実験</h3>
+  <p>5-b で扱った<strong>継続タスク</strong>（終わりのないタスク）で試します。
+     設定はこれ以上ないほど単純です。</p>
+  <ul>
+    <li>状態は 1 つだけ。何をしても<strong>報酬 +1</strong></li>
+    <li>タスクとしての終わりは<strong>無い</strong></li>
+    <li>ただし <code>T</code> ステップで<strong>打ち切る</strong></li>
+  </ul>
+
+  <p>5-b で計算したとおり、正しい価値は <code>1/(1&minus;&gamma;) = 10.0</code> です
+     （&gamma;=0.9）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">打ち切り T</th><th class="num">正しい実装</th><th class="num">打ち切りを終端扱い</th><th class="num">ずれ</th></tr></thead>
+    <tbody>
+      <tr><td class="num">5</td><td class="num ok">10.0000</td><td class="num ng">3.4648</td><td class="num"><strong>65.4%</strong></td></tr>
+      <tr><td class="num">10</td><td class="num ok">10.0000</td><td class="num ng">5.1036</td><td class="num">49.0%</td></tr>
+      <tr><td class="num">20</td><td class="num ok">10.0000</td><td class="num ng">6.6985</td><td class="num">33.0%</td></tr>
+      <tr><td class="num">50</td><td class="num ok">10.0000</td><td class="num ng">8.2483</td><td class="num">17.5%</td></tr>
+      <tr><td class="num">100</td><td class="num ok">10.0000</td><td class="num ng">8.9327</td><td class="num">10.7%</td></tr>
+      <tr><td class="num">500</td><td class="num ok">10.0000</td><td class="num ng">9.5120</td><td class="num">4.9%</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>正しい実装は T に一切依存しません</b>
+     打ち切りを 5 にしても 500 にしても、<strong>きっちり 10.0000</strong> です。
+     <strong>これが正しさの証拠</strong>——
+     「こちらの都合で区切った長さ」が価値に影響してはいけません。</p>
+
+  <p class="why"><b>誤った実装は必ず過小評価します</b>
+     「そこで世界が終わる」と教えているので、
+     <strong>もらえるはずの未来の報酬を数え落とします</strong>。
+     T を長くすればずれは減りますが、<strong>ゼロにはなりません</strong>。</p>
+
+  <div class="callout">
+    <span class="k">エラーは一切出ません</span>
+    <p>学習は普通に進み、報酬曲線も上がっていきます。
+       <strong>ただ、到達する性能が本来より低いだけ</strong>。
+       比較対象が無ければ「こんなものか」と思って終わります。</p>
+    <p>6-b の「範囲外の観測が黙って通る」と同じ構造です。
+       <strong>Step 6 で扱う落とし穴は、どれもエラーを出しません。</strong>
+       だからこそ<strong>仕組みを知っていること自体が唯一の防御</strong>になります。</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>2 つの終わり方の見分け方</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>実際に環境を書くとき、<strong>どちらにすべきか迷う場面</strong>があります。
+       判断の基準を 1 つ持っておきます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">判断基準</span>
+    <p><strong>「そこで止めなかったら、その先はあったか？」</strong></p>
+    <p>あった &rarr; <code>truncated</code>。無かった &rarr; <code>terminated</code>。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>状況</th><th>どちら</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>ゴールに到達した</td><td><code>terminated</code></td><td>タスクが達成された。その先は無い</td></tr>
+      <tr><td>ロボットが転倒した</td><td><code>terminated</code></td><td>失敗として定義した。続行しない</td></tr>
+      <tr><td>台車がレールから外れた</td><td><code>terminated</code></td><td>物理的に続けられない</td></tr>
+      <tr><td>500 ステップ経った</td><td><code>truncated</code></td><td>続けられるが、こちらが止めた</td></tr>
+      <tr><td>学習時間の都合で切り上げた</td><td><code>truncated</code></td><td>同上</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="k">迷いやすい例: 「倒れたら終わり」は本当に terminated か</span>
+    <p>倒立振子で「一定角度を超えたら失敗」とする設計はよくあります。
+       これは <code>terminated</code> です——<strong>あなたがタスクをそう定義したから</strong>。
+       物理的には倒れても振り子は動き続けますが、
+       <strong>「失敗したらそこで終わり」というルールにした</strong>以上、その先は存在しません。</p>
+    <p>つまり <code>terminated</code> は<strong>物理の話ではなくタスク定義の話</strong>です。
+       同じモデルでも、タスクの決め方次第で変わります。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>時間切れは自分で書かない</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>truncated</code> を自分で管理する必要は<strong>ありません</strong>。
+       Gymnasium が用意している仕組みを使います。</p>
+  </div>
+
+  <p>ステップ数を数えて <code>truncated = True</code> にする処理は、
+     <b>ラッパー</b>（wrapper）という形で用意されています。
+     環境を包んで機能を足す仕組みです。</p>
+
+  <div class="code"><pre>from gymnasium.wrappers import TimeLimit
+
+env = TimeLimit(PendulumEnv(), max_episode_steps=500)
+</pre></div>
+
+  <p><code>max_episode_steps=5</code> にして動かすと、こうなります（実測）。</p>
+  <div class="code"><pre> step  terminated  truncated
+    1       False      False
+    2       False      False
+    3       False      False
+    4       False      False
+    5       False       True      <span class="cmt"># ← ラッパーが立てた</span>
+</pre></div>
+
+  <p class="why"><b>環境本体は何も知りません</b>
+     <code>PendulumEnv.step()</code> は <code>truncated=False</code> を返し続けます。
+     <strong>ラッパーがその戻り値を書き換えて</strong>います。
+     おかげで環境のコードが<strong>タスクの定義だけに集中できます</strong>——
+     「何ステップで打ち切るか」は実験の設定であって、振り子の性質ではないので。</p>
+
+  <div class="callout">
+    <span class="k">ラッパーを付け忘れると永遠に終わりません</span>
+    <p>いまの <code>PendulumEnv</code> は <code>terminated</code> も <code>truncated</code> も
+       常に <code>False</code> です。実測すると<strong>何ステップ回しても終わりません</strong>。</p>
+    <p>学習ループは「エピソードが終わったら <code>reset()</code>」という作りなので、
+       <strong>1 エピソードが永遠に続き、初期状態のランダム化が一度も起きません</strong>。
+       これも<strong>エラーは出ません</strong>。学習が進まないだけです。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>振り子ではどうするか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>判断基準を自分の環境に当てはめます。<strong>結論は少し意外かもしれません</strong>。</p>
+  </div>
+
+  <p>振り子のスイングアップで <code>terminated</code> を <code>True</code> にすべき場面はあるでしょうか。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>候補</th><th>判定</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>上端に到達した</td><td class="ng">しない</td><td><strong>立ち続けることが目標</strong>。着いたら終わりではない</td></tr>
+      <tr><td>倒れた</td><td class="ng">しない</td><td>倒れてもやり直せる。<strong>むしろやり直す過程を学ばせたい</strong></td></tr>
+      <tr><td>角速度が異常に大きい</td><td>場合による</td><td>物理が壊れた兆候なら打ち切る価値はある</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>結論: <code>terminated</code> は常に <code>False</code> のままで構いません</b>
+     振り子のスイングアップは<strong>継続タスク</strong>です。
+     <strong>&sect;02 で 65% のずれを見せた、あの設定そのもの</strong>。
+     だからこそ <code>truncated</code> を正しく扱う必要があります。</p>
+
+  <div class="callout tip">
+    <span class="k">倒立振子（cartpole）とは設計が違います</span>
+    <p>教科書的な倒立振子では「一定角度を超えたら <code>terminated</code>」とします。
+       あれは<strong>「立て続けること」だけが目標で、倒れたら失敗</strong>というタスク定義だからです。</p>
+    <p>今回は<strong>下から振り上げるところから含める</strong>ので、
+       「倒れている状態」はむしろ<strong>通過点</strong>です。
+       <strong>同じ振り子でも、タスクの定義が違えば <code>terminated</code> の設計も変わります。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">Step 9 への伏線</span>
+    <p>「倒れたら terminated」にすると、<strong>方策が倒れないことだけを学ぶ</strong>ようになります。
+       エピソードを早く終わらせれば罰を受けずに済むので、
+       <strong>わざと倒れて終わらせる</strong>方策すら出てきます（報酬の付け方次第）。
+       <code>terminated</code> の設計は報酬設計と不可分で、Step 9 でまとめて扱います。</p>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      &sect;02 の表を<strong>自分の手で作る</strong>ため。
+      65% のずれを自分で出しておくと、この区別を二度と軽視しなくなります。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<code>terminated</code> と <code>truncated</code> の使い分けを、
+      <strong>「未来の価値を足すかどうか」の一点で</strong>説明できる。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 1 の 1 箇所だけ</strong>です。
+      段階 1 は <code>toy/truncation.py</code> を新規作成、
+      段階 2・3 は <code>envs/pendulum_env.py</code> と <code>try_env.py</code> に手を入れます。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>65% のずれを自分で出す</h3>
+    <p class="why"><b>この段階ですること</b> &sect;02 の実験を再現します。
+      <strong>MuJoCo も Gymnasium も使いません</strong>——
+      状態 1 つだけの、これ以上ないほど単純なタスクです。</p>
+    <div class="code"><pre>GAMMA = 0.9
+
+
+def run(T, mode, n_ep=20000, alpha=0.05):
+    <span class="cmt"># 状態は 1 つ。何をしても報酬 +1。タスクとしての終わりは無い。</span>
+    <span class="cmt"># T ステップで必ず「打ち切り」になる。</span>
+    Q = 0.0
+    for ep in range(n_ep):
+        for t in range(1, T + 1):
+            r = 1.0
+            truncated = (t == T)
+
+            if truncated and mode == "wrong":
+                target = r                     <span class="cmt"># 打ち切りを終端扱い（誤り）</span>
+            else:
+                target = ???                   <span class="cmt"># ← ここだけ考える</span>
+
+            Q += alpha * (target - Q)
+    return Q
+
+
+true_value = 1 / (1 - GAMMA)
+print(f"理論値 = 1/(1-gamma) = {true_value:.4f}")
+for T in (5, 10, 20, 50, 100, 500):
+    a, b = run(T, "correct"), run(T, "wrong")
+    print(f"T={T:&lt;4} 正しい={a:.4f}  誤り={b:.4f}  ずれ={abs(b-true_value)/true_value*100:.1f}%")
+</pre></div>
+    <p>&sect;01 で確認した「<strong>打ち切りでは未来の価値を足す</strong>」を 1 行で書いてください。
+      未来の価値は <code>Q</code> そのもの（状態が 1 つしかないので）、
+      割引率は <code>GAMMA</code> です。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>                target = r + GAMMA * Q
+</pre></div>
+      <p class="why"><b>5-d の更新式そのままです</b>
+        <code>r + gamma * max(Q[s_next])</code> の <code>max(Q[s_next])</code> が、
+        状態が 1 つなので <code>Q</code> に縮んだだけ。
+        <strong>特別なことは何もしていません</strong>——
+        「終端でないなら足す」という規則を素直に適用しています。</p>
+    </div></details>
+    <p><b>確認方法</b> こういう出力になります。</p>
+    <div class="code"><pre>理論値 = 1/(1-gamma) = 10.0000
+T=5    正しい=10.0000  誤り=3.4648  ずれ=65.4%
+T=10   正しい=10.0000  誤り=5.1036  ずれ=49.0%
+T=20   正しい=10.0000  誤り=6.6985  ずれ=33.0%
+T=50   正しい=10.0000  誤り=8.2483  ずれ=17.5%
+T=100  正しい=10.0000  誤り=8.9327  ずれ=10.7%
+T=500  正しい=10.0000  誤り=9.5120  ずれ=4.9%
+</pre></div>
+    <p class="why"><b>2 つのことを読み取ってください</b>
+      <strong>① 正しい実装は T に依存しない。</strong>
+      5 でも 500 でもきっちり 10.0000。
+      「こちらの都合で区切った長さ」が価値に影響していません。</p>
+    <p class="why"><strong>② 誤った実装は必ず過小評価する。</strong>
+      T を伸ばすとずれは減りますが<strong>ゼロにはなりません</strong>。
+      「長めに取っておけば大丈夫」という逃げ方はできない、ということです。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>環境に TimeLimit を付ける</h3>
+    <p class="why"><b>この段階ですること</b> ラッパーを付けて、
+      エピソードがちゃんと終わることを確かめます。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>import numpy as np
+from gymnasium.wrappers import TimeLimit
+from envs.pendulum_env import PendulumEnv
+
+env = TimeLimit(PendulumEnv(), max_episode_steps=5)   <span class="cmt"># 確認用に短く</span>
+obs, info = env.reset(seed=0)
+
+for t in range(1, 8):
+    obs, reward, terminated, truncated, info = env.step(np.array([0.0], dtype=np.float32))
+    print(f"step={t}  terminated={terminated}  truncated={truncated}")
+    if terminated or truncated:
+        print("エピソード終了")
+        break
+</pre></div>
+    <p><b>確認方法</b> 5 ステップ目で <code>truncated=True</code> になります。</p>
+    <div class="code"><pre>step=1  terminated=False  truncated=False
+step=2  terminated=False  truncated=False
+step=3  terminated=False  truncated=False
+step=4  terminated=False  truncated=False
+step=5  terminated=False  truncated=True
+エピソード終了
+</pre></div>
+    <p class="why"><b>環境本体は書き換えていません</b>
+      <code>PendulumEnv.step()</code> は <code>truncated=False</code> を返し続けています。
+      <strong>ラッパーが戻り値を書き換えている</strong>だけ。
+      <strong>「何ステップで打ち切るか」は振り子の性質ではなく実験の設定</strong>なので、
+      環境の外に置くのが正しい分担です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>ラッパー無しだと終わらないことを確かめる</h3>
+    <p class="why"><b>この段階ですること</b> &sect;04 の callout を自分で再現します。
+      <strong>付け忘れたときに何が起きるか</strong>を見ておきます。</p>
+    <div class="code"><pre>env = PendulumEnv()          <span class="cmt"># ラッパー無し</span>
+obs, info = env.reset(seed=0)
+
+for t in range(1000):
+    obs, reward, terminated, truncated, info = env.step(np.array([0.0], dtype=np.float32))
+    if terminated or truncated:
+        print(f"{t} ステップで終了")
+        break
+else:
+    print("1000 ステップ回しても終わらない")
+</pre></div>
+    <p><b>確認方法</b> <code>1000 ステップ回しても終わらない</code> と出ます。</p>
+    <p class="why"><b>これが起きると何が困るか</b>
+      学習ループは「エピソードが終わったら <code>reset()</code>」という作りです。
+      終わらなければ <code>reset()</code> が呼ばれず、
+      <strong>6-a で書いた初期状態のランダム化が一度も起きません</strong>。
+      <strong>方策は 1 通りの初期条件しか経験しないまま学習します</strong>——
+      そして<strong>エラーは出ません</strong>。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><b>terminated</b>＝タスクとして終わった（その先は無い）。<strong>未来の価値を足さない</strong></li>
+      <li><b>truncated</b>＝こちらの都合で打ち切った（その先はあった）。<strong>未来の価値を足す</strong></li>
+      <li>判断基準は<strong>「そこで止めなかったら、その先はあったか？」</strong>の一言</li>
+      <li>混同すると<strong>必ず過小評価</strong>になる。打ち切り 5 なら <strong>65%</strong>、500 でも <strong>4.9%</strong> ずれる。
+          <strong>長く取っても消えない</strong></li>
+      <li><code>truncated</code> は <code>TimeLimit</code> ラッパーに任せる。
+          <strong>環境本体はタスクの定義だけに集中させる</strong></li>
+      <li>振り子のスイングアップは<strong>継続タスク</strong>なので、
+          <code>terminated</code> は常に <code>False</code> でよい</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="i1"><span><code>toy/truncation.py</code> を書き、<strong>65.4%</strong> のずれを自分で出した</span></label>
+    <label><input type="checkbox" data-ck="i2"><span>正しい実装が <code>T</code> に依存しない理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="i3"><span><code>TimeLimit</code> を付けて <code>truncated=True</code> が立つのを確認した</span></label>
+    <label><input type="checkbox" data-ck="i4"><span>ラッパー無しだと終わらないこと、そのとき何が困るかを説明できる</span></label>
+    <label><input type="checkbox" data-ck="i5"><span>振り子で <code>terminated</code> を常に <code>False</code> にする理由を説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（6-d）でやること</span>
+    <p>Step 6 の最終回です。<code>check_env</code> で環境を自己診断し、
+       <strong>ランダム方策で回してベースラインを測ります</strong>。
+       そして仮置きのままだった<strong>報酬</strong>を設計します。</p>
+    <p>先に考えておいてください——
+       <strong>振り子を上端に立たせたい。報酬をどう定義しますか。</strong>
+       「上端にいたら +1、それ以外は 0」で良いでしょうか。
+       5-e で <code>&epsilon;=0</code> のとき何も学習できなかった理由を思い出すと、
+       この案の問題が見えてきます。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 6-c</span>
+  <span>gymnasium 1.3.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step06c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

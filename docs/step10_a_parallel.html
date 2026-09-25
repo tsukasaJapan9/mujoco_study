@@ -1,0 +1,987 @@
+<title>CPU 並列の限界</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">何に時間を使っているか</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">環境を並列にする</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">n_envs を増やすと</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">なぜ頭打ちになるのか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">GPU を挿しても速くならない</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 10-a</span>
+  <h1>CPU 並列の限界</h1>
+  <p>Step 10 は<strong>速度</strong>の話です。
+     まず<strong>いまのやり方でどこまで行けるか</strong>を測り、
+     <strong>その天井を確かめます</strong>。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 10 の 1/4</span>
+    <span class="chip">前提: Step 9</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">Step 9 で見えた問題</span>
+    <ol>
+      <li>ベースラインが<strong>3 回に 1 回しか成功しない</strong>（9-c）</li>
+      <li>差を主張するには<strong>約 50 シード必要</strong>（9-c &sect;05）</li>
+      <li>4 条件 &times; 50 シード = <strong>約 43 時間</strong>（9-c &sect;05）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> いまの学習は、<strong>何に時間を使っている</strong>のか？</p>
+    <p><b>2.</b> <strong>環境を並列にすれば</strong>どこまで速くなるのか？</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 10 全体の流れ</span>
+    <div class="tw"><table>
+      <tbody>
+        <tr><td><b>10-a</b>（今回）</td><td>CPU で並列にする。<strong>天井を測る</strong></td></tr>
+        <tr><td><b>10-b</b></td><td>JAX の約束事を覚える</td></tr>
+        <tr><td><b>10-c</b></td><td>MJX で GPU に載せる</td></tr>
+        <tr><td><b>10-d</b></td><td>既製の四足歩行環境を読む</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>今回いちばん大事なのは「天井を測る」ことです。</strong>
+       <strong>天井を知らないまま GPU に手を出すと、何も速くならずに時間を溶かします。</strong></p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>何に時間を使っているか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>速くする前に<strong>どこが遅いのか</strong>を特定します。
+       <strong>当てずっぽうで最適化しない</strong>のは、報酬設計と同じです。</p>
+  </div>
+
+  <h3>1 回の学習ループで起きること</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>やること</th><th>どこで動くか</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b></td><td>方策が行動を決める（<code>net(obs)</code>）</td><td>PyTorch</td></tr>
+      <tr><td><b>2</b></td><td><strong>物理を 10 歩進める</strong>（<code>mj_step</code> &times; frame_skip）</td>
+          <td class="bad"><strong>MuJoCo（C コード、CPU）</strong></td></tr>
+      <tr><td><b>3</b></td><td>報酬と観測を作る</td><td>Python</td></tr>
+      <tr><td><b>4</b></td><td>1〜3 を <code>n_steps</code> 回くり返す</td><td>&mdash;</td></tr>
+      <tr><td><b>5</b></td><td>GAE を計算して、方策を更新する</td><td>PyTorch</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">2 番が圧倒的に重い……と思いきや</span>
+    <p>このあと &sect;03 で測ると、学習の最速は <strong>5,565 env-steps/s</strong> でした。
+       1 env-step は<strong>物理 10 歩</strong>なので、<strong>物理は毎秒 55,650 歩</strong>。</p>
+    <p>ところが<strong>物理エンジンだけを回すと、この振り子は毎秒 704,073 歩</strong>出ます。</p>
+    <div class="tw"><table>
+      <thead><tr><th></th><th class="num">physics-steps/s</th></tr></thead>
+      <tbody>
+        <tr><td>物理だけ回す</td><td class="num ok"><strong>704,073</strong></td></tr>
+        <tr><td>学習させたとき（最速の設定）</td><td class="num bad"><strong>55,650</strong></td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>12.7 分の 1。92% がどこかに消えています。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な気づき</span><span class="ct">遅いのは物理そのものではない</span></div>
+    <dl>
+      <dt>物理だけなら</dt>
+      <dd>毎秒 <strong>704,073 歩</strong>（この振り子の場合）。</dd>
+      <dt>学習させると</dt>
+      <dd>毎秒 <strong>55,650 歩</strong>。<strong>12.7 分の 1</strong>。</dd>
+      <dt>消えた 92% はどこへ</dt>
+      <dd><strong>Python と PyTorch の往復</strong>です。
+        1 env-step ごとに<strong>方策を呼び、NumPy 配列を作り、Gymnasium の層を通り</strong>ます。
+        <strong>物理 10 歩ぶんより、この事務処理のほうが重いのです。</strong></dd>
+      <dt>だから効く手は 2 つ</dt>
+      <dd><strong>(a) 事務処理を並列にする</strong>（今回）<br>
+        <strong>(b) 事務処理ごと GPU に載せて無くす</strong>（10-c の MJX）</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>環境を並列にする</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Step 7 で何も考えずに <code>n_envs=4</code> と書きました。
+       <strong>あれが何をしていたのか</strong>を理解します。</p>
+  </div>
+
+  <div class="code"><pre>from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
+
+venv = make_vec_env(make_env, n_envs=4, seed=args.seed,
+                    vec_env_cls=SubprocVecEnv)
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>クラス</th><th>どう動くか</th><th>向いている場面</th></tr></thead>
+    <tbody>
+      <tr><td><code>DummyVecEnv</code></td>
+          <td><strong>1 つのプロセスで順番に</strong>回す。並列ではない</td>
+          <td>環境が軽いとき。デバッグ</td></tr>
+      <tr><td><code>SubprocVecEnv</code></td>
+          <td><strong>環境ごとに別プロセス</strong>を立てて本当に並列に動かす</td>
+          <td class="ok">環境が重いとき</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>なぜプロセスを分けるのか</b>
+     Python には <strong>GIL</strong> という仕組みがあり、
+     <strong>1 プロセスの中では、スレッドを増やしても Python コードは同時に動きません</strong>。
+     <strong>本当に並列にするにはプロセスを分けるしかありません。</strong></p>
+
+  <div class="callout warn">
+    <span class="k">プロセスを分けると代償があります</span>
+    <p>観測・行動・報酬を<strong>プロセス間でやりとりする</strong>必要があります。
+       これは<strong>メモリのコピーと同期待ち</strong>を伴います。</p>
+    <p><strong>環境が軽いと、この通信のほうが高くつきます。</strong>
+       だから <code>n_envs=2</code> で <code>SubprocVecEnv</code> を使うと、
+       <strong><code>DummyVecEnv</code> より遅くなることすらあります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">7-a の落とし穴の再確認</span>
+    <p><code>SubprocVecEnv</code> は<strong>別プロセスで環境を作り直します</strong>。
+       だから <code>if __name__ == "__main__":</code> が無いと
+       <strong>スクリプト全体が再実行されます</strong>。</p>
+    <p><strong>Step 7 で実際にこれをやらかしました</strong>
+       （<code>tune.py</code> を import したら全実験が走り直した）。
+       <strong>並列にするファイルには必ず書いてください。</strong></p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>n_envs を増やすと</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>実際に測ります。</strong>
+       <strong>期待するほどは速くなりません。</strong>その数字を先に見てください。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">条件を揃えます</span>
+    <p><code>n_steps &times; n_envs = 8192</code> に固定しました。
+       <strong>これを揃えないと、更新の回数が変わって比較になりません。</strong></p>
+    <p>測るのは <strong>40,960 ステップ</strong>の学習にかかった時間。
+       <strong>8,192 ステップぶん空回ししてから</strong>測ります（起動のコストを除くため）。</p>
+  </div>
+
+  <h3>実測（12 コア、CPU は無負荷）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">n_envs</th><th>方式</th><th class="num">n_steps</th>
+      <th class="num">env-steps/s</th><th class="num">1 env あたり</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Dummy</td><td class="num">8192</td>
+          <td class="num">3,433</td><td class="num">3,433</td><td class="muted">基準</td></tr>
+      <tr><td class="num">2</td><td>Dummy</td><td class="num">4096</td>
+          <td class="num ok"><strong>5,347</strong></td><td class="num">2,674</td>
+          <td class="ok"><strong>いきなり 1.56 倍</strong></td></tr>
+      <tr><td class="num">4</td><td>Dummy</td><td class="num">2048</td>
+          <td class="num">5,143</td><td class="num">1,286</td><td class="muted">もう伸びない</td></tr>
+      <tr><td class="num">2</td><td>Subproc</td><td class="num">4096</td>
+          <td class="num bad"><strong>3,152</strong></td><td class="num">1,576</td>
+          <td class="ng"><strong>1 体より遅い</strong></td></tr>
+      <tr><td class="num">4</td><td>Subproc</td><td class="num">2048</td>
+          <td class="num">3,844</td><td class="num">961</td><td class="ng">Dummy に負け</td></tr>
+      <tr><td class="num">8</td><td>Subproc</td><td class="num">1024</td>
+          <td class="num ok"><strong>5,565</strong></td><td class="num">696</td>
+          <td class="ok"><strong>ここが最速</strong></td></tr>
+      <tr><td class="num">12</td><td>Subproc</td><td class="num">682</td>
+          <td class="num">5,414</td><td class="num">451</td><td class="muted">頭打ち</td></tr>
+      <tr><td class="num">16</td><td>Subproc</td><td class="num">512</td>
+          <td class="num">5,196</td><td class="num">325</td><td class="ng">コア数超えで低下</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">天井は 1.62 倍でした</span>
+    <p><strong>3,433 &rarr; 5,565。</strong>
+       <code>n_envs</code> を 1 から 8 まで増やして、<strong>1.62 倍</strong>です。</p>
+    <p>12 コアのマシンで<strong>8 倍</strong>を期待したくなりますが、<strong>なりません。</strong>
+       <strong>これが Step 10 で壊したい天井です。</strong></p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">もっと意外なこと &mdash; SubprocVecEnv が弱い</span>
+    <p><code>n_envs=2</code> で比べてください。
+       <strong>Dummy 5,347 に対し、Subproc は 3,152。</strong>
+       <strong>本物の並列のほうが 1.7 倍遅い</strong>のです。</p>
+    <p><code>n_envs=4</code> でも <strong>5,143 対 3,844</strong> で Dummy の勝ち。
+       <strong>Subproc が逆転するのは <code>n_envs=8</code> から</strong>です。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">この節でいちばん大事なこと</span><span class="ct">Dummy でほぼ足りる</span></div>
+    <dl>
+      <dt>数字で言うと</dt>
+      <dd><strong>Dummy の <code>n_envs=2</code> で 5,347</strong>。
+        最速（Subproc 8 体）の <strong>5,565 の 96%</strong> です。</dd>
+      <dt>なぜそうなるのか</dt>
+      <dd>&sect;04 で測りますが、<strong>効いているのは「物理の並列化」ではなく
+        「方策の推論をまとめること」</strong>だからです。
+        <strong>Dummy でもまとめて推論します。</strong>
+        <strong>プロセスを分ける必要がありません。</strong></dd>
+      <dt>Subproc が遅い理由</dt>
+      <dd><strong>プロセス間の通信と同期待ち</strong>です。
+        この振り子の 1 ステップは数十マイクロ秒。
+        <strong>通信のほうが高くつきます。</strong></dd>
+      <dt>いつ Subproc を使うのか</dt>
+      <dd><strong>環境 1 ステップが重いとき</strong>です。
+        四足歩行や接触の多い課題なら、通信のコストが相対的に小さくなり、
+        <strong>Subproc が正しく効きます。</strong></dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 7 の設定を見直すと</span>
+    <p>Step 7 では <code>n_envs=4</code> + <code>SubprocVecEnv</code> を使いました。
+       この表で言うと <strong>3,844</strong> ——
+       <strong><code>DummyVecEnv</code> の <code>n_envs=2</code>（5,347）のほうが速かった</strong>ことになります。</p>
+    <p><strong>当てずっぽうで「並列にすれば速い」と決めていた</strong>わけです。
+       <strong>測って初めて分かりました。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>なぜ頭打ちになるのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>並列にすると何が速くなっているのか。</strong>
+       そして<strong>なぜ、どこかで止まるのか。</strong>
+       <strong>中身を測ると、意外なものが見えます。</strong></p>
+  </div>
+
+  <h3>1 env-step の中身を測る</h3>
+  <p>&sect;01 で「物理より事務処理のほうが重い」と書きました。<strong>実際に測ります。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>やること</th><th class="num">時間</th></tr></thead>
+    <tbody>
+      <tr><td>物理 10 歩（<code>mj_step</code> &times; frame_skip）</td><td class="num">17.37 &micro;s</td></tr>
+      <tr><td><strong>方策の推論 1 回</strong>（バッチ 1）</td><td class="num bad"><strong>35.70 &micro;s</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">方策の推論が、物理の 2 倍かかっています</span>
+    <p>このネットワークは<strong>パラメータ 4,547 個</strong>しかありません。
+       ResNet-50 の <strong>5,630 分の 1</strong>です。</p>
+    <p>それでも<strong>物理シミュレーションより重い</strong>のです。
+       <strong>計算そのものではなく、PyTorch を 1 回呼ぶ手続き</strong>がこの時間を食っています。</p>
+  </div>
+
+  <h3>バッチにすると激変します</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">バッチ</th><th class="num">推論 1 回の合計</th>
+      <th class="num">1 環境あたり</th><th class="num">バッチ 1 との比</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">35.70 &micro;s</td><td class="num bad"><strong>35.70 &micro;s</strong></td><td class="num">1.0x</td></tr>
+      <tr><td class="num">4</td><td class="num">34.95 &micro;s</td><td class="num">8.74 &micro;s</td><td class="num">4.1x</td></tr>
+      <tr><td class="num">16</td><td class="num">37.46 &micro;s</td><td class="num">2.34 &micro;s</td><td class="num">15.2x</td></tr>
+      <tr><td class="num">64</td><td class="num">53.23 &micro;s</td><td class="num ok"><strong>0.83 &micro;s</strong></td><td class="num ok"><strong>42.9x</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>64 体ぶんまとめても、1 体のときの 1.5 倍しかかかりません</b>
+     <strong>PyTorch を呼ぶ手続きが 1 回で済む</strong>からです。
+     <strong>中の掛け算は 64 倍になっているのに、時間はほぼ変わりません。</strong></p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な気づき</span><span class="ct">並列環境の本当の効果</span></div>
+    <dl>
+      <dt>思っていたこと</dt>
+      <dd><strong>物理シミュレーションを N 個の CPU コアで同時に回すから速い。</strong></dd>
+      <dt>実際に効いていること</dt>
+      <dd><strong>方策の推論を N 体まとめて 1 回で済ませているから速い。</strong>
+        物理の並列化は<strong>おまけ</strong>です。</dd>
+      <dt>数字で見ると</dt>
+      <dd>1 env-step に占める推論の割合は
+        <strong>バッチ 1 で 67.3%、バッチ 64 で 4.6%</strong>。
+        <strong>ここが消えているのが並列化の主な効果</strong>です。</dd>
+    </dl>
+  </div>
+
+  <h3>では何が天井を作るのか</h3>
+  <div class="tw"><table>
+    <thead><tr><th>要因</th><th>いつ効き始めるか</th></tr></thead>
+    <tbody>
+      <tr><td><strong>推論のバッチ効果が飽和</strong></td>
+          <td>バッチ 16〜64 で<strong>推論の割合が 5% を切る</strong>。
+              これ以上減らしても意味がない</td></tr>
+      <tr><td><strong>CPU コア数</strong></td>
+          <td><code>n_envs</code> がコア数を超えると、<strong>プロセスが順番待ちになる</strong></td></tr>
+      <tr><td><strong>プロセス間の通信</strong></td>
+          <td><code>n_envs</code> に比例して増える。<strong>同期待ちも増える</strong></td></tr>
+      <tr><td><strong>物理そのもの</strong></td>
+          <td>最後に残る。<strong>CPU で 1 歩 1.74 &micro;s は変えられない</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>4 つ目が本当の天井です</b>
+     推論をどれだけ安くしても、<strong>物理は CPU で 1 体ずつ動きます</strong>。
+     <strong>ここを壊すには、物理ごと GPU に載せるしかありません。</strong>
+     <strong>それが 10-c の MJX です。</strong></p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>GPU を挿しても速くならない</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>「GPU があるのに速くならない」で悩まないための節です。</strong>
+       これは<strong>正常</strong>です。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">よくある期待と、その結末</span>
+    <p><code>PPO("MlpPolicy", venv, device="cuda")</code> と書けば速くなる——
+       <strong>なりません。むしろ遅くなることが多いです。</strong></p>
+  </div>
+
+  <h3>理由 1 &mdash; ネットワークが小さすぎる</h3>
+  <div class="tw"><table>
+    <thead><tr><th>モデル</th><th class="num">パラメータ数</th><th class="num">この方策の何倍</th></tr></thead>
+    <tbody>
+      <tr><td><strong>この振り子の方策</strong></td><td class="num">4,547</td><td class="num">1x</td></tr>
+      <tr><td>ResNet-50（画像分類）</td><td class="num">25,600,000</td><td class="num">5,630x</td></tr>
+      <tr><td>GPT-2 small</td><td class="num">124,000,000</td><td class="num">27,271x</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>GPU は「大量の掛け算」を同時にやる装置です</b>
+     掛け算が <strong>4,547 回</strong>しかないなら、
+     <strong>GPU に送って結果を受け取る手間のほうが高くつきます。</strong></p>
+
+  <h3>理由 2 &mdash; 物理は CPU にある</h3>
+  <p><code>device="cuda"</code> にしても、<strong>MuJoCo は CPU で動き続けます</strong>。
+     すると 1 env-step ごとに<strong>CPU &rarr; GPU &rarr; CPU</strong> の往復が増えます。</p>
+
+  <div class="callout tip">
+    <span class="k">ロードマップにもこう書きました</span>
+    <p><strong>「ボトルネックは物理シミュレーションであり CPU 側です。
+       GPU が本当に効くのは Step 10 の MJX 以降。」</strong></p>
+    <p><strong>MJX が違うのは、物理ごと GPU に載せる</strong>点です。
+       往復が消え、<strong>数千体ぶんの物理と推論が GPU の中で完結します</strong>。
+       <strong>そこで初めて GPU の形が活きます。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">この環境では、そもそも torch から GPU が見えません</span>
+    <p>いま入っている PyTorch は <strong>CUDA 13 向けのビルド</strong>で、
+       このマシンのドライバは <strong>560.35.03（CUDA 12 系）</strong>です。</p>
+    <div class="code"><pre>UserWarning: CUDA initialization: The NVIDIA driver on your system is too old
+</pre></div>
+    <p><strong>Step 10 では困りません。</strong>
+       MJX は <strong>JAX</strong> を使い、<code>jax[cuda12]</code> は
+       <strong>このドライバで正常に動きます</strong>（10-b で確認します）。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>自分のマシンの天井を自分で測ります。</strong>
+       この数字を知らないと、10-c で MJX が速いのかどうか判断できません。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; 1 env-step の中身を測る</span>
+    <p><strong>学習を回さずに</strong>、2 つの部品を別々に測ります。</p>
+    <div class="code"><pre>import time, torch, mujoco
+torch.set_num_threads(1)
+
+# (a) 物理 10 歩
+m = mujoco.MjModel.from_xml_path("models/pendulum_torque.xml")
+d = mujoco.MjData(m)
+for _ in range(1000):
+  mujoco.mj_step(m, d)                 # ウォームアップ
+t0 = time.perf_counter()
+for _ in range(20000):
+  mujoco.mj_step(m, d)
+print(f"物理 1 歩: {(time.perf_counter() - t0) / 20000 * 1e6:.2f} us")
+
+# (b) 方策の推論（バッチを変えて）
+net = ActorCritic(3, 1).eval()
+for B in (1, 4, 16, 64):
+  x = torch.randn(B, 3)
+  with torch.no_grad():
+    for _ in range(200):
+      net(x)                           # ウォームアップ
+    t0 = time.perf_counter()
+    for _ in range(2000):
+      net(x)
+    per = (time.perf_counter() - t0) / 2000
+  print(f"バッチ {B:>3}: {per * 1e6:6.2f} us  (1 環境あたり {???})")   <span class="cmt"># ← ここだけ考える</span>
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  print(f"バッチ {B:>3}: {per * 1e6:6.2f} us  (1 環境あたり {per / B * 1e6:6.2f} us)")</pre></div>
+      <p class="why"><b>割るのはバッチ数です</b>
+        <code>per</code> は<strong>バッチ 1 回ぶんの合計</strong>なので、<code>B</code> で割ると<strong>1 環境あたり</strong>になります。</p>
+      <p class="why"><b>この割り算が &sect;04 の結論そのものです</b>
+        バッチ 64 で <strong>0.83 &micro;s</strong>。バッチ 1 の <strong>35.70 &micro;s</strong> と比べて <strong>42.9 倍</strong>安い。<strong>並列環境の効果はここに出ています。</strong></p>
+    </div></details>
+    <p class="why"><b>ウォームアップを必ず入れてください</b>
+       最初の数回は<strong>メモリ確保やキャッシュの準備</strong>で遅くなります。
+       <strong>10-b で <code>jit</code> のウォームアップを入れるのと同じ理由</strong>です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">答え合わせ（この環境での実測）</span>
+    <div class="code"><pre>物理 1 歩:   1.74 us   ->  frame_skip 10 で 17.37 us
+バッチ   1:  35.70 us  (1 環境あたり 35.70 us)
+バッチ   4:  34.95 us  (1 環境あたり  8.74 us)
+バッチ  16:  37.46 us  (1 環境あたり  2.34 us)
+バッチ  64:  53.23 us  (1 環境あたり  0.83 us)
+</pre></div>
+    <p><strong>あなたのマシンでは違う値が出ます。</strong>
+       大事なのは<strong>「バッチ 1 のときに推論が物理より重いかどうか」</strong>です。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; n_envs を変えて学習スループットを測る</span>
+    <p><strong>他のプロセスを全部止めてから</strong>やってください。</p>
+    <div class="code"><pre>from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+
+if __name__ == "__main__":                 # SubprocVecEnv には必須
+  for n, cls in ((1, DummyVecEnv), (2, SubprocVecEnv), (4, SubprocVecEnv),
+                 (8, SubprocVecEnv), (12, SubprocVecEnv), (16, SubprocVecEnv)):
+    venv = make_vec_env(make_env, n_envs=n, seed=0, vec_env_cls=cls)
+    model = PPO("MlpPolicy", venv, verbose=0, device="cpu")
+    model.learn(total_timesteps=8192)                        # ウォームアップ
+    t0 = time.perf_counter()
+    model.learn(total_timesteps=40960, reset_num_timesteps=False)
+    print(f"n_envs={n:>2}: {40960 / (time.perf_counter() - t0):,.0f} env-steps/s")
+    venv.close()
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>n_envs=1  (Dummy,   n_steps=8192):  3,433 env-steps/s
+n_envs=2  (Dummy,   n_steps=4096):  5,347
+n_envs=4  (Dummy,   n_steps=2048):  5,143
+n_envs=2  (Subproc, n_steps=4096):  3,152
+n_envs=4  (Subproc, n_steps=2048):  3,844
+n_envs=8  (Subproc, n_steps=1024):  5,565   <- 最速
+n_envs=12 (Subproc, n_steps= 682):  5,414
+n_envs=16 (Subproc, n_steps= 512):  5,196</pre></div>
+      <p class="why"><b><code>n_steps &times; n_envs</code> を 8192 に固定しています</b>
+        揃えないと<strong>更新の回数が変わって比較になりません</strong>。課題のコードでは <code>n_steps</code> を書いていないので、<strong><code>n_steps=8192 // n</code> を足してから測ってください</strong>。</p>
+      <p class="why"><b>絶対値はマシンによって変わります</b>
+        見てほしいのは <strong>(1) 天井が 1 体の 2 倍にも届かないこと</strong>、<strong>(2) <code>n_envs</code> が小さいうちは Dummy のほうが速いこと</strong>の 2 点です。</p>
+      <p class="why"><b>コア数を超えると落ちます</b>
+        12 コアのマシンで <code>n_envs=16</code> にすると <strong>5,196</strong> に低下。<strong>プロセスが順番待ちになる</strong>ためです。</p>
+    </div></details>
+    <p class="why"><b><code>device="cpu"</code> を明示します</b>
+       &sect;05 のとおり、GPU にしても速くなりません。
+       <strong>明示しておかないと、環境によって結果が変わって比較になりません。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 自分の天井を書き留める</span>
+    <p>コードを書かない課題です。<strong>2 つの数字をメモしてください。</strong></p>
+    <div class="code"><pre>自分のマシンの天井
+  最も速かった n_envs   = ___
+  そのときの env-steps/s = ___
+  物理だけなら           = ___ physics-steps/s
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>自分のマシンの天井（この教材を書いた環境の場合）
+  最も速かった n_envs   = 8  (SubprocVecEnv)
+  そのときの env-steps/s = 5,565      -> physics-steps/s は 55,650
+  物理だけなら           = 704,073 physics-steps/s</pre></div>
+      <p class="why"><b>この 3 つ目が 10-c の比較相手です</b>
+        MJX は <strong>16,384 体で 22,716,708 physics-steps/s</strong> 出ます。<strong>物理だけの 704,073 と比べて 32.3 倍、学習中の 55,650 と比べて 408 倍</strong>。</p>
+      <p class="why"><b>「速くなった」と言うには、遅かったときの数字が要ります</b>
+        9-a &sect;05 の<strong>「ものさしを固定する」</strong>と同じ話です。<strong>先に測っておかないと、あとから比べられません。</strong></p>
+    </div></details>
+    <p class="why"><b>この課題のねらい</b>
+       10-c で MJX の速度を測ったとき、<strong>比べる相手がこれです。</strong>
+       <strong>「速くなった」と言うには、遅かったときの数字が要ります。</strong>
+       9-a &sect;05 の「ものさしを固定する」と同じ話です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>物理だけなら毎秒 704,073 歩、学習中は 55,650 歩</strong>。
+          <strong>92% は Python と PyTorch の事務処理</strong>（&sect;01）</li>
+      <li><strong>並列化の天井は 1.62 倍</strong>（3,433 &rarr; 5,565 env-steps/s）。
+          <strong><code>DummyVecEnv</code> の <code>n_envs=2</code> で 96% は取れる</strong>（&sect;03）</li>
+      <li><strong>方策の推論（35.70 &micro;s）が物理 10 歩（17.37 &micro;s）より重い</strong>。
+          パラメータ 4,547 個しかないのに（&sect;04）</li>
+      <li><strong>並列環境の主な効果は、推論をバッチにまとめること</strong>。
+          バッチ 64 で 1 環境あたり <strong>42.9 倍</strong>安くなる（&sect;04）</li>
+      <li><strong>最後に残る天井は物理そのもの</strong>。
+          CPU で 1 体ずつ動く限り壊せない（&sect;04）</li>
+      <li><strong>GPU を挿しても速くならない。これは正常</strong>（&sect;05）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい一文</span>
+    <p><strong>速くする前に、どこが遅いのかを測る。</strong></p>
+    <p>「GPU を挿す」「<code>n_envs</code> を増やす」は<strong>どちらも当てずっぽう</strong>でした。
+       測ってみたら<strong>犯人は 4,547 パラメータのネットワークを呼ぶ手続き</strong>。
+       <strong>9-c で報酬の項について言ったことが、そのまま速度にも当てはまります。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="a1"> 物理と推論を別々に測った</label>
+    <label><input type="checkbox" data-ck="a2"> 並列環境が何を速くしているか説明できる</label>
+    <label><input type="checkbox" data-ck="a3"> <code>n_envs</code> を変えてスループットを測った</label>
+    <label><input type="checkbox" data-ck="a4"> 自分のマシンの天井を書き留めた</label>
+    <label><input type="checkbox" data-ck="a5"> GPU を挿しても速くならない理由を 2 つ言える</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 10-b</span>
+    <p>天井が見えました。<strong>壊すには物理ごと GPU に載せるしかありません。</strong></p>
+    <p>それをやるのが <strong>MJX</strong> ですが、MJX は <strong>JAX</strong> で書かれています。
+       <strong>10-b で JAX の約束事を 5 つだけ覚えます。</strong>
+       <strong>MJX のエラーは、ほぼ全部この 5 つの違反です。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 10-a</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step10a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

@@ -1,0 +1,923 @@
+<title>log_std を理解する</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">この教材について</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">exp — かけ算を繰り返す</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">log — exp の逆</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">なぜ対数が便利なのか</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">なぜ std を対数で持つのか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">実験室</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">学習中に何が起きていたか</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">補助教材 · Step 8-a</span>
+  <h1>log_std を理解する</h1>
+  <p><code>exp</code> と <code>log</code> が何なのかから始めて、
+     <strong>なぜ標準偏差を対数で持つのか</strong>まで。
+     数式は使わず、数字と図だけで進む。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 8-a の補助</span>
+    <span class="chip">数学の前提なし</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>この教材について</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この教材のねらい</span>
+    <p>8-a で <code>log_std</code> というパラメータが出てきました。
+       「標準偏差を対数で持つ」と書きましたが、<strong>そもそも対数とは何なのか</strong>を
+       説明していませんでした。</p>
+    <p><strong>高校数学を思い出す必要はありません。</strong>
+       <code>exp</code> と <code>log</code> を<strong>2 つの変換器</strong>として捉えるところから始めます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">ゴール</span>
+    <p>この 1 行が<strong>「なるほど」と読める</strong>ようになることです。</p>
+    <div class="code"><pre>std = log_std.exp()</pre></div>
+    <p>そして 7-b で見た <code>std = 0.602</code> という数字の意味も、
+      <strong>「行動の 1 割がはみ出して切られている状態」</strong>として読めるようになります。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>exp — 「かけ算を繰り返す」変換器</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>exp</code> を<strong>1 つの変換器</strong>として見ます。
+       <strong>入れた数だけ、ある数をかけ算する</strong>——それだけの機械です。</p>
+  </div>
+
+  <h3>まず e という数</h3>
+  <p><code>e = 2.71828...</code> という定数があります。
+     円周率 &pi; と同じで、<strong>割り切れない特別な数</strong>です。</p>
+  <p class="why"><b>なぜ 2 でも 10 でもなく 2.718 なのか</b>
+     <strong>いまは気にしなくて構いません。</strong>
+     微分すると自分自身になるという便利な性質があり、数学の都合で選ばれています。
+     <strong>「そういう定数がある」で先に進めます。</strong></p>
+
+  <h3>exp は「e を何回かける？」という質問への答え</h3>
+  <div class="code"><pre>exp(0) = 1                    <span class="cmt"># 0 回かける = 1（何もかけない）</span>
+exp(1) = e         = 2.71828  <span class="cmt"># 1 回</span>
+exp(2) = e x e     = 7.38906  <span class="cmt"># 2 回</span>
+exp(3) = e x e x e = 20.08554 <span class="cmt"># 3 回</span>
+</pre></div>
+
+  <p><strong>では <code>exp(-1)</code> は？</strong> 「&minus;1 回かける」＝<strong>1 回わる</strong>と考えます。</p>
+  <div class="code"><pre>exp(-1) = 1 / e         = 0.36788
+exp(-2) = 1 / (e x e)   = 0.13534
+exp(-3) = 1 / (e x e x e) = 0.04979
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">入力</th><th class="num">出力</th><th>読み方</th></tr></thead>
+    <tbody>
+      <tr><td class="num">&minus;3</td><td class="num">0.04979</td><td>3 回わった</td></tr>
+      <tr><td class="num">&minus;1</td><td class="num">0.36788</td><td>1 回わった</td></tr>
+      <tr><td class="num"><strong>0</strong></td><td class="num"><strong>1.00000</strong></td><td><strong>何もしない</strong></td></tr>
+      <tr><td class="num">1</td><td class="num">2.71828</td><td>1 回かけた</td></tr>
+      <tr><td class="num">3</td><td class="num">20.08554</td><td>3 回かけた</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">いちばん大事な性質</span>
+    <p><strong>出力は絶対に負になりません。</strong>
+      正の数を何回かけても、何回わっても、<strong>正のまま</strong>だからです。</p>
+    <div class="code"><pre>exp(-100)  = 0.0000...（0 に極めて近い正の数）
+exp(-1000) = 0.0（計算機では 0 になるが、数学的には正）
+</pre></div>
+    <p><strong>0 に限りなく近づきますが、0 にも負にもなりません。</strong>
+      &sect;04 で、この性質だけが理由になります。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">入力が 1 増えると、出力は 2.718 倍</span>
+    <p><code>exp(1)=2.718</code>、<code>exp(2)=7.389</code>、<code>exp(3)=20.086</code>。
+      <strong>足し算の入力が、かけ算の出力になっています</strong>
+      （<code>7.389 &divide; 2.718 = 2.718</code>、<code>20.086 &divide; 7.389 = 2.718</code>）。</p>
+    <p>これが <code>exp</code> の本質で、<strong>「一定の割合で増える／減る」を表す</strong>のに使われます。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>log — exp の逆向きの変換器</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>log</code> は <code>exp</code> の<strong>逆をたどる機械</strong>です。
+       新しい概念ではなく、<strong>同じ関係を逆から見ているだけ</strong>だと確認します。</p>
+  </div>
+
+  <p><code>exp</code> が「e を何回かけるか &rarr; 結果」だったのに対し、
+     <code>log</code> は「<strong>結果 &rarr; e を何回かけたのか</strong>」を返します。</p>
+
+  <div class="code"><pre>exp(2)     = 7.38906        <span class="cmt"># 2 を入れたら 7.389 が出た</span>
+log(7.389) = 2              <span class="cmt"># 7.389 を入れたら 2 が返る</span>
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">std</th><th class="num">log(std)</th><th class="num">exp() で戻す</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.1</td><td class="num">&minus;2.30259</td><td class="num">0.10000</td></tr>
+      <tr><td class="num">0.5</td><td class="num">&minus;0.69315</td><td class="num">0.50000</td></tr>
+      <tr><td class="num"><strong>1.0</strong></td><td class="num"><strong>0.00000</strong></td><td class="num">1.00000</td></tr>
+      <tr><td class="num">2.0</td><td class="num">+0.69315</td><td class="num">2.00000</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>行って帰ってくると元に戻ります</b>
+     <code>exp(log(x)) = x</code>。これが「逆の操作」という意味です。
+     <strong>足し算と引き算、かけ算とわり算と同じ関係</strong>です。</p>
+
+  <div class="callout">
+    <span class="k">log の入力は正の数だけ</span>
+    <p><code>exp</code> の出力が必ず正だったので、その逆である <code>log</code> は
+      <strong>正の数しか受け取れません</strong>。<code>log(-1)</code> や <code>log(0)</code> は定義されません。</p>
+    <p><strong>この非対称性が &sect;04 の鍵になります。</strong></p>
+  </div>
+
+  <h3>3 つの目印を覚えれば十分です</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">log の値</th><th class="num">元の数</th><th>覚え方</th></tr></thead>
+    <tbody>
+      <tr><td class="num">負</td><td class="num">1 より小さい</td><td>わり算した</td></tr>
+      <tr><td class="num"><strong>0</strong></td><td class="num"><strong>ちょうど 1</strong></td><td><strong>何もしていない</strong></td></tr>
+      <tr><td class="num">正</td><td class="num">1 より大きい</td><td>かけ算した</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>この 3 つだけで <code>log_std</code> は読めます</b>
+     <code>log_std</code> が<strong>負なら std は 1 より小さい</strong>、
+     <strong>0 なら std はちょうど 1</strong>。
+     8-a の初期値が <code>torch.zeros()</code> だったので、<strong>std は 1.0 から始まります</strong>。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>なぜ対数が便利なのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>log_std</code> の話に入る前に、<strong>対数という道具の使いどころ</strong>を掴みます。
+       <strong>あなたはもう使ったことがあります。</strong></p>
+  </div>
+
+  <h3>掛け算の世界を、足し算の世界に移す</h3>
+  <p>「2 倍」「4 倍」「8 倍」は、かけ算では飛び飛びですが、
+     <strong>対数を取ると等間隔</strong>になります。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">std</th><th class="num">log(std)</th><th>間隔</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.25</td><td class="num">&minus;1.386</td><td class="num">——</td></tr>
+      <tr><td class="num">0.5</td><td class="num">&minus;0.693</td><td class="num">+0.693</td></tr>
+      <tr><td class="num">1.0</td><td class="num">0.000</td><td class="num">+0.693</td></tr>
+      <tr><td class="num">2.0</td><td class="num">+0.693</td><td class="num">+0.693</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>2 倍するたびに、対数は同じ幅だけ増えます</b>
+     これが「<strong>倍率で考えるべき量</strong>を扱うときに対数が便利」な理由です。</p>
+
+  <h3>あなたはすでに使っています</h3>
+  <div class="callout tip">
+    <span class="k">7-c の「2〜3 倍単位で動かす」</span>
+    <p>ハイパーパラメータの作法として
+      「<strong><code>learning_rate</code> は 2〜3 倍単位で動かす。10% の調整に意味はない</strong>」
+      と書きました。</p>
+    <p><code>3e-4 &rarr; 1e-3</code> は約 3.3 倍。<strong>これは対数スケールで動かしている</strong>ということです。
+      <code>3e-4 &rarr; 3.3e-4</code>（10% 増）に意味がないのは、
+      <strong>対数で見るとほとんど動いていないから</strong>です。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">5-b の割引率 &gamma;</span>
+    <p><code>&gamma; = 0.9 / 0.99 / 0.999</code> と刻みましたが、
+      <strong>0.9 と 0.91 は近く、0.99 と 0.999 は遠い</strong>——
+      実効地平が <strong>10 歩 / 100 歩 / 1000 歩</strong> と 10 倍ずつ変わったとおりです。</p>
+    <p><strong>これも対数的な感覚</strong>です。&gamma; は「1 から引いた残り」で見るべき量でした。</p>
+  </div>
+</section>
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>なぜ std を対数で持つのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここが本題です。<strong>理由はたった 1 つ</strong>——
+       &sect;01 で見た「<code>exp</code> の出力は絶対に負にならない」という性質だけです。</p>
+  </div>
+
+  <h3>標準偏差は負になってはいけません</h3>
+  <p><code>std</code> は「散らばりの大きさ」です。
+     <strong>大きさに負はありません。</strong>身長が &minus;170cm の人がいないのと同じです。</p>
+  <p>PyTorch も拒否します。</p>
+  <div class="code"><pre>Normal(平均=0, 標準偏差=-0.3)
+
+ValueError: Expected parameter scale ... to satisfy the constraint GreaterThan(0)
+</pre></div>
+
+  <h3>ところが、学習は値を自由に動かします</h3>
+  <p>ニューラルネットの学習は<strong>「いまの値を少し動かす」</strong>の繰り返しです。
+     <strong>どちらへどれだけ動くかは、勾配が決めます。</strong></p>
+
+  <div class="tw"><table>
+    <thead><tr><th>もし <code>std</code> を直接学習したら</th></tr></thead>
+    <tbody>
+      <tr><td><code>std = 0.10</code> から始める</td></tr>
+      <tr><td>「もっと小さくすべき」という勾配が来る &rarr; <code>std = 0.05</code></td></tr>
+      <tr><td>また来る &rarr; <code>std = 0.01</code></td></tr>
+      <tr><td>また来る &rarr; <strong><code>std = -0.04</code></strong> &larr; <span class="ng">ここで壊れる</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>止める方法がありません</b>
+     「0 より下に行くな」という制約を勾配に伝える仕組みが、標準的な学習にはありません。
+     <strong>値を直接クリップする方法もありますが、そこで勾配が消えて学習が止まります。</strong></p>
+
+  <h3>対数で持つと、この問題が消えます</h3>
+  <div class="code"><pre>log_std = -50   ->  std = 1.93e-22   <span class="cmt"># 極小だが正</span>
+log_std =   0   ->  std = 1.00       <span class="cmt"># ちょうど 1</span>
+log_std = +50   ->  std = 5.19e+21   <span class="cmt"># 極大</span>
+</pre></div>
+
+  <p class="why"><b>学習が <code>log_std</code> をどこへ動かしても安全です</b>
+     <code>-1000</code> になっても <code>+1000</code> になっても、
+     <code>exp()</code> を通せば<strong>必ず正の <code>std</code> が出てきます</strong>。
+     <strong>制約を「式の形」で満たしている</strong>わけです。</p>
+
+  <div class="callout tip">
+    <span class="k">ここが発想の転換です</span>
+    <p><strong>「負になってはいけない」という制約を、学習に守らせようとしない。</strong>
+      代わりに<strong>何を入れても大丈夫な形に変換してから渡す</strong>。</p>
+    <p>学習が扱うのは <code>log_std</code>（何でもあり）、
+      分布が受け取るのは <code>std = exp(log_std)</code>（必ず正）。
+      <strong>境界で変換を挟むだけで、制約が自動的に満たされます。</strong></p>
+    <p>この手口は機械学習のあちこちで出てきます。
+      <strong>「0〜1 に収めたい」なら <code>sigmoid</code>、
+      「合計 1 の確率にしたい」なら <code>softmax</code></strong>——全部同じ発想です。</p>
+  </div>
+
+  <h3>もうひとつの利点：動きやすさが揃う</h3>
+  <p>&sect;03 で見たとおり、<strong>対数で持つと「倍率」が「足し算」になります</strong>。</p>
+  <div class="tw"><table>
+    <thead><tr><th>動かす量</th><th class="num">std を直接</th><th class="num">log_std 経由</th></tr></thead>
+    <tbody>
+      <tr><td><code>1.0</code> から <code>&minus;0.1</code></td><td class="num">1.0 &rarr; 0.9（10% 減）</td><td class="num">1.0 &rarr; 0.905（9.5% 減）</td></tr>
+      <tr><td><code>0.1</code> から <code>&minus;0.1</code></td><td class="num ng">0.1 &rarr; 0.0（<strong>100% 減</strong>）</td><td class="num ok">0.1 &rarr; 0.0905（9.5% 減）</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>同じ「&minus;0.1」の効き方がまるで違います</b>
+     <code>std</code> を直接動かすと、<strong>小さい値のときだけ致命的</strong>になります。
+     <code>log_std</code> なら<strong>どこにいても同じ割合</strong>で動くので、
+     学習率を 1 つ決めれば全域でうまくいきます。</p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 実験室</span>
+    <h2>log_std を動かして分布を見る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>log_std</code> を動かすと、<strong>方策の分布がどう変わるか</strong>を目で見ます。
+       <strong>行動が <code>[-1, 1]</code> に切られる割合</strong>も出しているので、
+       「探索しすぎ」「探索不足」が具体的に分かります。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-ls">log_std</label><span class="val" id="v-ls">0.00</span></div>
+        <input type="range" id="s-ls" min="-3" max="1" step="0.01" value="0">
+        <span class="hint"><strong>学習されるのはこちら</strong>。何でもあり</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-mu">mu（行動の平均）</label><span class="val" id="v-mu">0.00</span></div>
+        <input type="range" id="s-mu" min="-1" max="1" step="0.01" value="0">
+        <span class="hint">ネットが観測から計算する値</span>
+      </div>
+      <div class="btns">
+        <button class="preset" type="button" data-p="0,0">初期値</button>
+        <button class="preset" type="button" data-p="-0.035,0">7-b 16k step</button>
+        <button class="preset" type="button" data-p="-0.508,0">7-b 30万 step</button>
+        <button class="preset" type="button" data-p="-3,0">探索やめた</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">std = exp(log_std)</span><span class="rv" id="r-std">&mdash;</span></div>
+        <div><span class="rk">はみ出す割合</span><span class="rv" id="r-clip">&mdash;</span></div>
+        <div><span class="rk">エントロピー</span><span class="rv" id="r-ent">&mdash;</span></div>
+      </div>
+      <canvas id="cv" width="640" height="260" aria-label="方策の分布"></canvas>
+      <p class="hint" style="font-size:12px;color:var(--muted)">
+        teal の曲線が方策の分布。縦の破線が行動の範囲 <b>[-1, 1]</b>。
+        <strong>網掛けの部分は範囲外なので clip で切られます</strong>（6-b で環境側に入れた <code>np.clip</code>）。
+      </p>
+    </div>
+  </div>
+
+  <p class="why"><b>触ってほしいところ</b>
+     ① <strong>初期値（log_std=0）</strong>では <strong>31.7%</strong> がはみ出しています。
+     3 回に 1 回は「±1 を超えろ」と言って切られている——<strong>それくらい大雑把に探索</strong>しています。
+     ② <strong>「探索やめた」（log_std=&minus;3）</strong>では山が針のように細くなります。
+     <strong>ほぼ同じ行動しか出ません</strong>——5-e の <code>&epsilon;=0</code> と同じ状態です。
+     ③ <code>mu</code> を動かすと山が横に動きます。<strong>ネットが学習しているのはこちら</strong>です。</p>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>学習中に何が起きていたか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>7-b で読んだ <code>std</code> の推移を、いまの理解で読み直します。
+       <strong>あの数字が何を意味していたか</strong>が分かります。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">step</th><th class="num">std（7-b の実測）</th><th class="num">log_std（逆算）</th><th class="num">はみ出す割合</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td class="num">1.000</td><td class="num">0.000</td><td class="num">31.7%</td></tr>
+      <tr><td class="num">16k</td><td class="num">0.966</td><td class="num">&minus;0.035</td><td class="num">30.1%</td></tr>
+      <tr><td class="num">115k</td><td class="num">0.762</td><td class="num">&minus;0.272</td><td class="num">18.9%</td></tr>
+      <tr><td class="num">303k</td><td class="num"><strong>0.602</strong></td><td class="num"><strong>&minus;0.508</strong></td><td class="num"><strong>9.7%</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>学習されていたのは真ん中の列です</b>
+     <code>log_std</code> が <code>0.000 &rarr; &minus;0.508</code> と動いた結果、
+     <code>std</code> が <code>1.000 &rarr; 0.602</code> になりました。
+     <strong>ネットは <code>std</code> を直接触っていません。</strong></p>
+
+  <p class="why"><b>右端の列が実用的な意味です</b>
+     最初は<strong>3 回に 1 回</strong>が範囲外で切られていました。
+     30 万ステップ後には<strong>10 回に 1 回</strong>まで減っています。
+     <strong>「無駄撃ちが減った」</strong>と読めます。</p>
+
+  <div class="callout">
+    <span class="k">はみ出しは無駄なのか</span>
+    <p>切られた行動は <code>&plusmn;1</code> ちょうどになるので、<strong>完全な無駄ではありません</strong>——
+      「全力で押す」という行動として実行されます。</p>
+    <p>ただし <code>+1.5</code> と <code>+3.0</code> が<strong>同じ結果</strong>になるので、
+      その差を学ぶことができません。<strong>学習の解像度が落ちる</strong>という意味では損です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">7-c で ent_coef が効かなかった理由</span>
+    <p>7-c で <code>ent_coef=0.01</code> を試して<strong>効きませんでした</strong>（&minus;250 対 &minus;254）。</p>
+    <p><code>ent_coef</code> は「<code>std</code> を下がりにくくする」パラメータです。
+      しかし 30 万ステップ時点で <code>std = 0.602</code>、まだ<strong>1 割がはみ出すほど広い</strong>。
+      <strong>探索が足りないという症状が出ていないのに、探索の薬を出しても効きません。</strong></p>
+    <p><strong>この教材を読んだいまなら、7-c の結果は試す前に予測できたはずです。</strong></p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材のまとめ</span>
+    <ol>
+      <li><b>exp</b> は「e を何回かけるか」。入力 1 増えるごとに出力 2.718 倍。
+          <strong>出力は絶対に負にならない</strong></li>
+      <li><b>log</b> は exp の逆。<strong>負なら 1 より小さい、0 ならちょうど 1、正なら 1 より大きい</strong></li>
+      <li>対数は<strong>倍率を足し算に変える</strong>。7-c の「2〜3 倍単位で動かす」も
+          5-b の &gamma; の刻み方も、この感覚</li>
+      <li><code>log_std</code> を使う理由は<strong>ただ 1 つ</strong>——
+          <strong>学習がどこへ動かしても <code>std</code> が正になる</strong>から</li>
+      <li>おまけの利点: <strong>どの大きさでも同じ割合で動く</strong>ので学習率を 1 つ決めれば済む</li>
+      <li>7-b の <code>std = 0.602</code> は<strong>「行動の 1 割がはみ出して切られている状態」</strong></li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">8-a に戻るときに</span>
+    <p>この 1 行が読めるようになっているはずです。</p>
+    <div class="code"><pre>std = log_std.exp()</pre></div>
+    <p>「学習が自由に動かしている <code>log_std</code> を、
+      <strong>必ず正になる形に変換して</strong>分布に渡す」——それだけの行です。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Step 8-a 補助教材</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-logstd-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var cv = document.getElementById("cv");
+  if (!cv) return;
+  var sLs = document.getElementById("s-ls"), sMu = document.getElementById("s-mu");
+  var vLs = document.getElementById("v-ls"), vMu = document.getElementById("v-mu");
+  var rStd = document.getElementById("r-std"), rClip = document.getElementById("r-clip"),
+      rEnt = document.getElementById("r-ent");
+
+  function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  /* 誤差関数の近似（Abramowitz & Stegun 7.1.26） */
+  function erf(x) {
+    var s = x < 0 ? -1 : 1; x = Math.abs(x);
+    var t = 1 / (1 + 0.3275911 * x);
+    var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
+    var y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    return s * y;
+  }
+  function pdf(x, mu, std) {
+    var z = (x - mu) / std;
+    return Math.exp(-0.5 * z * z) / (std * Math.sqrt(2 * Math.PI));
+  }
+  function cdf(x, mu, std) { return 0.5 * (1 + erf((x - mu) / (std * Math.SQRT2))); }
+
+  function draw() {
+    var ls = parseFloat(sLs.value), mu = parseFloat(sMu.value);
+    var std = Math.exp(ls);
+    vLs.textContent = ls.toFixed(2);
+    vMu.textContent = mu.toFixed(2);
+    rStd.textContent = std.toFixed(4);
+    var inside = cdf(1, mu, std) - cdf(-1, mu, std);
+    rClip.textContent = (100 * (1 - inside)).toFixed(1) + " %";
+    rEnt.textContent = (0.5 * Math.log(2 * Math.PI * Math.E) + ls).toFixed(4);
+
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || 640, h = 260;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var pad = { l: 40, r: 14, t: 14, b: 26 };
+    var XMIN = -2.2, XMAX = 2.2;
+    var peak = pdf(mu, mu, std);
+    var YMAX = Math.max(peak * 1.12, 0.45);
+    function X(v) { return pad.l + (v - XMIN) / (XMAX - XMIN) * (w - pad.l - pad.r); }
+    function Y(v) { return pad.t + (1 - v / YMAX) * (h - pad.t - pad.b); }
+
+    /* 範囲外の網掛け */
+    ctx.fillStyle = tok("--surface-2");
+    ctx.fillRect(X(XMIN), pad.t, X(-1) - X(XMIN), h - pad.t - pad.b);
+    ctx.fillRect(X(1), pad.t, X(XMAX) - X(1), h - pad.t - pad.b);
+
+    /* 軸 */
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke();
+
+    /* 行動範囲の破線 */
+    ctx.strokeStyle = tok("--rule-strong"); ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    [-1, 1].forEach(function (v) { ctx.moveTo(X(v), pad.t); ctx.lineTo(X(v), h - pad.b); });
+    ctx.stroke(); ctx.setLineDash([]);
+
+    /* 分布 */
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i <= 300; i++) {
+      var x = XMIN + (XMAX - XMIN) * i / 300;
+      var y = Math.min(pdf(x, mu, std), YMAX);
+      if (i === 0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y));
+    }
+    ctx.stroke();
+
+    /* mu の位置 */
+    ctx.strokeStyle = tok("--real"); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(X(mu), Y(0)); ctx.lineTo(X(mu), Y(Math.min(peak, YMAX))); ctx.stroke();
+
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    [-2, -1, 0, 1, 2].forEach(function (v) { ctx.fillText(String(v), X(v) - 4, h - 9); });
+    ctx.fillText("行動", w - pad.r - 26, h - 9);
+    ctx.fillStyle = tok("--real");
+    ctx.fillText("mu", X(mu) + 4, pad.t + 10);
+  }
+
+  [sLs, sMu].forEach(function (e) { e.addEventListener("input", draw); });
+  Array.prototype.forEach.call(document.querySelectorAll(".preset"), function (b) {
+    b.addEventListener("click", function () {
+      var p = b.dataset.p.split(",");
+      sLs.value = p[0]; sMu.value = p[1]; draw();
+    });
+  });
+  window.addEventListener("resize", draw);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  }
+  draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

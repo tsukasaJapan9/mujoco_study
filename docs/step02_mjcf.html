@@ -1,0 +1,1832 @@
+<title>MJCF モデリング入門</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  /* code + copy */
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .code pre.sh { padding-right:92px; }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .tagn { color:var(--sim); }
+  .attr { color:var(--real); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  .fig { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         padding:22px 20px; box-shadow:var(--shadow); overflow-x:auto; }
+  .fig svg { display:block; width:100%; height:auto; min-width:560px; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:10px; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+  ul.plain { list-style:none; padding-left:0; }
+
+  /* task cards */
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+
+  /* staged tasks */
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  /* interactive */
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:15px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  #cv-frames { display:block; width:100%; height:auto; background:var(--code-bg); border-radius:3px; }
+
+  /* checklist */
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+
+  @media (max-width:820px) {
+    .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); }
+  }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+</style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">このステップで手に入るもの</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">XML をファイルに分離する</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">MJCF の全体構造</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">角度の単位はデフォルトで「度」</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">body ツリーと親相対座標</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">joint</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">geom</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">見た目を整える</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">actuator</span></a></li>
+    <li><a href="#s10"><span class="n">09</span><span class="t">default</span></a></li>
+    <li><a href="#s11"><span class="n">10</span><span class="t">sensor</span></a></li>
+    <li><a href="#s12"><span class="n">11</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s13"><span class="n">12</span><span class="t">よく出るエラーと対処</span></a></li>
+    <li><a href="#s14"><span class="n">13</span><span class="t">完了条件</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Phase A · Step 2</div>
+  <h1>MJCF モデリング入門</h1>
+  <p>シミュレータに与えるモデルを、自分の手で書けるようになる。
+     Sim2Real で最初に効いてくるのは、実はここ。</p>
+  <div class="meta">
+    <span class="chip">目安 8 時間</span>
+    <span class="chip">前提: Step 1 完了</span>
+    <span class="chip">成果物: models/pendulum.xml · models/cartpole.xml</span>
+  </div>
+</header>
+
+<!-- ===== 0 ===== -->
+<section id="s01">
+  <div class="sec-head">
+    <div class="eyebrow">00</div>
+    <h2>このステップで手に入るもの</h2>
+  </div>
+  <ul>
+    <li>MJCF をゼロから書ける（サンプルを見ずに骨格が出せる）</li>
+    <li>body ツリーと<strong>親相対座標</strong>を理解し、多関節ロボットを組める</li>
+    <li>joint / geom / actuator / sensor の役割と、<strong>実機の部品との対応</strong>が言える</li>
+    <li>モータを付けて <code>nu = 1</code> にし、<code>data.ctrl</code> で動かせる</li>
+    <li>カートポールを自力で組める（Step 5 以降の RL の題材になる）</li>
+  </ul>
+  <div class="callout tip">
+    <span class="k">Step 1 からの接続</span>
+    <p>Step 1 の振り子は <code>nu = 0</code>、つまり誰も動かせないモデルだった。
+       このステップの終わりには <code>nu = 1</code> になり、トルクを与えて動かせるようになる。
+       そこから Step 4 の制御、Step 7 の強化学習へと繋がっていく。</p>
+  </div>
+</section>
+
+<!-- ===== 1 ===== -->
+<section id="s02">
+  <div class="sec-head">
+    <div class="eyebrow">01</div>
+    <h2>XML をファイルに分離する</h2>
+    <p>Step 1 では Python の文字列に埋め込んでいた。これを独立したファイルにする。
+       モデルとコードを分けるのは、単なる整理ではなく <strong>実務上の必然</strong>。</p>
+  </div>
+
+  <ul>
+    <li>同じモデルを複数のスクリプト（可視化・学習・評価）から使い回せる</li>
+    <li>エディタが XML として色分け・補完してくれる</li>
+    <li>git の差分が読める。「モデルを変えたから性能が変わった」を追跡できる</li>
+    <li>Step 12 で CAD から生成した MJCF を差し替えるとき、コードを触らずに済む</li>
+  </ul>
+
+  <h3>ディレクトリ構成</h3>
+  <div class="code"><pre>mujoco_study/
+├── models/
+│   ├── pendulum.xml      <span class="cmt"># Step 1 の振り子 + モータ</span>
+│   └── cartpole.xml      <span class="cmt"># 課題 2 で作る</span>
+├── sim/
+│   └── view_model.py     <span class="cmt"># モデルを読んで眺めるだけの汎用ビューア</span>
+└── docs/</pre></div>
+
+  <h3>ファイルから読み込む</h3>
+  <div class="code"><pre><span class="cmt"># sim/view_model.py</span>
+from pathlib import Path
+import mujoco
+
+ROOT = Path(__file__).resolve().parent.parent      <span class="cmt"># リポジトリのルート</span>
+model = mujoco.MjModel.from_xml_path(str(ROOT / "models" / "pendulum.xml"))
+data = mujoco.MjData(model)</pre></div>
+
+  <div class="callout">
+    <span class="k">ここで必ず踏む罠</span>
+    <p><code>from_xml_path("models/pendulum.xml")</code> と<strong>相対パスで書くと、
+       実行したディレクトリによって動いたり動かなかったりする</strong>。
+       <code>sim/</code> の中から実行すると <code>sim/models/…</code> を探しに行って失敗する。<br>
+       <code>Path(__file__)</code> を起点にすれば、どこから実行しても同じファイルを指す。
+       この書き方を最初から癖にしておくこと。</p>
+  </div>
+
+  <h3>モデルを表示するだけの汎用ビューア</h3>
+  <p>モデルを作るたびにスクリプトを書き換えるのは面倒なので、
+     <strong>ファイル名を引数で受け取る汎用ビューア</strong>を 1 本用意しておく。
+     Step 12 まで使い回すことになる、この講座で最も出番の多いツール。</p>
+
+  <div class="callout tip">
+    <span class="k">重要: 既定は「物理を進めない」</span>
+    <p>書いたばかりのモデルを確認したいとき、<strong>物理を進めてはいけない</strong>。
+       重力で一瞬にして崩れ落ち、何がどう繋がっているのか観察できないから。<br>
+       <code>mj_forward</code> だけを呼んで初期姿勢のまま静止表示するのが、
+       モデルを点検する正しいやり方。動かしたいときだけ <code>--sim</code> を付ける。</p>
+  </div>
+
+  <div class="code"><pre><span class="cmt"># sim/view_model.py — models/ 以下の MJCF を読み込んで表示する</span>
+import argparse
+import time
+from pathlib import Path
+
+import mujoco
+import mujoco.viewer
+
+ROOT = Path(__file__).resolve().parent.parent
+MODELS = ROOT / "models"
+
+<span class="cmt"># mjtJoint の並び順（0=free, 1=ball, 2=slide, 3=hinge）</span>
+JOINT_TYPES = ("free", "ball", "slide", "hinge")
+
+
+def load(name):
+    path = MODELS / name
+    if not path.exists():
+        available = [p.name for p in sorted(MODELS.glob("*.xml"))]
+        raise SystemExit(f"モデルが見つかりません: {path}\n利用可能: {available}")
+    try:
+        return mujoco.MjModel.from_xml_path(str(path))
+    except Exception as e:
+        <span class="cmt"># MJCF のコンパイルエラーはここに来る。行番号が出るのでそのまま読む</span>
+        raise SystemExit(f"MJCF の読み込みに失敗しました:\n{e}")
+
+
+def summary(model):
+    """モデルの構造を表示する。書いた MJCF が意図どおりか確認するために毎回見る。"""
+    print(f"nq={model.nq}  nv={model.nv}  nu={model.nu}  "
+          f"nbody={model.nbody}  njnt={model.njnt}  nsensordata={model.nsensordata}")
+
+    for j in range(model.njnt):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT, j)
+        jtype = JOINT_TYPES[model.jnt_type[j]]
+        print(f"  joint[{j}] {name:&lt;12} {jtype:&lt;6} "
+              f"qposadr={model.jnt_qposadr[j]} dofadr={model.jnt_dofadr[j]}")
+
+    for a in range(model.nu):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_ACTUATOR, a)
+        print(f"  actuator[{a}] {name:&lt;12} ctrlrange={model.actuator_ctrlrange[a]}")
+
+    for s in range(model.nsensor):
+        name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_SENSOR, s)
+        stype = mujoco.mjtSensor(model.sensor_type[s]).name[7:].lower()   <span class="cmt"># "mjSENS_" を落とす</span>
+        print(f"  sensor[{s}] {name:&lt;12} {stype:&lt;12} "
+              f"adr={model.sensor_adr[s]} dim={model.sensor_dim[s]}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="MJCF を読み込んで表示する")
+    parser.add_argument("model", help="models/ 以下のファイル名 (例: cartpole.xml)")
+    parser.add_argument("--sim", action="store_true", help="物理を進める（既定は静止表示）")
+    parser.add_argument("--speed", type=float, default=1.0, help="再生速度の倍率")
+    args = parser.parse_args()
+
+    model = load(args.model)
+    data = mujoco.MjData(model)
+    summary(model)
+
+    mujoco.mj_forward(model, data)   <span class="cmt"># 進めずに派生量だけ計算（xpos などを埋める）</span>
+
+    with mujoco.viewer.launch_passive(model, data) as viewer:
+        while viewer.is_running():
+            t0 = time.time()
+
+            if args.sim:
+                mujoco.mj_step(model, data)
+                viewer.sync()
+                wait = model.opt.timestep / args.speed - (time.time() - t0)
+                if wait &gt; 0:
+                    time.sleep(wait)
+            else:
+                viewer.sync()
+                time.sleep(1 / 60)       <span class="cmt"># 静止表示なら 60Hz で十分</span>
+
+
+if __name__ == "__main__":
+    main()</pre></div>
+
+  <h3>使い方</h3>
+  <div class="code"><pre class="sh"><span class="cmt"># 書いたモデルを静止状態で点検する（まずこれ）</span>
+uv run python sim/view_model.py pendulum.xml
+
+<span class="cmt"># 物理を進めて動かす</span>
+uv run python sim/view_model.py pendulum.xml --sim
+
+<span class="cmt"># ゆっくり見る</span>
+uv run python sim/view_model.py cartpole.xml --sim --speed 0.25</pre></div>
+
+  <p>起動すると、まず構造がコンソールに出る。<strong>MJCF を書いたら必ずこれを見ること。</strong>
+     ビューアを眺める前に、数字が意図どおりかを確認するほうが速い。</p>
+
+  <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=4
+  joint[0] slider       slide  qposadr=0 dofadr=0
+  joint[1] hinge        hinge  qposadr=1 dofadr=1
+  actuator[0] slide_motor  ctrlrange=[-1.  1.]
+  sensor[0] cart_pos     jointpos     adr=0 dim=1
+  sensor[1] cart_vel     jointvel     adr=1 dim=1
+  sensor[2] pole_angle   jointpos     adr=2 dim=1
+  sensor[3] pole_rate    jointvel     adr=3 dim=1</pre></div>
+
+  <div class="callout">
+    <span class="k">nsensor と nsensordata は一致しない</span>
+    <p>センサによっては複数の値を返す。<code>framepos</code> は 3 次元、<code>framequat</code> は 4 次元、
+       <code>gyro</code> は 3 次元。だから <strong>センサ 3 個で nsensordata が 5</strong> になったりする。<br>
+       <code>data.sensordata</code> の何番目がどのセンサかは <code>sensor_adr</code>（開始位置）と
+       <code>sensor_dim</code>（値の個数）を見る。</p>
+  </div>
+
+  <div class="code"><pre>adr, dim = model.sensor_adr[i], model.sensor_dim[i]
+value = data.sensordata[adr:adr + dim]      <span class="cmt"># このセンサの値</span></pre></div>
+
+  <p><code>jointpos</code> と <code>jointvel</code> だけなら <code>dim=1</code> なので順番どおりに並ぶが、
+     IMU を使い始めると必ずこの計算が要る。Step 12 の実機モデルでは避けて通れない。</p>
+
+  <div class="callout tip">
+    <span class="k">sensordata も導出量</span>
+    <p><code>data.sensordata</code> は <strong><code>mj_forward</code> か <code>mj_step</code> を
+       呼ぶまでゼロのまま</strong>。<code>xpos</code> と同じで、<code>qpos</code> から計算される量だから。
+       値を確認したいときは <code>mj_forward</code> の後で読むこと。</p>
+  </div>
+
+  <h3>モデル点検のチェックポイント</h3>
+  <ul>
+    <li><code>nu</code> が 0 なら <code>&lt;actuator&gt;</code> の書き忘れ</li>
+    <li><code>njnt</code> が想定より少なければ <code>&lt;joint&gt;</code> の書き忘れ。その body は親に溶接されている</li>
+    <li>joint の型が意図と違えば <code>type</code> のタイポ</li>
+    <li><code>ctrlrange</code> が <code>[0. 0.]</code> なら未指定。実機のトルク上限を反映させること</li>
+    <li>ビューアでは <strong>Rendering パネルの Joint を ON</strong> にして、関節軸の向きを目視確認する</li>
+  </ul>
+</section>
+
+<!-- ===== 2 ===== -->
+<section id="s03">
+  <div class="sec-head">
+    <div class="eyebrow">02</div>
+    <h2>MJCF の全体構造</h2>
+    <p>MJCF ファイルは <code>&lt;mujoco&gt;</code> を根とする木。
+       トップレベルの要素は役割ごとに分かれていて、書く順番も慣例で決まっている。</p>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 860 400" role="img" aria-label="MJCFファイルのトップレベル要素の構造図">
+      <g font-family="IBM Plex Sans JP, sans-serif" font-size="12.5">
+        <rect x="20" y="20" width="150" height="40" rx="4" fill="var(--sim)" />
+        <text x="95" y="45" text-anchor="middle" fill="var(--surface)" font-weight="700"
+              font-family="IBM Plex Mono, monospace" font-size="13">&lt;mujoco&gt;</text>
+        <path d="M95 60 V370" stroke="var(--rule-strong)" stroke-width="1.4" fill="none"/>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="12">
+          <!-- rows -->
+          <g>
+            <path d="M95 90 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="74" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="95" fill="var(--ink)">&lt;compiler&gt;</text>
+            <text x="288" y="95" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              XML の解釈ルール。<tspan fill="var(--real)" font-weight="500">角度の単位はここで決まる</tspan></text>
+          </g>
+          <g>
+            <path d="M95 128 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="112" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="133" fill="var(--ink)">&lt;option&gt;</text>
+            <text x="288" y="133" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              物理エンジンの設定。timestep・重力・積分器</text>
+          </g>
+          <g>
+            <path d="M95 166 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="150" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="171" fill="var(--ink)">&lt;default&gt;</text>
+            <text x="288" y="171" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              属性のデフォルト値。CSS のクラスに近い</text>
+          </g>
+          <g>
+            <path d="M95 204 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="188" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="209" fill="var(--ink)">&lt;asset&gt;</text>
+            <text x="288" y="209" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              メッシュ・テクスチャ・マテリアル</text>
+          </g>
+          <g>
+            <path d="M95 246 H140" stroke="var(--sim)" stroke-width="2"/>
+            <rect x="140" y="228" width="130" height="36" rx="3" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.6"/>
+            <text x="152" y="251" fill="var(--ink)" font-weight="600">&lt;worldbody&gt;</text>
+            <text x="288" y="245" fill="var(--ink)" font-family="IBM Plex Sans JP, sans-serif" font-weight="500">
+              ロボットの本体。ここが中心</text>
+            <text x="288" y="263" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif" font-size="11.5">
+              body / joint / geom / site / light / camera の木</text>
+          </g>
+          <g>
+            <path d="M95 292 H140" stroke="var(--sim)" stroke-width="2"/>
+            <rect x="140" y="276" width="130" height="32" rx="3" fill="var(--sim-soft)" stroke="var(--sim)" stroke-width="1.6"/>
+            <text x="152" y="297" fill="var(--ink)" font-weight="600">&lt;actuator&gt;</text>
+            <text x="288" y="297" fill="var(--ink)" font-family="IBM Plex Sans JP, sans-serif">
+              モータ。<tspan fill="var(--real)" font-weight="500">これを書かないと nu = 0</tspan></text>
+          </g>
+          <g>
+            <path d="M95 330 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="314" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="335" fill="var(--ink)">&lt;sensor&gt;</text>
+            <text x="288" y="335" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              センサ定義。実機のセンサに対応させる</text>
+          </g>
+          <g>
+            <path d="M95 368 H140" stroke="var(--rule-strong)" stroke-width="1.4"/>
+            <rect x="140" y="352" width="130" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)"/>
+            <text x="152" y="373" fill="var(--ink)">&lt;keyframe&gt;</text>
+            <text x="288" y="373" fill="var(--muted)" font-family="IBM Plex Sans JP, sans-serif">
+              名前付きの初期姿勢。reset で使える</text>
+          </g>
+        </g>
+      </g>
+    </svg>
+    <figcaption>他にも <code>&lt;contact&gt;</code>（接触の除外設定）、<code>&lt;equality&gt;</code>（拘束）、
+      <code>&lt;tendon&gt;</code>（腱）などがあるが、必要になった時点で覚えればよい。</figcaption>
+  </div>
+</section>
+
+<!-- ===== 3 ===== -->
+<section id="s04">
+  <div class="sec-head">
+    <div class="eyebrow">03 · 最初の罠</div>
+    <h2>角度の単位はデフォルトで「度」</h2>
+  </div>
+
+  <p><strong>MJCF の角度はデフォルトで degree（度）。</strong>
+     一方 Python 側の <code>data.qpos</code> は<strong>常に radian（ラジアン）</strong>。
+     この不一致が、初学者が最初に踏む地雷になる。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>場所</th><th>単位</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td>MJCF の <code>euler</code> / <code>axisangle</code> / joint の <code>range</code></td>
+            <td><strong>degree</strong>（デフォルト）</td><td class="num">range="-90 90"</td></tr>
+        <tr><td>Python の <code>data.qpos</code> / <code>qvel</code></td>
+            <td><strong>radian</strong>（常に）</td><td class="num">data.qpos[0] = 1.57</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>混乱を避けるため、<strong>最初の 1 行でラジアンに統一する</strong>ことを強く勧める。</p>
+  <div class="code"><pre>&lt;compiler angle="radian"/&gt;</pre></div>
+
+  <p>こう書いておけば XML も Python も全部ラジアンになり、頭を切り替えずに済む。
+     ロボティクスの論文・ライブラリはほぼラジアンなので、そちらに合わせるほうが後々楽。</p>
+
+  <div class="callout">
+    <span class="k">他人のモデルを読むとき</span>
+    <p>MuJoCo 公式のサンプルや配布されているロボットモデルには
+       <code>angle="radian"</code> が書かれていないものも多い。その場合は degree で解釈される。
+       <strong>他人の MJCF を読むときは、まず <code>&lt;compiler&gt;</code> 行を確認する</strong>癖をつけること。
+       ここを見落とすと、関節の可動範囲が 57 倍ずれる。</p>
+  </div>
+</section>
+
+<!-- ===== 4 ===== -->
+<section id="s05">
+  <div class="sec-head">
+    <div class="eyebrow">04 · 核心</div>
+    <h2>body ツリーと親相対座標</h2>
+    <p>MJCF でいちばん重要な概念。<strong>すべての <code>pos</code> は親から見た相対位置</strong>であり、
+       ワールド座標ではない。多関節ロボットが破綻なく組めるのはこの仕組みのおかげ。</p>
+  </div>
+
+  <div class="code"><pre>&lt;worldbody&gt;
+  &lt;body name="upper" pos="0 0 1"&gt;              <span class="cmt">&lt;!-- world から見て高さ 1m --&gt;</span>
+    &lt;joint name="j1" type="hinge" axis="0 1 0"/&gt;
+    &lt;geom type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02"/&gt;
+
+    &lt;body name="lower" pos="0 0 -0.5"&gt;         <span class="cmt">&lt;!-- upper から見て 0.5m 下 --&gt;</span>
+      &lt;joint name="j2" type="hinge" axis="0 1 0"/&gt;
+      &lt;geom type="capsule" fromto="0 0 0  0 0 -0.4" size="0.02"/&gt;
+    &lt;/body&gt;
+  &lt;/body&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p><code>lower</code> の <code>pos="0 0 -0.5"</code> は「ワールドの高さ 0.5m」ではなく
+     「<strong>upper の原点から 0.5m 下</strong>」。しかも <code>upper</code> が <code>j1</code> で回転すれば、
+     <code>lower</code> は<strong>回転した先へ一緒に付いていく</strong>。
+     これが親相対座標の本質で、ロボットアームも脚も、この入れ子で表現される。</p>
+
+  <h3>動かして確かめる</h3>
+  <p>親フレームの位置と回転、子フレームの相対位置を変えると、
+     子のワールド座標がどう決まるかを見る。<strong>親を回すと子の相対位置がどう効くか</strong>に注目。</p>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="f-px">親の位置 x</label><span class="val" id="f-px-v">0.00</span></div>
+        <input type="range" id="f-px" min="-0.8" max="0.8" step="0.01" value="0">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="f-pz">親の位置 z</label><span class="val" id="f-pz-v">0.60</span></div>
+        <input type="range" id="f-pz" min="-0.2" max="1.0" step="0.01" value="0.6">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="f-ang">親の回転 θ</label><span class="val" id="f-ang-v">0.00 rad</span></div>
+        <input type="range" id="f-ang" min="-3.14" max="3.14" step="0.01" value="0">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="f-cx">子の相対 x</label><span class="val" id="f-cx-v">0.00</span></div>
+        <input type="range" id="f-cx" min="-0.6" max="0.6" step="0.01" value="0">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="f-cz">子の相対 z</label><span class="val" id="f-cz-v">-0.40</span></div>
+        <input type="range" id="f-cz" min="-0.6" max="0.6" step="0.01" value="-0.4">
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">親 world 座標</span><span class="rv" id="r-parent">—</span></div>
+        <div><span class="rk">子 world 座標</span><span class="rv" id="r-child">—</span></div>
+        <div><span class="rk">子の相対座標</span><span class="rv" id="r-rel">—</span></div>
+      </div>
+      <canvas id="cv-frames" width="820" height="440" aria-label="親フレームと子フレームの関係を示す図"></canvas>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">式で書くとこれだけ</span>
+    <p><code>子のworld座標 = 親のworld座標 + R(親の回転) × 子の相対座標</code><br>
+       親の回転行列 <code>R</code> が子の相対位置に掛かる、という一点だけ理解すれば十分。
+       この計算を全 body について根から順に行うのが<strong>順運動学</strong>であり、
+       <code>mj_step</code> が毎回やっている最初の仕事（Step 1 で見た <code>qpos → xpos</code>）。</p>
+  </div>
+
+  <h3>回転の書き方は 4 通りある</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>属性</th><th>形式</th><th>使いどころ</th></tr></thead>
+      <tbody>
+        <tr><td><code>quat</code></td><td class="num">w x y z</td><td>デフォルト。数値的に安全だが人間には読めない</td></tr>
+        <tr><td><code>euler</code></td><td class="num">rx ry rz</td><td><strong>手書きするならこれ</strong>。単位は compiler の設定に従う</td></tr>
+        <tr><td><code>axisangle</code></td><td class="num">x y z angle</td><td>「この軸まわりに何度」と言いたいとき直感的</td></tr>
+        <tr><td><code>zaxis</code></td><td class="num">x y z</td><td>z 軸をこの向きに合わせる。円筒形の部品を向けるのに便利</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== 5 ===== -->
+<section id="s06">
+  <div class="sec-head">
+    <div class="eyebrow">05</div>
+    <h2>joint — 自由度を作る</h2>
+    <p><code>&lt;joint&gt;</code> は「親 body に対してこの body がどう動けるか」の宣言。
+       <strong>joint を書かなければ、その body は親に溶接されて動かない。</strong></p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>type</th><th>自由度</th><th>nq</th><th>nv</th><th>実機での例</th></tr></thead>
+      <tbody>
+        <tr><td><code>hinge</code></td><td class="num">1</td><td class="num">1</td><td class="num">1</td><td>回転関節。サーボモータ、蝶番</td></tr>
+        <tr><td><code>slide</code></td><td class="num">1</td><td class="num">1</td><td class="num">1</td><td>直動関節。リニアガイド、カートのレール</td></tr>
+        <tr><td><code>ball</code></td><td class="num">3</td><td class="num">4</td><td class="num">3</td><td>球関節。肩、ジンバル</td></tr>
+        <tr><td><code>free</code></td><td class="num">6</td><td class="num">7</td><td class="num">6</td><td>宙に浮いた物体。四足の胴体、ドローン</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>主要な属性</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>属性</th><th>意味</th><th>実機との対応</th></tr></thead>
+      <tbody>
+        <tr><td><code>axis</code></td><td>回転軸・並進軸の方向（親座標系）</td><td>モータの取り付け向き</td></tr>
+        <tr><td><code>pos</code></td><td>関節の位置（body 座標系）</td><td>軸受けの位置</td></tr>
+        <tr><td><code>range</code></td><td>可動範囲</td><td>メカストッパ、サーボの可動域</td></tr>
+        <tr><td><code>damping</code></td><td>粘性抵抗 <code>τ = -c·q̇</code></td><td>グリス粘性、軸受けの抵抗</td></tr>
+        <tr><td><code>frictionloss</code></td><td>クーロン摩擦（速度によらない一定の抵抗）</td><td><strong>減速機の摩擦</strong>。実機で非常に大きい</td></tr>
+        <tr><td><code>armature</code></td><td>関節に付加される見かけの慣性</td><td><strong>モータ回転子の慣性 × 減速比²</strong></td></tr>
+        <tr><td><code>stiffness</code></td><td>バネ定数</td><td>ゴム、板バネ</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">Step 11 への伏線: armature と frictionloss</span>
+    <p>この 2 つは今すぐ使わないが、<strong>Sim2Real で決定的に効く</strong>ので名前だけ覚えておくこと。<br>
+       減速機付きサーボは、モータ回転子が減速比の 2 乗倍の慣性として関節に効く（<code>armature</code>）。
+       ギヤには速度によらない摩擦がある（<code>frictionloss</code>）。
+       この 2 つを入れないシミュレーションは<strong>実機よりずっと軽やかに動いてしまい</strong>、
+       そこで学習した方策は実機で通用しない。sim2real ギャップの主要因のひとつ。</p>
+  </div>
+</section>
+
+<!-- ===== 6 ===== -->
+<section id="s07">
+  <div class="sec-head">
+    <div class="eyebrow">06</div>
+    <h2>geom — 形と質量</h2>
+    <p>Step 1 で見たとおり、<strong>質量と慣性は geom の形状から自動計算される</strong>（密度デフォルト 1000 kg/m³）。</p>
+  </div>
+
+  <h3>size の意味は type ごとに違う</h3>
+  <p>ここが 2 番目の罠。<strong>box は「半分の長さ」</strong>を指定する。</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>type</th><th>size の意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td><code>sphere</code></td><td>半径</td><td class="num">size="0.05"</td></tr>
+        <tr><td><code>capsule</code></td><td>半径（<code>fromto</code> 併用時）</td><td class="num">size="0.02"</td></tr>
+        <tr><td><code>cylinder</code></td><td>半径, 半分の高さ</td><td class="num">size="0.05 0.1"</td></tr>
+        <tr><td><code>box</code></td><td><strong>各辺の半分</strong>の長さ（X,Y,Z）</td><td class="num">size="0.1 0.1 0.1" → 20cm 立方体</td></tr>
+        <tr><td><code>plane</code></td><td>X 半幅, Y 半幅, グリッド間隔</td><td class="num">size="2 2 0.1"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>質量を明示したいとき</h3>
+  <p>実機の部品は密度が一様ではない。実測した重さを直接書くほうが正確。</p>
+  <div class="code"><pre>&lt;geom type="box" size="0.1 0.05 0.02" mass="0.35"/&gt;      <span class="cmt">&lt;!-- 質量を直接指定 --&gt;</span>
+&lt;geom type="box" size="0.1 0.05 0.02" density="2700"/&gt;   <span class="cmt">&lt;!-- アルミの密度 --&gt;</span></pre></div>
+
+  <p>さらに正確を期すなら、慣性テンソルごと明示できる。CAD から取り出した値を入れる用途で、
+     Step 12 の実機モデリングで使うことになる。</p>
+  <div class="code"><pre>&lt;body name="link"&gt;
+  &lt;inertial pos="0 0 -0.12" mass="0.42" diaginertia="0.0021 0.0021 0.0003"/&gt;
+  &lt;geom type="mesh" mesh="link_mesh"/&gt;   <span class="cmt">&lt;!-- 見た目だけ。慣性は上で決まる --&gt;</span>
+&lt;/body&gt;</pre></div>
+
+  <div class="callout tip">
+    <span class="k">衝突と見た目を分ける</span>
+    <p>実務では 1 つの body に「見た目用の精密メッシュ」と「衝突判定用の単純な形」を
+       別々に持たせる。<code>contype="0" conaffinity="0"</code> を付けた geom は
+       衝突計算に参加せず、描画だけされる。メッシュ同士の衝突判定は非常に重いので、
+       衝突用には box や capsule を使う。Step 10 で速度が問題になったとき効いてくる。</p>
+  </div>
+</section>
+
+<!-- ===== 07 見た目 ===== -->
+<section id="s08">
+  <div class="sec-head">
+    <div class="eyebrow">07</div>
+    <h2>見た目を整える — 明るいシーンの作り方</h2>
+    <p>MuJoCo の既定の見た目は暗い。これは意図的な控えめ設定で、
+       モデルが悪いわけではない。<strong>描画設定は物理に一切影響しない</strong>ので、
+       安心して好きに変えてよい。</p>
+  </div>
+
+  <h3>なぜ暗いのか</h3>
+  <p>既定値を実際に読み出すと、原因がはっきりする。</p>
+  <div class="code"><pre class="sh">headlight.ambient = [0.1 0.1 0.1]     <span class="cmt"># 環境光がほぼ無い</span>
+headlight.diffuse = [0.4 0.4 0.4]     <span class="cmt"># 主光源も弱い</span>
+geom の既定 rgba  = [0.5 0.5 0.5 1]   <span class="cmt"># 中間グレー = 暗く見える</span></pre></div>
+  <p><code>&lt;light&gt;</code> を 1 つも書かないと、この弱いヘッドライトだけがシーンを照らす。
+     床も既定の中間グレーなので、全体がくすんで見える。</p>
+
+  <h3>明るいシーンの一式</h3>
+  <p>下の 3 ブロックを <code>&lt;worldbody&gt;</code> の前に置き、床に <code>material="grid"</code> を付ける。
+     これで一般的な MuJoCo デモと同等の見た目になる。</p>
+
+  <div class="code"><pre>&lt;visual&gt;
+  &lt;headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/&gt;
+  &lt;rgba haze="0.87 0.90 0.92 1"/&gt;
+  &lt;global azimuth="140" elevation="-20"/&gt;
+  &lt;quality shadowsize="4096"/&gt;
+&lt;/visual&gt;
+
+&lt;asset&gt;
+  <span class="cmt">&lt;!-- 空。上から下へのグラデーション --&gt;</span>
+  &lt;texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/&gt;
+
+  <span class="cmt">&lt;!-- 床のチェッカー模様。スケール感が掴めるので必ず入れる --&gt;</span>
+  &lt;texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/&gt;
+  &lt;material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.05"/&gt;
+
+  <span class="cmt">&lt;!-- リンク用のマテリアル。色をここで一元管理できる --&gt;</span>
+  &lt;material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/&gt;
+&lt;/asset&gt;
+
+&lt;worldbody&gt;
+  <span class="cmt">&lt;!-- キーライト: 影を落とす主光源 --&gt;</span>
+  &lt;light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" specular="0.15 0.15 0.15" castshadow="true"/&gt;
+
+  <span class="cmt">&lt;!-- フィルライト: 反対側から弱く当てて影を潰しすぎない --&gt;</span>
+  &lt;light name="fill" pos="-2 2 2.5" dir="0.5 -0.5 -1" directional="true" diffuse="0.15 0.15 0.15" castshadow="false"/&gt;
+
+  &lt;geom name="floor" type="plane" size="3 3 0.05" material="grid"/&gt;
+
+  <span class="cmt">&lt;!-- ここから下がロボット本体 --&gt;</span>
+&lt;/worldbody&gt;</pre></div>
+
+  <div class="callout">
+    <span class="k">最重要: 光量は足し算になる</span>
+    <p>MuJoCo の明るさは <strong>ヘッドライト ＋ 各 light の合計</strong>で決まる。
+       ヘッドライトを上げたまま <code>&lt;light&gt;</code> を 2 灯足すと合計が 1.0 を大きく超え、
+       <strong>床が真っ白に飛んでチェッカー模様が消える</strong>。<br>
+       上の設定はこのバランスを取ってある。<code>&lt;light&gt;</code> を明示的に置くなら
+       ヘッドライトは <code>0.3</code> 前後まで下げること。逆にライトを置かないなら
+       ヘッドライトを <code>0.45 / 0.75</code> くらいまで上げてよい。</p>
+  </div>
+
+  <div class="callout">
+    <span class="k">チェッカーが見えないときの診断</span>
+    <p>白飛びのほかに、<strong>2 色の差が小さすぎて見えない</strong>ケースがある。
+       <code>rgb1</code> と <code>rgb2</code> の差は <strong>0.25 以上</strong>取ること。
+       差が 0.1 程度だと、少し明るくしただけで消える。<br>
+       テクスチャ自体が適用されているかは Python 側で確認できる。</p>
+  </div>
+
+  <div class="code"><pre>fid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+print("matid   ", model.geom_matid[fid])      <span class="cmt"># -1 ならマテリアル未適用</span>
+print("texid   ", model.mat_texid[model.geom_matid[fid]])
+print("texrepeat", model.mat_texrepeat)</pre></div>
+
+  <p><code>matid</code> が <code>-1</code> なら <code>material="grid"</code> の書き忘れかタイポ。
+     <code>-1</code> でないのに見えないなら、原因は<strong>光量かコントラスト</strong>。</p>
+
+  <h3>それぞれ何をしているか</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>要素・属性</th><th>効果</th></tr></thead>
+      <tbody>
+        <tr><td><code>headlight ambient</code></td><td>全方向から当たる環境光。上げると影の中も見えるようになる</td></tr>
+        <tr><td><code>headlight diffuse</code></td><td>カメラ位置から当たる主光源。全体の明るさ</td></tr>
+        <tr><td><code>global azimuth / elevation</code></td><td>起動時のカメラ角度。毎回マウスで回さずに済む</td></tr>
+        <tr><td><code>quality shadowsize</code></td><td>影の解像度。既定は粗いのでギザギザする</td></tr>
+        <tr><td><code>texture skybox</code></td><td>背景。空があると奥行きが出て姿勢が読み取りやすい</td></tr>
+        <tr><td><code>texture checker</code> + <code>material</code></td><td><strong>床の格子模様。スケール感と移動量が目で分かる</strong></td></tr>
+        <tr><td><code>light directional="true"</code></td><td>平行光線（太陽光）。位置ではなく <code>dir</code> の向きだけが効く</td></tr>
+        <tr><td><code>castshadow</code></td><td>影を落とすか。<strong>影があると 3D の奥行きが一気に分かる</strong></td></tr>
+        <tr><td><code>material</code></td><td>色・光沢の定義。複数 geom で共有でき、色の一元管理ができる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">床のチェッカーは実用装備</span>
+    <p>見栄えの問題ではない。<strong>格子があるとロボットがどれだけ移動したか目で測れる</strong>。
+       単色の床では、カメラが動いているのかロボットが動いているのか区別がつかない。
+       Step 10 で歩行を見るとき、これが無いと進んでいるかどうか判定できない。</p>
+  </div>
+
+  <h3>カメラを配置する</h3>
+  <p>既定の「フリーカメラ」はマウスで回す軌道カメラで、起動時の距離は
+     <code>1.5 × model.stat.extent</code>、注視点は <code>model.stat.center</code> で決まる。</p>
+
+  <div class="code"><pre>&lt;statistic extent="4" center="0 0 0.5"/&gt;    <span class="cmt">&lt;!-- 計算上のカメラ距離は 6.0 --&gt;</span></pre></div>
+
+  <div class="callout">
+    <span class="k">注意: statistic はビューアに効かないことがある</span>
+    <p><code>&lt;statistic extent&gt;</code> が変えるのは <strong>フリーカメラの初期距離の計算値</strong>だけで、
+       インタラクティブビューア（<code>launch_passive</code>）はこれを初期カメラに反映しないことがある。
+       実際 <code>mjv_defaultFreeCamera</code> が 6.0 を返していても、ビューアの見た目が変わらない。<br>
+       <strong>XML だけで確実に決めたいなら、次の「固定カメラを起動時カメラにする」を使う。</strong></p>
+  </div>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:6px">固定カメラを起動時カメラにする（確実）</h4>
+  <p><code>&lt;camera&gt;</code> を定義し、<code>&lt;global cameraid&gt;</code> でそれを起動時カメラに指定する。
+     <strong>引き具合はカメラの <code>pos</code> そのもの</strong>になるので、曖昧さがない。</p>
+
+  <div class="code"><pre>&lt;visual&gt;
+  &lt;global azimuth="140" elevation="-20" cameraid="0"/&gt;   <span class="cmt">&lt;!-- 0 番のカメラで起動 --&gt;</span>
+&lt;/visual&gt;
+
+&lt;worldbody&gt;
+  &lt;camera name="main" pos="0 -6 1.5" mode="targetbody" target="upper"/&gt;
+  ...
+&lt;/worldbody&gt;</pre></div>
+
+  <div class="callout">
+    <span class="k">launch_passive は cameraid を自動では見ない</span>
+    <p><code>mujoco.viewer.launch_passive</code> は <code>mujoco.MjvCamera()</code> を
+       <strong>まっさらな状態で作ってビューアに渡す</strong>実装になっており、
+       <code>model.vis.global_.cameraid</code> を読まない。
+       つまり XML に <code>cameraid</code> を書いてもフリーカメラのまま起動する。<br>
+       設定は XML に置いたまま、スクリプト側で<strong>それを反映する 3 行</strong>を書けばよい。
+       この 3 行は汎用なので、以後どのモデルでも XML だけで制御できるようになる。</p>
+  </div>
+
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    <span class="cmt"># XML の &lt;global cameraid="..."&gt; を反映する</span>
+    if model.vis.global_.cameraid &gt;= 0:
+        viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        viewer.cam.fixedcamid = model.vis.global_.cameraid
+
+    while viewer.is_running():
+        ...</pre></div>
+
+  <p>ビューア左パネルの <strong>Camera セレクタ</strong>に <code>Free / main</code> が並んでいれば、
+     カメラ定義自体は正しく読まれている。手動で切り替えることもできる。</p>
+
+  <p><code>cameraid</code> は <code>&lt;camera&gt;</code> を定義した順のインデックス（1 台目が <code>0</code>）。
+     <code>-1</code> がフリーカメラで、これが既定。
+     ビューアの <strong>Camera セレクタ</strong>で <code>Free</code> に戻せば、いつでもマウス操作の軌道カメラに切り替わる。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>設定</th><th>効く対象</th><th>確実性</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;statistic extent&gt;</code></td><td>フリーカメラの初期距離</td><td>ビューアでは反映されないことがある</td></tr>
+        <tr><td><code>&lt;camera&gt;</code> + <code>&lt;global cameraid&gt;</code></td><td><strong>起動時カメラそのもの</strong></td><td>確実。ただし <code>launch_passive</code> では上の 3 行で反映が必要</td></tr>
+        <tr><td><code>viewer.cam.distance</code>（Python）</td><td>実行時の上書き</td><td>確実。ただしスクリプトごと</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>好きな位置から見たいなら <code>&lt;camera&gt;</code> を置く。何台でも定義でき、
+     ビューアの <strong>Camera セレクタ</strong>で切り替えられる。</p>
+
+  <div class="code"><pre>&lt;worldbody&gt;
+  <span class="cmt">&lt;!-- 横から。targetbody なら常に対象を向くので向きの計算が不要 --&gt;</span>
+  &lt;camera name="side" pos="0 -3.5 1.2" mode="targetbody" target="upper"/&gt;
+
+  <span class="cmt">&lt;!-- 正面から。xyaxes で向きを直接指定 --&gt;</span>
+  &lt;camera name="front" pos="3.5 0 1.0" xyaxes="0 1 0  0 0 1"/&gt;
+
+  <span class="cmt">&lt;!-- 真上から --&gt;</span>
+  &lt;camera name="top" pos="0 0 4" xyaxes="1 0 0  0 1 0"/&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p><code>xyaxes</code> は「カメラの x 軸と y 軸を world のどの向きに合わせるか」の指定。
+     <strong>カメラは自分の -z 方向を見る</strong>。慣れるまでは <code>targetbody</code> のほうが楽。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>mode</th><th>挙動</th><th>使いどころ</th></tr></thead>
+      <tbody>
+        <tr><td><code>fixed</code>（既定）</td><td>置いた場所に固定</td><td>定点観測、動画撮影</td></tr>
+        <tr><td><code>targetbody</code></td><td>位置は固定、<strong>常に対象を向く</strong></td><td>振り子・アームの観察</td></tr>
+        <tr><td><code>track</code></td><td><strong>対象と一緒に移動</strong>、向きはワールド固定</td><td><strong>Step 10 の歩行</strong>。追いかけカメラ</td></tr>
+        <tr><td><code>trackcom</code></td><td>重心を追う</td><td>多リンクの全体を追う</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><code>track</code> は追跡したい body の中に置く。歩行ロボットが画面外に出ていかなくなる。</p>
+  <div class="code"><pre>&lt;body name="torso"&gt;
+  &lt;camera name="follow" pos="0 -3 1" mode="track"/&gt;
+  ...
+&lt;/body&gt;</pre></div>
+
+  <p>Python から切り替えるとき、およびオフスクリーン描画のとき:</p>
+  <div class="code"><pre>viewer.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+viewer.cam.fixedcamid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, "side")
+
+renderer.update_scene(data, camera="side")     <span class="cmt"># 動画保存などのオフスクリーン描画</span></pre></div>
+
+  <div class="callout tip">
+    <span class="k">カメラの置き場所は関節軸で決まる</span>
+    <p>joint が <code>axis="0 1 0"</code>（y 軸まわり）なら、運動は <strong>x-z 平面内</strong>で起きる。
+       これを観察するには <strong>y 軸上（横）にカメラを置く</strong>必要がある。
+       x 軸上に置くと、曲がっている振り子が真っ直ぐに見えてしまう。<br>
+       カートポールも同じで、台車が x 方向に動き棒が y 軸まわりに倒れるなら、カメラは -y 側。
+       <strong>関節軸を見れば、どこから見るべきかが決まる。</strong></p>
+  </div>
+
+  <h3>ワールド原点に 3 軸を表示する</h3>
+  <p>座標軸が見えていると、<code>pos</code> の符号ミスや <code>axis</code> の向き違いが即座に分かる。
+     方法は 2 つあり、<strong>まずは方法 1 で十分</strong>。</p>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:4px">方法 1: ビューアの Frame 表示（XML 不要・推奨）</h4>
+  <p>ビューア左の <strong>Rendering パネル → Frame</strong> を <code>World</code> にする。
+     太い RGB の矢印で原点の 3 軸が出る。<code>Body</code> にすれば全 body の座標系が出るので、
+     <strong>親相対座標がどう積み重なっているかが一目で分かる</strong>。</p>
+
+  <p>起動時から出しておきたいなら Python から指定する。</p>
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    with viewer.lock():                                    <span class="cmt"># UI は別スレッドなのでロックする</span>
+        viewer.opt.frame = mujoco.mjtFrame.mjFRAME_WORLD   <span class="cmt"># 原点の 3 軸</span>
+        viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True   <span class="cmt"># 関節軸も一緒に</span></pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>mjtFrame の値</th><th>表示されるもの</th></tr></thead>
+      <tbody>
+        <tr><td><code>mjFRAME_NONE</code>（既定）</td><td>なし</td></tr>
+        <tr><td><code>mjFRAME_WORLD</code></td><td><strong>ワールド原点の 3 軸</strong></td></tr>
+        <tr><td><code>mjFRAME_BODY</code></td><td>全 body の座標系。<strong>親相対座標の確認に最適</strong></td></tr>
+        <tr><td><code>mjFRAME_GEOM</code> / <code>mjFRAME_SITE</code></td><td>各 geom / site の座標系</td></tr>
+        <tr><td><code>mjFRAME_CAMERA</code> / <code>mjFRAME_LIGHT</code></td><td>カメラ・ライトの向き</td></tr>
+        <tr><td><code>mjFRAME_CONTACT</code></td><td>接触点の座標系。Step 3 の接触デバッグで使う</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4 style="font-family:var(--f-display);font-size:15px;margin-top:10px">方法 2: XML に site で描く</h4>
+  <p>常に出しておきたい、色や長さを自分で決めたいときはこちら。
+     <strong><code>geom</code> ではなく <code>site</code> を使うこと。</strong></p>
+
+  <div class="code"><pre>&lt;worldbody&gt;
+  &lt;site name="axis_x" type="cylinder" fromto="0 0 0.002  0.4 0 0.002" size="0.008" rgba="0.9 0.15 0.15 1"/&gt;
+  &lt;site name="axis_y" type="cylinder" fromto="0 0 0.002  0 0.4 0.002" size="0.008" rgba="0.15 0.7 0.2 1"/&gt;
+  &lt;site name="axis_z" type="cylinder" fromto="0 0 0      0 0 0.4"     size="0.008" rgba="0.2 0.35 0.9 1"/&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p>色は世界共通の慣習で <strong>赤 = X / 緑 = Y / 青 = Z</strong>（RGB = XYZ）。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th><code>geom</code></th><th><code>site</code></th></tr></thead>
+      <tbody>
+        <tr><td>衝突判定</td><td><strong>する</strong></td><td>しない</td></tr>
+        <tr><td>質量・慣性への寄与</td><td><strong>する</strong></td><td>しない</td></tr>
+        <tr><td>用途</td><td>実体のある物体</td><td>マーカー、センサ取付点、目標位置</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><code>geom</code> で軸を描くと<strong>見た目の飾りが物理に混入する</strong>
+     （見えない棒に衝突する、質量が増えて周期が変わる）。<code>site</code> なら物理は一切変わらない。</p>
+
+  <div class="callout">
+    <span class="k">site が見えないときの 3 つの原因</span>
+    <p><strong>1. group が 3 以上</strong> — MuJoCo の初期表示は group 0-2 のみ
+       （<code>sitegroup = [1,1,1,0,0,0]</code>）。<code>group</code> を書かなければ 0 なので出る。<br>
+       <strong>2. <code>size</code> の桁違い</strong> — <code>size</code> は<strong>半径</strong>。
+       <code>0.008</code> = 8mm。<code>0.8</code> と書くと画面を覆う巨大な円盤になる。<br>
+       <strong>3. 床に埋まっている</strong> — X 軸と Y 軸は <code>z=0</code> の plane と同じ高さなので半分埋まる。
+       上の例で <code>0.002</code> だけ浮かせているのはこのため。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 2 で本当に効くのは Joint 表示</span>
+    <p>原点の軸より重要なのが <strong>Rendering パネルの Joint 表示</strong>。
+       <code>axis="0 1 0"</code> と書いた関節が意図した向きに付いているかは、
+       数字を睨むより見るほうが確実。<strong>回転軸を間違えたまま気づかず RL を回す事故</strong>は
+       初期に非常によく起きる。カートポールを組んだら必ず ON にして確認すること。</p>
+  </div>
+
+  <h3>Python 側から変えることもできる</h3>
+  <p>描画パラメータは <code>MjModel</code> の中にあり、実行時に書き換えられる。</p>
+  <div class="code"><pre>model.vis.headlight.ambient[:] = [0.30, 0.30, 0.30]
+model.vis.headlight.diffuse[:] = [0.35, 0.35, 0.35]
+
+model.vis.global_.azimuth = 140      <span class="cmt"># global は Python の予約語なので global_</span>
+model.vis.global_.elevation = -20
+
+fid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+model.geom_rgba[fid] = [0.85, 0.87, 0.85, 1]</pre></div>
+
+  <p>ビューアのカメラと表示オプションは <code>viewer</code> 側にある。</p>
+  <div class="code"><pre>with mujoco.viewer.launch_passive(model, data) as viewer:
+    viewer.cam.distance = 3.0
+    viewer.cam.lookat[:] = [0, 0, 0.6]
+    viewer.cam.azimuth = 140
+    viewer.cam.elevation = -20
+
+    with viewer.lock():          <span class="cmt"># UI は別スレッドなのでロックしてから触る</span>
+        viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True   <span class="cmt"># 関節軸を常時表示</span></pre></div>
+
+  <h3>どちらに書くべきか</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th></th><th>XML に書く</th><th>Python に書く</th></tr></thead>
+      <tbody>
+        <tr><td>向いているもの</td><td><strong>モデル固有の見た目</strong>。床、照明、既定カメラ、部品の色</td>
+            <td><strong>スクリプトごとの都合</strong>。デバッグ表示、実行時に切り替えたいもの</td></tr>
+        <tr><td>適用範囲</td><td>そのモデルを開く全スクリプト</td><td>そのスクリプトだけ</td></tr>
+        <tr><td>git</td><td>モデルの差分として残る</td><td>コードの差分として残る</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>推奨は XML。</strong> <code>view_model.py</code>・学習スクリプト・評価スクリプトのどれから開いても
+     同じ見た目になる。Python 側に書くと、スクリプトを増やすたびにコピーすることになる。</p>
+
+  <div class="callout">
+    <span class="k">Step 11 への伏線: 照明のドメインランダマイゼーション</span>
+    <p>「描画は物理に影響しない」には例外がある。<strong>カメラ画像を観測に使う方策</strong>を作る場合、
+       照明は方策の入力そのものになる。実機の照明環境はシミュと必ず違うので、
+       学習中に毎エピソード <code>model.light_diffuse</code> や <code>headlight</code> を
+       ランダムに変えて頑健化する。<br>
+       そのときに使うのが、ここで見た<strong>「Python から実行時に書き換えられる」</strong>という性質。</p>
+  </div>
+</section>
+
+<!-- ===== 7 ===== -->
+<section id="s09">
+  <div class="sec-head">
+    <div class="eyebrow">08</div>
+    <h2>actuator — ついに動かせるようになる</h2>
+    <p><code>nu = 0</code> だった振り子に、モータを 1 つ付ける。</p>
+  </div>
+
+  <div class="code"><pre>&lt;actuator&gt;
+  &lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-2 2"/&gt;
+&lt;/actuator&gt;</pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>属性</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td><code>joint</code></td><td>どの関節を駆動するか</td></tr>
+        <tr><td><code>gear</code></td><td>制御入力に掛かる係数。<code>実際のトルク = ctrl × gear</code></td></tr>
+        <tr><td><code>ctrlrange</code></td><td>入力の許容範囲。<strong>実機のトルク上限に対応する</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Python 側からはこう使う。</p>
+  <div class="code"><pre>data.ctrl[0] = 0.5          <span class="cmt"># トルク 0.5 N·m を与える（gear=1 のとき）</span>
+mujoco.mj_step(model, data)</pre></div>
+
+  <div class="callout">
+    <span class="k">ctrlrange は飾りではない</span>
+    <p><code>ctrlrange</code> は<strong>実機のモータが出せる最大トルク</strong>に対応させる。
+       ここを無限大にしておくと、シミュレーション上では一撃で振り子が立ち上がる方策が学習される。
+       しかしそのトルクは実機では出せないので、<strong>実機に載せた瞬間に破綻する</strong>。<br>
+       Step 4 でスイングアップが「難しい問題」になるのも、この上限があるから。
+       上限が十分大きければ、力任せに持ち上げるだけの退屈な問題になる。</p>
+  </div>
+
+  <p>アクチュエータには <code>motor</code>（トルク指令）以外に
+     <code>position</code>（位置指令）、<code>velocity</code>（速度指令）がある。
+     <strong>この使い分けは実機のモータ制御方式そのもの</strong>で、
+     sim2real の成否を分ける重要な選択になる。Step 3 で詳しく扱う。</p>
+</section>
+
+<!-- ===== 8 ===== -->
+<section id="s10">
+  <div class="sec-head">
+    <div class="eyebrow">09</div>
+    <h2>default — 繰り返しをまとめる</h2>
+    <p>脚が 4 本ある、関節が 12 個ある、といったモデルで同じ属性を書き続けるのは苦痛。
+       <code>&lt;default&gt;</code> は CSS のクラスに近い仕組み。</p>
+  </div>
+
+  <div class="code"><pre>&lt;default&gt;
+  &lt;joint damping="0.05" armature="0.01"/&gt;        <span class="cmt">&lt;!-- 全 joint の既定値 --&gt;</span>
+  &lt;geom rgba="0.2 0.4 0.9 1"/&gt;
+
+  &lt;default class="link"&gt;                          <span class="cmt">&lt;!-- 名前付きクラス --&gt;</span>
+    &lt;geom type="capsule" size="0.02"/&gt;
+  &lt;/default&gt;
+&lt;/default&gt;
+
+&lt;worldbody&gt;
+  &lt;body name="upper" pos="0 0 1"&gt;
+    &lt;joint type="hinge" axis="0 1 0"/&gt;            <span class="cmt">&lt;!-- damping=0.05 が自動で入る --&gt;</span>
+    &lt;geom class="link" fromto="0 0 0  0 0 -0.5"/&gt; <span class="cmt">&lt;!-- type と size をクラスから継承 --&gt;</span>
+  &lt;/body&gt;
+&lt;/worldbody&gt;</pre></div>
+
+  <p>個別に書いた属性はクラスの値を上書きする。この優先順位も CSS と同じ感覚でよい。</p>
+</section>
+
+<!-- ===== 9 ===== -->
+<section id="s11">
+  <div class="sec-head">
+    <div class="eyebrow">10</div>
+    <h2>sensor — 実機センサとの接点</h2>
+    <p>「シミュレーション上で何が測れるか」を宣言する。
+       <strong>実機で測れないものをここに書いてはいけない</strong>、という制約意識がここで芽生える。</p>
+  </div>
+
+  <div class="code"><pre>&lt;sensor&gt;
+  &lt;jointpos name="theta" joint="hinge"/&gt;      <span class="cmt">&lt;!-- 関節角度 = エンコーダ --&gt;</span>
+  &lt;jointvel name="omega" joint="hinge"/&gt;      <span class="cmt">&lt;!-- 関節角速度 --&gt;</span>
+&lt;/sensor&gt;</pre></div>
+
+  <div class="code"><pre>print(data.sensordata)      <span class="cmt"># 定義した順に値が並ぶ</span></pre></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>センサ</th><th>測るもの</th><th>実機の部品</th></tr></thead>
+      <tbody>
+        <tr><td><code>jointpos</code> / <code>jointvel</code></td><td>関節の角度・角速度</td><td>エンコーダ、ポテンショメータ</td></tr>
+        <tr><td><code>framequat</code></td><td>body の姿勢</td><td>IMU（姿勢推定後）</td></tr>
+        <tr><td><code>gyro</code></td><td>角速度</td><td>IMU のジャイロ</td></tr>
+        <tr><td><code>accelerometer</code></td><td>加速度</td><td>IMU の加速度計</td></tr>
+        <tr><td><code>force</code> / <code>torque</code></td><td>力・トルク</td><td>力覚センサ、電流からの推定</td></tr>
+        <tr><td><code>framepos</code></td><td>site のワールド座標</td><td><strong>実機では直接測れない</strong>（要モーションキャプチャ）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">Step 11 への伏線: 特権情報</span>
+    <p>表の最後の <code>framepos</code> のように、<strong>シミュレーションでは簡単に取れるが実機では取れない量</strong>がある。
+       これを観測に入れて学習すると、シミュ上では高性能なのに実機では全く動かない方策ができる。<br>
+       ただし Critic（価値関数）にだけ与えるのは有効で、これを<strong>非対称 Actor-Critic</strong> と呼ぶ。
+       Step 11 の主要テクニックのひとつ。</p>
+  </div>
+</section>
+
+<!-- ===== 10 ===== -->
+<section id="s12">
+  <div class="sec-head">
+    <div class="eyebrow">11 · 課題</div>
+    <h2>手を動かす</h2>
+    <p>段階ごとに区切ってある。<strong>各段階の最後で必ずビューアを開いて確認すること。</strong>
+       まとめて書いてから動かすと、どこで壊れたのか分からなくなる。
+       「少し書く → 見る」の反復が、モデリングでは最も速い。</p>
+  </div>
+
+  <!-- ============ 課題 1 ============ -->
+  <div class="task">
+    <span class="tno">課題 1</span>
+    <h3>振り子にモータとセンサを付ける</h3>
+    <p><code>nu = 0</code>（誰も動かせない）から <code>nu = 1</code>（トルクを与えられる）へ。
+       ここを越えると制御と強化学習の話が始まる。</p>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-1</span><h4>単振り子に戻す</h4></div>
+      <p>§04 の説明で二重振り子にしたなら、まず単振り子に戻す。
+         二重振り子は <code>models/double_pendulum.xml</code> として別ファイルに退避しておくこと
+         （課題 3 でそのまま使う）。</p>
+      <div class="code"><pre>&lt;worldbody&gt;
+  &lt;body name="pole" pos="0 0 1"&gt;
+    &lt;joint name="hinge" type="hinge" axis="0 1 0"/&gt;
+    &lt;geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 -0.5" size="0.02" material="link"/&gt;
+  &lt;/body&gt;
+&lt;/worldbody&gt;</pre></div>
+      <p class="why"><b>なぜ</b> 課題は 1 自由度が前提。二重振り子のままだと <code>nq</code> も
+         <code>nu</code> も想定と変わり、確認したい数字が読めなくなる。
+         <b>確認</b> <code>uv run view_model.py pendulum.xml</code> で <code>njnt=1</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-2</span><h4>damping を足す</h4></div>
+      <div class="code"><pre>&lt;joint name="hinge" type="hinge" axis="0 1 0" damping="0.05"/&gt;</pre></div>
+      <p class="why"><b>なぜ</b> 実機の軸受けやグリスには必ず抵抗がある。
+         <code>damping</code> が無いと振り子は永久に揺れ続け、現実と乖離する。
+         値は「実測して合わせる」もので、Step 11 のシステム同定で調整対象になる。
+         <b>確認</b> <code>--sim</code> で動かし、振幅が徐々に小さくなること。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-3</span><h4>モータを付ける（nu = 1 になる）</h4></div>
+      <p><code>&lt;/worldbody&gt;</code> の<strong>後ろ</strong>に追加する。</p>
+      <div class="code"><pre>&lt;actuator&gt;
+  &lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-2 2"/&gt;
+&lt;/actuator&gt;</pre></div>
+      <p class="why"><b>joint="hinge"</b> でどの関節を駆動するか指定する。名前が一致していないとエラー。<br>
+         <b>gear="1"</b> は <code>実トルク = ctrl × gear</code>。減速機付きモータをモデル化するときここが効く。<br>
+         <b>ctrlrange="-2 2"</b> は<strong>実機のトルク上限</strong>に対応する。無制限にすると、
+         実機では出せないトルクを前提にした方策が学習されてしまう。
+         <b>確認</b> サマリに <code>nu=1</code> と <code>actuator[0] torque ctrlrange=[-2. 2.]</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-4</span><h4>センサを付ける</h4></div>
+      <div class="code"><pre>&lt;sensor&gt;
+  &lt;jointpos name="theta" joint="hinge"/&gt;
+  &lt;jointvel name="omega" joint="hinge"/&gt;
+&lt;/sensor&gt;</pre></div>
+      <p class="why"><b>なぜ</b> <code>data.qpos</code> を直接読めば同じ値は得られるが、
+         <strong>実機で測れるものだけを sensor として宣言する</strong>癖をつけるためにこう書く。
+         この区別が Step 11 の「特権情報」の議論に直結する。<br>
+         <b>並び順</b> <code>data.sensordata</code> は<strong>定義した順</strong>に値が並ぶ。
+         <code>sensordata[0]</code> が角度、<code>[1]</code> が角速度。
+         <b>確認</b> <code>nsensordata=2</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-5</span><h4>トルクを与えて動かす</h4></div>
+      <p><strong>実行する前に予想すること。</strong> 一定トルク 1.0 を与え続けたら、
+         振り子は回り続けるか、それともある角度で釣り合って止まるか。</p>
+      <div class="code"><pre>data.ctrl[0] = 1.0                  <span class="cmt"># トルク 1.0 N·m を与え続ける</span>
+
+for i in range(2000):
+    mujoco.mj_step(model, data)
+    if i % 400 == 0:
+        print(f"t={data.time:5.2f}  angle={data.sensordata[0]:7.3f}  rate={data.sensordata[1]:7.3f}")</pre></div>
+      <p class="why"><b>見どころ</b> 重力の復元トルクは <code>-m·g·d·sin θ</code> で、
+         θ が 90° のとき最大 <code>m·g·d</code> になる。この値とモータのトルクの<strong>大小関係</strong>が
+         結果を決める。振り子の <code>m·g·d</code> は約 1.62 N·m だった（Step 1 で計算した値）。
+         トルク 1.0 はそれより小さい。ならばどうなるか。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-6</span><h4>トルク上限を変えて比べる</h4></div>
+      <div class="code"><pre>&lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-0.5 0.5"/&gt;</pre></div>
+      <p class="why"><b>なぜ</b> <code>ctrl</code> に 1.0 を書いても、<code>ctrlrange</code> の外なら
+         <strong>0.5 に切り詰められる</strong>。「指令したのに動かない」の典型原因。<br>
+         <b>Step 4 への接続</b> トルク上限が <code>m·g·d</code> より小さいと、
+         振り子は<strong>力任せには持ち上がらない</strong>。何度も揺すって勢いをつけるしかない。
+         これがスイングアップが面白い問題になる理由そのもの。</p>
+    </div>
+  </div>
+
+  <!-- ============ 課題 2 ============ -->
+  <div class="task">
+    <span class="tno">課題 2 · 本題</span>
+    <h3>カートポールをゼロから組む</h3>
+    <p>台車がレール上を滑り、その上に棒が立つ系。<strong>強化学習の Hello World</strong> で、
+       Step 5 以降ずっと使う。完成形は <code>nq=2 nv=2 nu=1</code> になる。</p>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-1</span><h4>器を作る（床とシーンだけ）</h4></div>
+      <p><code>models/cartpole.xml</code> を新規作成。まずロボット抜きで、床が映ることだけ確認する。</p>
+      <div class="code"><pre>&lt;mujoco model="cartpole"&gt;
+  &lt;compiler angle="radian"/&gt;
+  &lt;option timestep="0.002"/&gt;
+  &lt;statistic extent="2" center="0 0 0.6"/&gt;
+
+  &lt;visual&gt;
+    &lt;headlight ambient="0.30 0.30 0.30" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/&gt;
+    &lt;global azimuth="90" elevation="-15" cameraid="0"/&gt;
+  &lt;/visual&gt;
+
+  &lt;asset&gt;
+    &lt;texture type="skybox" builtin="gradient" rgb1="0.62 0.74 0.86" rgb2="0.94 0.96 0.97" width="512" height="3072"/&gt;
+    &lt;texture type="2d" name="grid" builtin="checker" mark="edge" rgb1="0.85 0.87 0.86" rgb2="0.55 0.60 0.58" markrgb="0.35 0.38 0.36" width="300" height="300"/&gt;
+    &lt;material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.05"/&gt;
+    &lt;material name="link" rgba="0.25 0.45 0.85 1" specular="0.3" shininess="0.4"/&gt;
+    &lt;material name="rail" rgba="0.55 0.58 0.60 1"/&gt;
+  &lt;/asset&gt;
+
+  &lt;worldbody&gt;
+    &lt;camera name="main" pos="0 -3.5 1.0" xyaxes="1 0 0  0 0 1"/&gt;
+    &lt;light name="key" pos="1.5 -1.5 3" dir="-0.4 0.4 -1" directional="true" diffuse="0.45 0.45 0.45" castshadow="true"/&gt;
+    &lt;geom name="floor" type="plane" size="3 3 0.05" material="grid"/&gt;
+  &lt;/worldbody&gt;
+&lt;/mujoco&gt;</pre></div>
+      <p class="why"><b>カメラは target を使わない形にしておく</b> この段階では body が 1 つも無いので、
+         <code>mode="targetbody" target="cart"</code> と書くと存在しない body を参照してエラーになる。
+         <code>xyaxes="1 0 0  0 0 1"</code> は「カメラの x 軸を world の +x、y 軸を +z に合わせる」の意味で、
+         結果として <strong>+y 方向を向く</strong>。<code>y=-3.5</code> から原点を見る真横の視点になる。
+         台車が x 方向に動き棒が y 軸まわりに倒れるので、これが正しい視点。<br>
+         2-4 で <code>cart</code> ができたら <code>mode="targetbody" target="cart"</code> に変えてもよい。<br>
+         <b>確認</b> <code>uv run view_model.py cartpole.xml</code> で
+         <code>nq=0 nv=0 nu=0 nbody=1 ncam=1</code> と表示され、床だけが見える。
+         <code>nbody=1</code> は world だけという意味で、この段階では正常。</p>
+
+      <div class="callout">
+        <span class="k">カメラを消すなら cameraid も消す</span>
+        <p><code>ERROR fixed camera id is outside valid range</code> が出たら、
+           <code>&lt;global cameraid="0"/&gt;</code> が「0 番のカメラを使え」と指示しているのに
+           カメラが 1 台も無い状態。<strong>参照が切れている</strong>ので、
+           カメラを定義するか <code>cameraid</code> を消すかのどちらかにする。</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-2</span><h4>レールを引く（見た目だけ）</h4></div>
+      <div class="code"><pre>&lt;geom name="rail" type="capsule" fromto="-1.6 0 0.5  1.6 0 0.5" size="0.01" material="rail" contype="0" conaffinity="0"/&gt;</pre></div>
+      <p class="why"><b>contype="0" conaffinity="0"</b> が肝。これを付けた geom は
+         <strong>衝突計算に一切参加せず、描画だけされる</strong>。
+         レールは「台車がここを通る」ことを目で示すための飾りで、物理的に台車を支えているわけではない。
+         支えているのは次に作る <code>slide</code> 関節のほう。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-3</span><h4>台車を作る — ここが最初の判断</h4></div>
+      <p>台車を <strong>x 方向にだけ滑らせる</strong>には、joint の <code>type</code> と
+         <code>axis</code> をどう書くか。§05 の表を見て自分で決めること。</p>
+      <div class="code"><pre>&lt;body name="cart" pos="0 0 0.5"&gt;
+  &lt;joint name="slider" type="???" axis="? ? ?" range="-1.5 1.5"/&gt;
+  &lt;geom name="cart_geom" type="box" size="0.1 0.05 0.05" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;joint name="slider" type="slide" axis="1 0 0" range="-1.5 1.5"/&gt;</pre></div>
+          <p class="why"><b>slide</b> は直動関節。<code>axis="1 0 0"</code> で x 方向に限定される。
+             上下にも前後にも動かないのは、その自由度を<strong>作っていない</strong>から。
+             実機ならリニアガイドに相当する。<br>
+             <b>range</b> はメカストッパ。実機のレールには端がある。<br>
+             <b>size="0.1 0.05 0.05"</b> は box なので<strong>半分の長さ</strong>。
+             実寸は 20cm × 10cm × 10cm。<br>
+             <b>台車が落ちない理由</b> 鉛直方向の自由度が無いから。重力は掛かっているが、
+             動ける方向が x しかないので落ちようがない。</p>
+        </div>
+      </details>
+      <p class="why"><b>確認</b> <code>nq=1 nv=1</code>。ビューアで <strong>Rendering → Joint を ON</strong> にして、
+         矢印が x 方向を向いているか目で見る。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-4</span><h4>棒を載せる — ここが最大の考えどころ</h4></div>
+      <p><code>cart</code> の<strong>子</strong>として <code>pole</code> を作る。
+         棒が倒れる回転軸は x・y・z のどれか。<br>
+         ヒント: 台車は x 方向に動く。棒はその動きに合わせて<strong>どの平面内で</strong>倒れてほしいか。
+         その平面に<strong>垂直な軸</strong>が回転軸になる。</p>
+      <div class="code"><pre>&lt;body name="pole" pos="0 0 0"&gt;
+  &lt;joint name="hinge" type="hinge" axis="? ? ?"/&gt;
+  &lt;geom name="pole_geom" type="capsule" fromto="? ? ?  ? ? ?" size="0.02" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;body name="pole" pos="0 0 0"&gt;
+  &lt;joint name="hinge" type="hinge" axis="0 1 0"/&gt;
+  &lt;geom name="pole_geom" type="capsule" fromto="0 0 0  0 0 0.6" size="0.02" material="link"/&gt;
+&lt;/body&gt;</pre></div>
+          <p class="why"><b>axis="0 1 0"</b> — 台車が x 方向に動くので、棒は
+             <strong>x-z 平面内</strong>で倒れてほしい。その平面に垂直な軸は y。<br>
+             <b>fromto="0 0 0  0 0 0.6"</b> — body 原点から <strong>+z 方向（上向き）</strong>に 60cm。
+             振り子のときは下向き（<code>-0.5</code>）だったが、カートポールは上に立てる。<br>
+             <b>pos="0 0 0" でよい理由</b> 親（cart）の原点＝台車の中心が、そのまま棒の回転軸の位置になる。
+             台車の上面に載せたければ <code>pos="0 0 0.05"</code> とするが、
+             物理的な違いはわずかで、まずは 0 で問題ない。</p>
+        </div>
+      </details>
+      <p class="why"><b>確認</b> <code>nq=2 nv=2</code>。Joint 表示で、
+         棒の回転軸が<strong>画面の奥行き方向</strong>を向いていること。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-5</span><h4>モータを付ける — どちらの関節に？</h4></div>
+      <p><code>slider</code> と <code>hinge</code>、どちらに <code>motor</code> を付けるか。
+         <strong>両方に付けてはいけない。</strong>その理由も考えること。</p>
+      <details>
+        <summary>答えと解説を見る</summary>
+        <div class="dbody">
+          <div class="code"><pre>&lt;actuator&gt;
+  &lt;motor name="slide_motor" joint="slider" gear="10" ctrlrange="-1 1"/&gt;
+&lt;/actuator&gt;</pre></div>
+          <p class="why"><b>台車のほうに付ける。</b> 棒の関節はフリーのまま。
+             これで <code>nu=1</code>、<code>nv=2</code> となり <strong>劣駆動</strong>になる。<br>
+             棒を直接回すモータは存在しないので、<strong>台車を左右に動かした反作用でしか
+             棒の角度を制御できない</strong>。だから難しく、だから強化学習の題材になる。
+             両方に付けると <code>nu=nv=2</code> の完全駆動になり、
+             棒を直接立てるだけの退屈な問題に変わってしまう。<br>
+             <b>gear="10"</b> は台車を動かすのに 1 N では弱いため。
+             <code>ctrl</code> が <code>-1〜1</code>、実際の力は <code>-10〜10</code> N になる。</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-6</span><h4>センサを付ける</h4></div>
+      <div class="code"><pre>&lt;sensor&gt;
+  &lt;jointpos name="cart_pos" joint="slider"/&gt;
+  &lt;jointvel name="cart_vel" joint="slider"/&gt;
+  &lt;jointpos name="pole_angle" joint="hinge"/&gt;
+  &lt;jointvel name="pole_rate" joint="hinge"/&gt;
+&lt;/sensor&gt;</pre></div>
+      <p class="why"><b>この 4 つが Step 6 の観測ベクトルになる。</b>
+         実機のカートポールでも、台車位置はエンコーダ、棒の角度もエンコーダで測れる。
+         <strong>実機で測れる 4 つだけを宣言している</strong>ことに意味がある。
+         <b>確認</b> <code>nsensordata=4</code>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">2-7</span><h4>検証する</h4></div>
+      <div class="code"><pre class="sh">uv run view_model.py cartpole.xml --sim</pre></div>
+      <p>サマリがこうなっていれば完成。</p>
+      <div class="code"><pre class="sh">nq=2  nv=2  nu=1  nbody=3  njnt=2  nsensordata=4
+  joint[0] slider       slide  qposadr=0 dofadr=0
+  joint[1] hinge        hinge  qposadr=1 dofadr=1
+  actuator[0] slide_motor  ctrlrange=[-1.  1.]</pre></div>
+      <p>次に、棒を少し傾けて倒してみる。</p>
+      <div class="code"><pre>data.qpos[1] = 0.25          <span class="cmt"># 棒を 0.25 rad 傾ける</span>
+for _ in range(600):
+    mujoco.mj_step(model, data)
+print("cart x =", data.qpos[0], " pole angle =", data.qpos[1])</pre></div>
+      <p class="why"><b>ここで一番大事な観察</b> モータ入力はゼロ（<code>data.ctrl</code> は 0）なのに、
+         <strong>台車が動く</strong>（実測で約 −0.35 m）。棒が倒れる反作用が台車を押すため。<br>
+         これが<strong>2 つの自由度が結合している</strong>ということ。
+         台車を動かせば棒に影響し、棒が動けば台車に影響する。
+         この結合こそが、台車の制御だけで棒を立てられる理由でもある。</p>
+    </div>
+  </div>
+
+  <!-- ============ 課題 3 ============ -->
+  <div class="task">
+    <span class="tno">課題 3 · 発展（任意）</span>
+    <h3>二重振り子でカオスを見る</h3>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-1</span><h4>モデルを用意する</h4></div>
+      <p>1-1 で退避した <code>models/double_pendulum.xml</code> を使う。
+         <code>damping</code> は <strong>0 にする</strong>（減衰があると差が消えてしまう）。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-2</span><h4>初期値をわずかに変えた 2 本を回す</h4></div>
+      <div class="code"><pre>def run(q0):
+    model = mujoco.MjModel.from_xml_path(str(MODELS / "double_pendulum.xml"))
+    data = mujoco.MjData(model)
+    data.qpos[:] = q0
+    log = np.zeros((5000, 2))
+    for i in range(5000):
+        mujoco.mj_step(model, data)
+        log[i] = [data.time, data.qpos[1]]      <span class="cmt"># 2 本目の角度を記録</span>
+    return log
+
+a = run([1.0, 1.0])
+b = run([1.0, 1.0001])          <span class="cmt"># 0.0001 rad だけ違う</span>
+
+plt.plot(a[:, 0], a[:, 1], label="q0 = 1.0000")
+plt.plot(b[:, 0], b[:, 1], label="q0 = 1.0001", alpha=0.7)</pre></div>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">3-3</span><h4>何が見えるか</h4></div>
+      <p class="why">最初はぴったり重なっているのに、数秒後には全く違う運動になる。これが<strong>カオス</strong>。
+         決定的な方程式なのに、長期予測が原理的に不可能になる。<br>
+         <b>Sim2Real との関係</b> これは Phase D の根本問題そのもの。
+         初期値のわずかな差が指数的に増幅するなら、<strong>シミュと実機の軌道は必ず乖離する</strong>。
+         だから sim2real の目標は「軌道を一致させること」ではなく、
+         <strong>ズレても破綻しない方策を作ること</strong>になる。この発想の転換が Step 11 の出発点。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11 ===== -->
+<section id="s13">
+  <div class="sec-head">
+    <div class="eyebrow">12</div>
+    <h2>よく出るエラーと対処</h2>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>メッセージ / 症状</th><th>原因</th><th>対処</th></tr></thead>
+      <tbody>
+        <tr><td>XML parse error</td><td>閉じタグ忘れ、属性の引用符抜け</td><td>エラーが指す行番号の前後を見る</td></tr>
+        <tr><td>mass and inertia of moving bodies must be larger than mjMINVAL</td>
+            <td>joint を持つ body に質量のある geom が無い（site だけ、など）</td>
+            <td>geom を追加するか <code>&lt;inertial&gt;</code> を明示</td></tr>
+        <tr><td>Unknown attribute / element</td><td>属性名のタイポ、その要素で使えない属性</td>
+            <td>XML リファレンスでその要素の属性一覧を確認</td></tr>
+        <tr><td><code>unknown target body in camera</code><br><code>unknown joint in actuator</code> など</td>
+            <td><strong>名前参照の切れ</strong>。参照先をリネームしたのに参照側を直していない</td>
+            <td>エラーが示す行の名前を、実際の定義名と突き合わせる</td></tr>
+        <tr><td><code>unique element 'X' found 2 times</code></td>
+            <td>設定要素を 2 つ書いた（<code>&lt;global&gt;</code> など）</td>
+            <td>既存の行に<strong>属性を追加</strong>する。行を増やさない</td></tr>
+        <tr><td>関節が動かない</td><td>body に joint を書いていない</td><td>親に溶接された状態。joint を追加</td></tr>
+        <tr><td>可動範囲がおかしい</td><td><code>compiler angle</code> が degree のまま</td><td><code>angle="radian"</code> を明示</td></tr>
+        <tr><td>モデルが一瞬で吹き飛ぶ</td><td>geom 同士が初期状態で重なっている</td><td>初期姿勢を見直す。Rendering の接触点表示で確認</td></tr>
+        <tr><td>ファイルが見つからない</td><td>相対パスと実行ディレクトリの不一致</td><td><code>Path(__file__)</code> 起点にする</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout">
+    <span class="k">名前参照は切れやすい</span>
+    <p>MJCF は名前による参照を多用する。<strong>参照先をリネームしたら、参照している側も直す。</strong></p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>参照する側</th><th>属性</th><th>参照先</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;camera mode="targetbody"&gt;</code></td><td><code>target</code></td><td>body 名</td></tr>
+        <tr><td><code>&lt;motor&gt;</code> / <code>&lt;position&gt;</code></td><td><code>joint</code></td><td>joint 名</td></tr>
+        <tr><td><code>&lt;jointpos&gt;</code> / <code>&lt;jointvel&gt;</code></td><td><code>joint</code></td><td>joint 名</td></tr>
+        <tr><td><code>&lt;geom&gt;</code> / <code>&lt;site&gt;</code></td><td><code>material</code></td><td>material 名</td></tr>
+        <tr><td><code>&lt;material&gt;</code></td><td><code>texture</code></td><td>texture 名</td></tr>
+        <tr><td><code>&lt;geom&gt;</code> / <code>&lt;joint&gt;</code></td><td><code>class</code></td><td>default クラス名</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>「unknown ○○ in ××」というメッセージを見たら、名前のタイポかリネーム後の直し忘れ。</strong>
+     課題 1-1 で body を <code>upper</code> → <code>pole</code>、joint を <code>j1</code> → <code>hinge</code> に
+     変えたなら、camera の <code>target</code>、motor の <code>joint</code>、sensor の <code>joint</code> も
+     すべて新しい名前にする必要がある。</p>
+
+  <p>XML リファレンスは常に開いておくこと →
+     <a href="https://mujoco.readthedocs.io/en/stable/XMLreference.html">MuJoCo XML Reference</a></p>
+</section>
+
+<!-- ===== 12 ===== -->
+<section id="s14">
+  <div class="sec-head">
+    <div class="eyebrow">13</div>
+    <h2>完了条件</h2>
+    <p>チェック状態はこのブラウザに保存される。全部埋まったら報告すること。</p>
+  </div>
+  <div class="check" id="checklist">
+    <label><input type="checkbox" data-ck="s2a"><span><code>models/pendulum.xml</code> を作り、ファイルから読み込めた</span></label>
+    <label><input type="checkbox" data-ck="s2b"><span>motor を追加して <code>nu = 1</code> になり、<code>data.ctrl</code> で動かせた</span></label>
+    <label><input type="checkbox" data-ck="s2c"><span>sensor を定義し、<code>data.sensordata</code> の中身を確認した</span></label>
+    <label><input type="checkbox" data-ck="s2d"><span>一定トルクを与えたときの挙動を予想し、実際に確かめた</span></label>
+    <label><input type="checkbox" data-ck="s2e"><span><code>models/cartpole.xml</code> をゼロから組み、<code>nq=2 nv=2 nu=1</code> を確認した</span></label>
+    <label><input type="checkbox" data-ck="s2f"><span>ビューアの Joint 表示で、関節軸が意図どおりか目視確認した</span></label>
+    <label><input type="checkbox" data-ck="s2g"><span>親相対座標を自分の言葉で説明できる</span></label>
+    <label><input type="checkbox" data-ck="s2h"><span><code>box</code> の <code>size</code> が半分の長さであることを実際に確かめた</span></label>
+    <label><input type="checkbox" data-ck="s2i"><span>（任意）二重振り子でカオスを観測した</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次のステップ</span>
+    <p>Step 3 では物理エンジンの中身に入る。<code>timestep</code> を上げて発散させ、
+       接触モデルのパラメータを触り、<strong>motor / position / velocity アクチュエータの違い</strong>を
+       実機のモータ制御方式と対応づける。sim2real の話が本格的に始まる。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo × 強化学習 × Sim2Real 講座 — Step 2</span>
+  <span>models/pendulum.xml · models/cartpole.xml</span>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- copy buttons ---------- */
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        var ok = document.execCommand("copy");
+        ok ? resolve() : reject(new Error("execCommand failed"));
+      } catch (e) {
+        reject(e);
+      } finally {
+        document.body.removeChild(ta);
+      }
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre");
+    if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy";
+    btn.type = "button";
+    btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText).then(function () {
+        btn.textContent = "コピーしました";
+        btn.classList.add("done");
+      }).catch(function () {
+        btn.textContent = "コピーできません";
+      }).then(function () {
+        setTimeout(function () {
+          btn.textContent = "コピー";
+          btn.classList.remove("done");
+        }, 1500);
+      });
+    });
+    box.appendChild(btn);
+  });
+
+  /* ---------- checklist persistence ---------- */
+  var KEY = "mujoco-step02-check";
+  var state = {};
+  try {
+    state = JSON.parse(localStorage.getItem(KEY) || "{}") || {};
+  } catch (e) { state = {}; }
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+
+  /* ---------- parent / child frame demo ---------- */
+  var cv = document.getElementById("cv-frames");
+  if (!cv) return;
+  var ids = ["f-px", "f-pz", "f-ang", "f-cx", "f-cz"];
+  var inputs = {};
+  ids.forEach(function (id) { inputs[id] = document.getElementById(id); });
+
+  function tok(n) {
+    return getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  }
+
+  function draw() {
+    var px = parseFloat(inputs["f-px"].value);
+    var pz = parseFloat(inputs["f-pz"].value);
+    var ang = parseFloat(inputs["f-ang"].value);
+    var cx = parseFloat(inputs["f-cx"].value);
+    var cz = parseFloat(inputs["f-cz"].value);
+
+    document.getElementById("f-px-v").textContent = px.toFixed(2);
+    document.getElementById("f-pz-v").textContent = pz.toFixed(2);
+    document.getElementById("f-ang-v").textContent = ang.toFixed(2) + " rad";
+    document.getElementById("f-cx-v").textContent = cx.toFixed(2);
+    document.getElementById("f-cz-v").textContent = cz.toFixed(2);
+
+    // world position of child = parent + R(ang) * rel
+    var c = Math.cos(ang), s = Math.sin(ang);
+    var wx = px + (c * cx + s * cz);
+    var wz = pz + (-s * cx + c * cz);
+
+    document.getElementById("r-parent").textContent = "(" + px.toFixed(2) + ", " + pz.toFixed(2) + ")";
+    document.getElementById("r-child").textContent = "(" + wx.toFixed(2) + ", " + wz.toFixed(2) + ")";
+    document.getElementById("r-rel").textContent = "(" + cx.toFixed(2) + ", " + cz.toFixed(2) + ")";
+
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth, h = Math.round(w * 440 / 820);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var ox = w * 0.5, oy = h * 0.82, SC = Math.min(w * 0.30, h * 0.60);
+    function PX(x) { return ox + x * SC; }
+    function PY(z) { return oy - z * SC; }
+
+    ctx.fillStyle = tok("--code-bg"); ctx.fillRect(0, 0, w, h);
+
+    // grid
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    for (var g = -3; g <= 3; g++) {
+      ctx.beginPath(); ctx.moveTo(PX(g * 0.5), 0); ctx.lineTo(PX(g * 0.5), h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, PY(g * 0.5)); ctx.lineTo(w, PY(g * 0.5)); ctx.stroke();
+    }
+
+    function frame(x, z, rot, color, label, len) {
+      var cc = Math.cos(rot), ss = Math.sin(rot);
+      // x axis of the frame
+      ctx.strokeStyle = color; ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(PX(x), PY(z));
+      ctx.lineTo(PX(x + cc * len), PY(z - ss * len));
+      ctx.stroke();
+      // z axis
+      ctx.beginPath();
+      ctx.moveTo(PX(x), PY(z));
+      ctx.lineTo(PX(x + ss * len), PY(z + cc * len));
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(PX(x), PY(z), 6, 0, 6.2832); ctx.fill();
+      ctx.font = "600 12px 'IBM Plex Mono', monospace";
+      ctx.fillText(label, PX(x) + 11, PY(z) - 10);
+    }
+
+    // world frame
+    frame(0, 0, 0, tok("--muted"), "world", 0.28);
+
+    // link world -> parent
+    ctx.strokeStyle = tok("--rule-strong"); ctx.setLineDash([4, 4]); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(PX(0), PY(0)); ctx.lineTo(PX(px), PY(pz)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // link parent -> child (this is the relative vector, rotated)
+    ctx.strokeStyle = tok("--real"); ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(PX(px), PY(pz)); ctx.lineTo(PX(wx), PY(wz)); ctx.stroke();
+
+    frame(px, pz, ang, tok("--sim"), "parent", 0.26);
+    frame(wx, wz, ang, tok("--real"), "child", 0.20);
+
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "11px 'IBM Plex Mono', monospace";
+    ctx.fillText("child_world = parent_world + R(theta) * rel", 12, 20);
+    ctx.fillText("+x", PX(0.30), PY(0) + 4);
+    ctx.fillText("+z", PX(0) + 5, PY(0.30));
+  }
+
+  ids.forEach(function (id) { inputs[id].addEventListener("input", draw); });
+  window.addEventListener("resize", draw);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  }
+  draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

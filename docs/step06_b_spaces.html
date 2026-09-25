@@ -1,0 +1,877 @@
+<title>観測と行動の空間</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">Box は「形と範囲」の申告書</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">申告を守らないとどうなるか</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">観測の範囲はどう決めるか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 6-b</span>
+  <h1>観測と行動の空間</h1>
+  <p>方策が出す数字は、なぜいつも <code>[-1, 1]</code> なのか。
+     そして <code>Box</code> に書いた範囲は、誰がいつ見ているのか。</p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 6 の 2/4</span>
+    <span class="chip">envs/pendulum_env.py に追記</span>
+    <span class="chip">前提: 6-a</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>観測は <code>[cos&theta;, sin&theta;, &omega;]</code>。
+          <strong>角度をそのまま渡すと上端で数字が 6.26 も飛ぶ</strong>から</li>
+      <li><code>reset()</code> は 2 つ、<code>step()</code> は 5 つ返す。<code>frame_skip</code> は 10</li>
+      <li><code>step()</code> の中で <code>action[0]</code> に <code>TAU_MAX</code> を掛けていた。
+          <strong>あの掛け算の意味が今回の主題</strong></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 方策に直接「トルク 0.3 N&middot;m」を出させず、<code>[-1, 1]</code> を経由するのはなぜか？</p>
+    <p><b>2.</b> <code>Box</code> に書いた <code>low</code> / <code>high</code> は、守らないとどうなるのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答え合わせから始めます。そのあと <code>Box</code> が何を宣言しているのかを見て、
+     <strong>その宣言を破ったときに何が起きるかを実測で確かめます</strong>。
+     結論を先に言うと——<strong>破っても実行時にはエラーが出ません</strong>。それが厄介なところです。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「なぜ <code>[-1, 1]</code> を経由するのか」に答えます。
+       <strong>理由は 3 つあり、どれも 1 自由度の振り子では実感しにくい</strong>ので、
+       多関節を想像しながら読んでください。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>方策に直接「トルク 0.3 N&middot;m」を出させず、わざわざ <code>[-1, 1]</code> を経由するのはなぜでしょうか。
+       ヒント: もし関節が 12 個あって、それぞれトルクの上限がバラバラだったら？</p>
+  </div>
+
+  <h3>理由 1：関節ごとの事情を方策から隠せる</h3>
+  <p>四足歩行ロボットなら関節は 12 個。肩・肘・手首で必要なトルクはまったく違います。
+     仮に上限が <code>&plusmn;0.5</code> / <code>&plusmn;3.0</code> / <code>&plusmn;12.0</code> だったとして、
+     方策に生の N&middot;m を出させると<strong>関節ごとに出力の桁が違う</strong>ことになります。</p>
+
+  <p><code>[-1, 1]</code> で受け取って環境側で変換すれば、<strong>方策は全関節について同じ範囲を出すだけ</strong>で済みます。</p>
+  <div class="code"><pre>action = [-1.0, -1.0, -1.0]  ->  トルク [ -0.5,  -3.0, -12.0]
+action = [ 0.0,  0.0,  0.0]  ->  トルク [  0.0,   0.0,   0.0]
+action = [+1.0, +1.0, +1.0]  ->  トルク [ +0.5,  +3.0, +12.0]
+</pre></div>
+  <p class="why"><b>境界がどこにあるかを思い出してください</b>
+     「関節の上限が何 N&middot;m か」は<strong>ハードウェアの事情</strong>です。
+     方策が知る必要はありません。<strong>環境の側が吸収すべき情報</strong>で、
+     この分担は Step 12 でモータを別の型番に変えたときに効いてきます——
+     <strong>環境の定数を 1 つ直すだけで、学習済みの方策がそのまま載ります</strong>。</p>
+
+  <h3>理由 2：ニューラルネットの出力は 0 の周りに出る</h3>
+  <p>方策の正体は Step 8 以降ニューラルネットになります。
+     初期状態のネットは<strong>0 を中心に、だいたい &plusmn;1 くらいの値</strong>を出すように初期化されます。</p>
+  <p class="why">ここで「<code>&plusmn;12</code> を出せ」と要求すると、
+     <strong>学習の最初のうちはまったく力が足りません</strong>。
+     逆に <code>&plusmn;0.01</code> のような小さい範囲だと、少し動いただけで上限に張り付きます。
+     <strong><code>[-1, 1]</code> はネットが素直に出せる範囲</strong>なので、
+     余計な調整が要らなくなります。</p>
+
+  <h3>理由 3：探索のノイズの大きさが決められる</h3>
+  <p>5-e の <code>&epsilon;-greedy</code> にあたるものが、連続的な行動では
+     <strong>「出力にノイズを足す」</strong>という形になります。</p>
+  <p class="why">そのノイズの大きさを<strong>いくつにすればいいかは、行動の範囲が分からないと決まりません</strong>。
+     <code>[-1, 1]</code> という約束があるから、ライブラリ側が
+     「標準偏差 0.5 くらいから始めよう」と既定値を持てます。
+     <strong>範囲がバラバラだと、探索量も関節ごとに手で決める必要が出てきます。</strong></p>
+
+  <div class="callout">
+    <span class="k">Gymnasium 自身も推奨しています</span>
+    <p><code>action_space</code> を <code>[-2, 2]</code> にして <code>check_env</code> にかけると、
+       次の警告が出ます（実測）。</p>
+    <div class="code"><pre>WARN: For Box action spaces, we recommend using a symmetric and
+      normalized space (range=[-1, 1] or [0, 1] ...)
+</pre></div>
+    <p>ただし<strong>警告だけで、エラーにはなりません</strong>。
+       <code>[-0.5, 0.5]</code> のように <code>[-1,1]</code> の内側なら警告も出ません。
+       <strong>規格が強制しているのではなく、実務上そうしたほうが得だという話</strong>です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>Box は「形と範囲」の申告書</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><code>spaces.Box</code> が具体的に何を持っているかを見ます。
+       <strong>触ってみると、思っているより単純なもの</strong>だと分かります。</p>
+  </div>
+
+  <p>6-a で書いた宣言を、そのまま表示してみます。</p>
+  <div class="code"><pre>Box([ -1.  -1. -20.], [ 1.  1. 20.], (3,), float32)
+  shape (3,)  dtype float32
+  low  [ -1.  -1. -20.]   high [ 1.  1. 20.]
+</pre></div>
+
+  <p>持っているのは <strong>4 つだけ</strong>です。</p>
+  <div class="tw"><table>
+    <thead><tr><th>項目</th><th>意味</th><th>誰が使うか</th></tr></thead>
+    <tbody>
+      <tr><td><code>shape</code></td><td>数字が何個並ぶか</td><td><strong>SB3</strong>。ネットの入力層のサイズを決める</td></tr>
+      <tr><td><code>dtype</code></td><td>型。今回は <code>float32</code></td><td>SB3。内部の計算精度</td></tr>
+      <tr><td><code>low</code> / <code>high</code></td><td>各要素の下限・上限</td><td><strong>用途によって違う</strong>（後述）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p><code>Box</code> には便利なメソッドが 2 つあります。</p>
+  <div class="code"><pre>space.sample()                       <span class="cmt"># 範囲内からランダムに 1 つ作る</span>
+space.contains(x)                    <span class="cmt"># x が範囲に収まっているか True/False</span>
+</pre></div>
+  <p class="why"><b><code>sample()</code> はランダム方策そのものです</b>
+     <code>action_space.sample()</code> と書けば、<strong>でたらめな行動が 1 つ手に入ります</strong>。
+     5-a の <code>rng.integers(4)</code> に相当するもので、
+     <strong>動作確認のときのベースラインとして常に使えます</strong>。</p>
+
+  <div class="callout">
+    <span class="k">観測と行動で low / high の意味が違います</span>
+    <p><b>行動</b>の <code>low</code> / <code>high</code> は<strong>方策への指示</strong>です。
+       SB3 はこの範囲の中に収まる値を出そうとします。</p>
+    <p><b>観測</b>の <code>low</code> / <code>high</code> は<strong>ただの申告</strong>です。
+       環境が範囲外の値を返しても、<strong>誰も止めてくれません</strong>。
+       次の節で実測します。</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>申告を守らないとどうなるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>今回いちばん大事な節です。
+       <strong>観測が宣言した範囲を超えたときの挙動</strong>を実測で確かめます。
+       結論は<strong>「チェックのときは弾かれ、実行時は黙って通る」</strong>という非対称なもので、
+       これを知らないと学習が壊れた原因を探せません。</p>
+  </div>
+
+  <h3>実験：範囲 <code>[-1, 1]</code> の観測に <code>99.0</code> を返させる</h3>
+
+  <p><b>その 1：<code>check_env</code> にかけると弾かれます</b></p>
+  <div class="code"><pre>AssertionError: The first element returned by `env.reset()`
+                is not within the observation space.
+</pre></div>
+
+  <p><b>その 2：普通に実行すると、何も起きません</b></p>
+  <div class="code"><pre>obs, reward, terminated, truncated, info = env.step(action)
+print(obs)     <span class="cmt"># -> [99.  0.]   例外なし。警告もなし</span>
+</pre></div>
+
+  <p class="why"><b>これが厄介な理由</b>
+     <code>Box</code> は<strong>値を切り詰めてくれません</strong>。
+     「範囲は <code>&plusmn;20</code> です」と申告しておいて <code>50</code> を返しても、そのまま流れていきます。
+     <strong>学習は動き続け、ただ性能だけが落ちます。</strong>
+     エラーが出ないので、原因を観測の範囲だと疑うまでに時間がかかります。</p>
+
+  <div class="callout">
+    <span class="k">なぜ性能が落ちるのか</span>
+    <p>SB3 は観測を<strong>正規化する</strong>機能を持っており、その計算に申告した範囲を使うことがあります。
+       申告が <code>&plusmn;20</code> なのに実際は <code>&plusmn;200</code> 来ていると、
+       <strong>正規化後の値が想定の 10 倍</strong>になり、ネットの入力が暴れます。</p>
+    <p>また Step 11 で観測にノイズを載せるとき、
+       <strong>ノイズの大きさを範囲から決める</strong>実装をすると、そこでも申告値が効いてきます。</p>
+  </div>
+
+  <div class="recap">
+    <span class="k">覚えておくこと</span>
+    <ol>
+      <li><code>Box</code> の <code>low</code> / <code>high</code> は<strong>強制ではなく申告</strong></li>
+      <li>守っているかを調べてくれるのは <code>check_env</code> と <code>contains()</code> <strong>だけ</strong></li>
+      <li>だから<strong>環境を書いたら必ず <code>check_env</code> を通す</strong>（6-d でやります）</li>
+    </ol>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>観測の範囲はどう決めるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;03 で「申告は守るべき」と分かりました。
+       では<strong>いくつにすればいいのか</strong>。実際の決め方を示します。</p>
+  </div>
+
+  <p>6-a で書いた宣言を振り返ります。</p>
+  <div class="code"><pre>low  = [-1.0, -1.0, -20.0]
+high = [ 1.0,  1.0,  20.0]
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>要素</th><th class="num">範囲</th><th>決め方</th></tr></thead>
+    <tbody>
+      <tr><td><code>cos&theta;</code></td><td class="num">&plusmn;1.0</td><td><strong>数学的に決まる。</strong>迷う余地がない</td></tr>
+      <tr><td><code>sin&theta;</code></td><td class="num">&plusmn;1.0</td><td>同上</td></tr>
+      <tr><td><code>&omega;</code></td><td class="num">&plusmn;20.0</td><td><strong>実測から決める。</strong>下で説明</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>角速度だけ根拠が要ります</b>
+     Step 4 でスイングアップを測ったとき、<strong>最大角速度は 10.36 rad/s</strong> でした。
+     その約 2 倍を取って <code>&plusmn;20</code> としています。
+     <strong>「自分で測った値の 2 倍」</strong>が実用的な決め方です。</p>
+
+  <div class="callout tip">
+    <span class="k">測っていないときは、まず測る</span>
+    <p>範囲が分からないときは、<strong>ランダム方策で回して実際の最大値を記録する</strong>のが確実です。
+       <code>action_space.sample()</code> で 1000 ステップ回し、
+       各要素の最小・最大を見れば決まります。<strong>6-d の課題でこれをやります。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">広すぎても狭すぎても困る</span>
+    <p><b>狭すぎる</b>と &sect;03 の問題が起きます——申告を超えた観測が黙って流れる。</p>
+    <p><b>広すぎる</b>と、正規化したときに<strong>実際の信号が狭い範囲に押し込まれます</strong>。
+       <code>&plusmn;10000</code> と申告して実際は <code>&plusmn;10</code> しか動かないなら、
+       正規化後の観測は <code>&plusmn;0.001</code> になり、<strong>ほとんど変化がない入力</strong>に見えます。</p>
+    <p>だから<strong>「実測の 2〜3 倍」</strong>あたりが落としどころです。
+       <code>&plusmn;inf</code> と書く実装も見かけますが、
+       <strong>正規化を使わない前提のとき</strong>に限った書き方です。</p>
+  </div>
+</section>
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      &sect;03 の「黙って通る」を<strong>自分の環境で起こす</strong>ため。
+      一度体験しておくと、Step 7 で学習が伸びないときに
+      <strong>観測の範囲を疑えるようになります</strong>。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<code>Box</code> の申告が誰にいつ見られるかを説明できる。
+      そして<strong>多関節に増えても同じコードで済む行動スケーリング</strong>が書けます。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 3 の 1 箇所だけ</strong>です。
+      <code>envs/pendulum_env.py</code> と、ルートの <code>try_env.py</code> に手を入れます。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>空間を触ってみる</h3>
+    <p class="why"><b>この段階ですること</b> 宣言した <code>Box</code> が何を持っているか確かめます。
+      <strong>写経で構いません。</strong></p>
+    <div class="code"><pre>import numpy as np
+from envs.pendulum_env import PendulumEnv
+
+env = PendulumEnv()
+print(env.observation_space)
+print("  shape:", env.observation_space.shape, " dtype:", env.observation_space.dtype)
+print("  low  :", env.observation_space.low)
+print("  high :", env.observation_space.high)
+
+env.observation_space.seed(0)
+print("  sample():", env.observation_space.sample())
+print("  contains([0,0,5])  :", env.observation_space.contains(np.array([0, 0, 5], dtype=np.float32)))
+print("  contains([0,0,999]):", env.observation_space.contains(np.array([0, 0, 999], dtype=np.float32)))
+</pre></div>
+    <p><b>確認方法</b> こういう出力になります。</p>
+    <div class="code"><pre>Box([ -1.  -1. -20.], [ 1.  1. 20.], (3,), float32)
+  shape: (3,)  dtype: float32
+  low  : [ -1.  -1. -20.]
+  high : [ 1.  1. 20.]
+  sample(): [  0.27392337  -0.46042657 -18.36106   ]
+  contains([0,0,5])  : True
+  contains([0,0,999]): False
+</pre></div>
+    <p class="why"><b><code>sample()</code> がランダム方策です</b>
+      <code>env.action_space.sample()</code> と書けば、でたらめな行動が 1 つ手に入ります。
+      5-a の <code>rng.integers(4)</code> にあたるもので、<strong>6-d のベースラインで使います</strong>。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2 · 壊す</span>
+    <h3>範囲を狭くして、黙って通ることを見る</h3>
+    <p class="why"><b>この段階ですること</b> &sect;03 の実験を自分の環境で再現します。
+      <strong>ここが今回の核心</strong>なので、必ず実行してください。</p>
+    <p><code>envs/pendulum_env.py</code> の <code>observation_space</code> で、
+      <strong>角速度の範囲だけを <code>&plusmn;20</code> から <code>&plusmn;1</code> に狭めます</strong>。</p>
+    <div class="code"><pre>      low=np.array([-1.0, -1.0, -1.0], dtype=np.float32),    <span class="cmt"># -20 -> -1</span>
+      high=np.array([1.0, 1.0, 1.0], dtype=np.float32),      <span class="cmt"># 20 -> 1</span>
+</pre></div>
+    <p>この状態で角速度を 1 より大きくします。
+      <strong>一定のトルクをかけ続けてもダメ</strong>です——Step 4 で見たとおり、
+      <code>0.31 rad</code> で重力と釣り合って止まってしまいます。
+      <strong>振れている向きに押す</strong>と、ブランコを漕ぐようにエネルギーが溜まっていきます
+      （Step 4 のエネルギー整形と同じ考え方）。</p>
+    <div class="code"><pre>import numpy as np
+from envs.pendulum_env import PendulumEnv
+
+env = PendulumEnv()
+obs, info = env.reset(seed=0)
+
+for t in range(300):
+    omega = obs[2]
+    action = np.array([np.sign(omega) if omega != 0 else 1.0], dtype=np.float32)
+    obs, reward, terminated, truncated, info = env.step(action)
+
+print("観測        :", obs)
+print("宣言した範囲:", env.observation_space.low, env.observation_space.high)
+print("範囲内か    :", env.observation_space.contains(obs))
+</pre></div>
+    <p>次のような出力になります。</p>
+    <div class="code"><pre>観測        : [ 0.257283  -0.9663361 11.211819 ]
+宣言した範囲: [-1. -1. -1.] [1. 1. 1.]
+範囲内か    : False
+</pre></div>
+    <p class="why"><b>実行する前に予想してください</b>
+      角速度が宣言した範囲を超えたとき、<code>step()</code> はどうなりますか。
+      例外が出る？ 値が切り詰められる？ 警告が出る？</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <p class="why"><strong>何も起きません。</strong>
+        角速度は <strong>11.2</strong> まで上がり、宣言した <code>&plusmn;1</code> を 10 倍以上超えています。
+        それでも <code>step()</code> は値をそのまま返し、<strong>例外も警告も出ません</strong>。
+        <code>contains()</code> が <code>False</code> を返すだけです。</p>
+      <p class="why"><b>これが &sect;03 で言った「黙って通る」</b>
+        <strong>学習は普通に動き続けます。</strong>ただ性能が落ちるだけ。
+        <strong>エラーが出ないバグは、出るバグより何倍も高くつきます。</strong></p>
+      <p class="why"><b>確認が済んだら <code>&plusmn;20</code> に戻してください</b>
+        戻し忘れると 6-d の <code>check_env</code> で弾かれます——
+        <strong>もっとも、それが <code>check_env</code> を通す理由でもあります</strong>。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>多関節でも使えるスケーリングに書き換える</h3>
+    <p class="why"><b>この段階ですること</b> 6-a では <code>action[0] * TAU_MAX</code> と
+      <strong>掛け算 1 つ</strong>で済ませていました。
+      &sect;01 の「関節ごとに上限が違う」場合にも通じる一般形に直します。</p>
+    <p>やりたいのは <code>[-1, 1]</code> を <code>[low, high]</code> に移す変換です。</p>
+    <div class="code"><pre>  def _scale(self, action):
+    low, high = self.torque_low, self.torque_high
+    return ???                    <span class="cmt"># ← ここだけ考える</span>
+</pre></div>
+    <p>対応させたいのは次の 3 点です。</p>
+    <div class="tw"><table>
+      <thead><tr><th class="num">action</th><th class="num">出したいトルク</th></tr></thead>
+      <tbody>
+        <tr><td class="num">&minus;1.0</td><td class="num"><code>low</code></td></tr>
+        <tr><td class="num">&nbsp;0.0</td><td class="num"><code>(low + high) / 2</code></td></tr>
+        <tr><td class="num">+1.0</td><td class="num"><code>high</code></td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>ヒント</strong>: まず <code>action</code> を <code>[0, 1]</code> に移してから、
+      幅 <code>(high - low)</code> を掛けて <code>low</code> を足します。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    return low + (action + 1.0) * 0.5 * (high - low)
+</pre></div>
+      <p class="why"><b>分解して読むと</b>
+        <code>(action + 1.0) * 0.5</code> が <code>[-1,1] &rarr; [0,1]</code> の変換。
+        そこに幅 <code>(high - low)</code> を掛けて <code>low</code> を足すと、
+        <code>[low, high]</code> に着地します。</p>
+      <p class="why"><b>1 自由度・対称なら今までと同じ結果になります</b>
+        <code>low = -0.5</code>, <code>high = 0.5</code>, <code>action = 0.6</code> で計算すると
+        <code>0.3</code>。<code>0.6 &times; 0.5 = 0.3</code> と一致します。
+        <strong>一般形にしても壊れていない</strong>ことを確認してください。</p>
+      <p class="why"><b>関節が増えても同じ式で済みます</b>
+        <code>low</code> と <code>high</code> を配列にすれば、
+        <strong>NumPy が要素ごとに計算してくれます</strong>。
+        <code>low = [-0.5, -3.0, -12.0]</code> のようにしても、コードは 1 行のままです。</p>
+    </div></details>
+    <p><b>確認方法</b> <code>__init__</code> に次を足してから試します。</p>
+    <div class="code"><pre>    self.torque_low = np.array([-TAU_MAX], dtype=np.float32)
+    self.torque_high = np.array([TAU_MAX], dtype=np.float32)
+</pre></div>
+    <div class="code"><pre>import numpy as np
+from envs.pendulum_env import PendulumEnv
+
+env = PendulumEnv()
+for a in (-1.0, -0.5, 0.0, 0.5, 1.0):
+    print(f"action={a:+.1f} -> torque={env._scale(np.array([a], dtype=np.float32))}")
+</pre></div>
+    <p>次のようになれば正解です。</p>
+    <div class="code"><pre>action=-1.0 -> torque=[-0.5]
+action=-0.5 -> torque=[-0.25]
+action=+0.0 -> torque=[0.]
+action=+0.5 -> torque=[0.25]
+action=+1.0 -> torque=[0.5]
+</pre></div>
+    <p class="why"><b><code>step()</code> 側も書き換えてください</b>
+      <code>float(np.clip(action[0], -1.0, 1.0)) * TAU_MAX</code> を
+      <code>self._scale(np.clip(action, -1.0, 1.0))[0]</code> に差し替えます。
+      <strong><code>clip</code> は残してください</strong>——
+      方策が範囲外を出してくる可能性がゼロではないので、
+      <strong>環境側で最後の砦を張っておく</strong>のが安全です。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>行動を <code>[-1, 1]</code> にする理由は 3 つ。
+          <strong>関節ごとの事情を方策から隠せる</strong>／
+          <strong>ネットが素直に出せる範囲</strong>／<strong>探索ノイズの大きさを決められる</strong></li>
+      <li><code>Box</code> が持つのは <code>shape</code> / <code>dtype</code> / <code>low</code> / <code>high</code> の 4 つだけ</li>
+      <li><strong>観測の <code>low</code>/<code>high</code> は申告であって強制ではない。</strong>
+          超えても実行時は黙って通る</li>
+      <li>調べてくれるのは <code>check_env</code> と <code>contains()</code> <strong>だけ</strong></li>
+      <li>範囲は<strong>実測値の 2〜3 倍</strong>を目安に。広すぎると信号が潰れ、狭すぎると申告違反になる</li>
+      <li><code>low + (action + 1) * 0.5 * (high - low)</code> なら<strong>関節が何個でも 1 行</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="h1"><span><code>Box</code> の <code>shape</code>/<code>dtype</code>/<code>low</code>/<code>high</code> を表示して中身を確認した</span></label>
+    <label><input type="checkbox" data-ck="h2"><span>範囲を狭めて、宣言違反の観測が<strong>黙って通る</strong>ことを自分で再現した</span></label>
+    <label><input type="checkbox" data-ck="h3"><span>範囲を <code>&plusmn;20</code> に戻した</span></label>
+    <label><input type="checkbox" data-ck="h4"><span><code>_scale()</code> を書き、5 点すべてが期待どおりの値になった</span></label>
+    <label><input type="checkbox" data-ck="h5"><span>行動を <code>[-1,1]</code> にする理由を、多関節の例で説明できる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（6-c）でやること</span>
+    <p>ずっと <code>False</code> のままにしてきた
+       <strong><code>terminated</code> と <code>truncated</code></strong> を正しく使い分けます。
+       <strong>混同すると、エラーを出さずに学習が壊れる</strong>——
+       今回の「黙って通る」と同じ種類の厄介さを持った話です。</p>
+    <p>先に考えておいてください——
+       <strong>5-d で <code>done</code> のとき未来の価値を足さないようにしました。</strong>
+       では「500 ステップに達したので打ち切った」という場合、未来の価値は足すべきでしょうか、
+       足さないべきでしょうか。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 6-b</span>
+  <span>gymnasium 1.3.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step06b-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

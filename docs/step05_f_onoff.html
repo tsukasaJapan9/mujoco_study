@@ -1,0 +1,1024 @@
+<title>on-policy と off-policy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">1 箇所変えると SARSA になる</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">崖で違いを見る</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">データを使い回せるか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">方策を直接いじる道</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">Step 5 のまとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 5-f</span>
+  <h1>on-policy と off-policy</h1>
+  <p>Q 学習の更新式を 1 箇所だけ変えると、性格がまったく違う手法になる。
+     その違いが「集めたデータを使い回せるか」を決める。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 5 の 6/6</span>
+    <span class="chip">toy/cliff.py</span>
+    <span class="chip">前提: 5-e</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>Q 学習</b>は 2 行。<code>target = r + &gamma; max<sub>a'</sub> Q(s',a')</code> と
+          <code>Q(s,a) += &alpha;(target &minus; Q(s,a))</code></li>
+      <li><b>&alpha;</b> は「1 回の経験をどれだけ信じるか」、<b>&epsilon;-greedy</b> が無いと一切学習しない</li>
+      <li>ランダム方策の 64.6 歩が <b>6 歩</b>になった</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> なぜ「でたらめに歩いても最善の方策が学べる」のか？</p>
+    <p><b>2.</b> <b>on-policy</b> と <b>off-policy</b> の違いは、実際に何を変えるのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答え合わせから始めて、<strong>更新式を 1 箇所だけ変えた別手法</strong>を並べます。
+     違いは<strong>崖のあるマス目</strong>ではっきり出ます。
+     最後に Step 5 全体を振り返り、Step 6 へ繋ぎます。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>前回の宿題に答えます。<strong>Q 学習の 1 行目にある小さな非対称性</strong>が、
+       今回のすべての出発点です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>更新式のどこが「でたらめに歩いても最善が学べる」ことを可能にしているでしょうか。
+       ヒント: &sect;03 の 1 行目に、実際に選んだ行動 <code>a</code> とは無関係な部分があります。</p>
+  </div>
+
+  <p><b>答え：<code>max</code> です。</b></p>
+  <div class="code"><pre>target = r + &gamma; &times; max_{a'} Q(s', a')
+                        ^^^^^^^^^^^^
+                        ここに a は出てこない
+</pre></div>
+
+  <p>更新式を左から右まで読むと、<strong>実際に選んだ行動 <code>a</code> が出てくるのは左辺の
+     <code>Q(s,a)</code> だけ</strong>です。右辺は「<code>s'</code> に着いた」という事実しか使っていません。</p>
+
+  <p class="why"><b>つまり、こう言っています</b>
+     「<strong>どうやってここに来たかは問わない。ここから最善を尽くしたらいくらになるか</strong>」。
+     でたらめに歩いてたまたま <code>s'</code> に来たのだとしても、
+     <strong>そこから先は最善の方策の話をしている</strong>。
+     だから歩き方がどれだけ下手でも、学ばれるのは最善の方策になります。</p>
+
+  <div class="callout">
+    <span class="k">言い換えると</span>
+    <p>Q 学習は<strong>「歩くための方策」と「学んでいる方策」が別物</strong>です。
+       &epsilon;-greedy で歩きながら、学んでいるのは <strong>&epsilon; を含まない完全に貪欲な方策</strong>。
+       この<strong>ズレ</strong>があることが、今回のキーワード <b>off-policy</b> の意味です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>1 箇所変えると SARSA になる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「ズレをなくしたらどうなるか」を試します。
+       <strong>更新式の <code>max</code> を別のものに置き換えるだけ</strong>で、
+       まったく性格の違う手法になります。</p>
+  </div>
+
+  <p>ズレをなくすには、<strong>「最善を尽くしたら」ではなく「実際に次に選ぶ行動で」</strong>
+     計算すればいい。</p>
+
+  <div class="code"><pre>Q 学習  target = r + &gamma; &times; max_{a'} Q(s', a')     <span class="cmt"># 次に最善を尽くしたら</span>
+SARSA   target = r + &gamma; &times;     Q(s', a')     <span class="cmt"># 次に実際こう動くなら</span>
+                                        ^^
+                              実際に選んだ次の行動
+</pre></div>
+
+  <p>この手法を <b>SARSA</b> と呼びます。名前の由来は、更新に使う 5 つ組
+     <code>s, a, r, s', a'</code> をそのまま並べたものです。</p>
+
+  <p class="why"><b><code>a'</code> をどこから持ってくるか</b>
+     Q 学習では「次の行動」を更新時に決める必要がありませんでした。
+     SARSA では<strong>先に決めておく必要があります</strong>。
+     &epsilon;-greedy で選ぶので、<strong>10 回に 1 回はでたらめな <code>a'</code> が入ります</strong>。
+     つまり <strong>SARSA の <code>target</code> には「たまに失敗する自分」が織り込まれます</strong>。
+     これが次の節の違いを生みます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>Q 学習</th><th>SARSA</th></tr></thead>
+    <tbody>
+      <tr><td>次の価値の見積もり</td><td><code>max<sub>a'</sub> Q(s',a')</code></td><td><code>Q(s',a')</code></td></tr>
+      <tr><td>学んでいる方策</td><td>完全に貪欲な方策</td><td><strong>&epsilon;-greedy な自分自身</strong></td></tr>
+      <tr><td>歩く方策との関係</td><td><strong>別物</strong>（off-policy）</td><td><strong>同じ</strong>（on-policy）</td></tr>
+      <tr><td>学ぶもの</td><td>理想的な最善</td><td><strong>失敗も込みの現実的な最善</strong></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>崖で違いを見る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>今までのマス目では<strong>両者の差が出ません</strong>（どちらも 6 歩になる）。
+       違いが見える場面を作ります。<strong>失敗に代償があるとき</strong>に差が出ます。</p>
+  </div>
+
+  <h3>崖のあるマス目</h3>
+  <div class="gwrap">
+    <div class="grid4 cliff" aria-label="崖のあるマス目">
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      <div class="cell start">S</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell goal">G</div>
+    </div>
+    <ul class="legend">
+      <li><span class="sw start"></span> スタート（左下）</li>
+      <li><span class="sw goal"></span> ゴール（右下）</li>
+      <li><span class="sw bad"></span> <b>崖</b>。落ちると <b>&minus;100</b> もらってスタートに逆戻り</li>
+      <li>1 歩あるくごとに <b>&minus;1</b>。だから<strong>速く着くほど良い</strong></li>
+    </ul>
+  </div>
+
+  <p class="why"><b>報酬の付け方を変えました</b>
+     5-b の<strong>案 A（1 歩ごとに罰）</strong>を使っています。
+     ゴールすれば必ず終わるので、<code>&gamma; = 1.0</code> でも発散しません。
+     <strong>崖の &minus;100 が「失敗の代償」</strong>です。</p>
+
+  <h3>学習させた結果</h3>
+  <p>両方を 3000 エピソード学習させ、<strong>学習後に &epsilon; を切って歩かせた経路</strong>です（実測）。</p>
+
+  <div class="two-up">
+    <div class="vbox">
+      <span class="vt">Q 学習（off-policy）— 7 歩</span>
+      <div class="grid4 cliff small">
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">↓</div>
+        <div class="cell start">S</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell goal">G</div>
+      </div>
+    </div>
+    <div class="vbox">
+      <span class="vt">SARSA（on-policy）— 9 歩</span>
+      <div class="grid4 cliff small">
+        <div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">→</div><div class="cell pa">↓</div>
+        <div class="cell pa">↑</div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell pa">↓</div>
+        <div class="cell start">S</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell bad">!</div><div class="cell goal">G</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">学習後の経路</th><th class="num">学習中の平均収益</th></tr></thead>
+    <tbody>
+      <tr><td>Q 学習（off-policy）</td><td class="num"><strong>7 歩</strong>・崖の真上</td><td class="num">&minus;22.84</td></tr>
+      <tr><td>SARSA（on-policy）</td><td class="num">9 歩・一段上</td><td class="num"><strong>&minus;14.00</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>この数字は乱数のシードで変わります</b>
+     上の値は <code>seed=0</code> のもので、&sect;06 の課題でそのまま再現できます。
+     <strong>経路（7 歩 / 9 歩）はシードを変えても安定して同じ</strong>ですが、
+     平均収益は数ポイント動きます。</p>
+
+  <p class="why"><b>ねじれた結果になっています</b>
+     <strong>Q 学習のほうが短い経路を見つけた</strong>のに、
+     <strong>学習中の成績は SARSA のほうが 1.6 倍良い</strong>。
+     どちらが「優れている」とは言えません。</p>
+
+  <h3>なぜこうなるのか</h3>
+  <p><b>Q 学習</b>は <code>max</code> を使うので、<strong>「自分は絶対に間違えない」という前提</strong>で
+     価値を見積もります。崖の真上を歩くのは、間違えなければ最短です。
+     ——しかし<strong>実際には &epsilon;=0.1 で 10 回に 1 回でたらめに動く</strong>ので、
+     学習中は何度も崖に落ちます。それが &minus;22.84 の正体です。</p>
+
+  <p><b>SARSA</b> は <code>Q(s',a')</code> を使うので、
+     <strong>その &epsilon; でたらめ行動が見積もりに入ってきます</strong>。
+     崖の隣にいると「たまにでたらめに動いて落ちる」という事実が価値を押し下げ、
+     結果として<strong>崖から離れた経路を選びます</strong>。</p>
+
+  <div class="callout">
+    <span class="k">どちらを使うべきか</span>
+    <p><strong>本番で探索を切るなら Q 学習</strong>——学習後は間違えないので、崖の真上が正しい。</p>
+    <p><strong>学習中の失敗に実コストがあるなら SARSA</strong>——
+       実機のロボットが崖から落ちたら壊れます。
+       <strong>Step 12 で実機に載せるとき、この選択は現実的な問題になります。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>データを使い回せるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>ここが on/off-policy の<strong>いちばん実用的な違い</strong>です。
+       Step 7 でアルゴリズムを選ぶとき、判断の軸になります。</p>
+  </div>
+
+  <h3>まず「使い回す」とは何をすることか</h3>
+  <p>いまのコードは、1 歩あるくたびに<strong>1 回だけ更新して、その経験を捨てています</strong>。</p>
+  <div class="code"><pre>s_next, r, done = step(s, a)          <span class="cmt"># 環境を 1 歩進める（ここがコスト）</span>
+Q[s][a] += alpha * (target - Q[s][a]) <span class="cmt"># 1 回だけ使う</span>
+s, a = s_next, a_next                 <span class="cmt"># もう振り返らない</span>
+</pre></div>
+  <p>「使い回す」とは、これを<strong>箱に溜めておいて、あとで何度でも取り出す</strong>ことです。
+     この箱を <b>リプレイバッファ</b>（replay buffer）と呼びます。</p>
+  <div class="code"><pre>buffer = []
+
+<span class="cmt"># 集めるとき: 環境を 1 歩進める</span>
+s_next, r, done = step(s, a)
+buffer.append((s, a, r, s_next, done))      <span class="cmt"># 捨てずに保存</span>
+
+<span class="cmt"># 学習するとき: 環境は進めない。ただの計算</span>
+for _ in range(10):
+    s, a, r, s_next, done = random.choice(buffer)   <span class="cmt"># 過去の経験を引き直す</span>
+    target = r + gamma * max(Q[s_next])
+    Q[s][a] += alpha * (target - Q[s][a])
+</pre></div>
+  <p class="why"><b>1 歩あるくごとに 10 回学習する</b>ことになるので、
+     <strong>同じ学習量に必要な「実際に歩く回数」が減ります</strong>。</p>
+
+  <h3>なぜ Q 学習だと成立するのか</h3>
+  <p>保存した 5 つ組 <code>(s, a, r, s_next, done)</code> を見てください。
+     <strong>方策に関係する情報がひとつも入っていません。</strong>
+     これは「世界がこうなっている」という<strong>物理的な事実</strong>だけで、
+     方策をどう更新しようが古くなりません。</p>
+  <p>そして <code>target</code> は<strong>学習する瞬間に、そのときの <code>Q</code> から計算し直します</strong>。</p>
+  <div class="code"><pre>target = r + gamma * max(Q[s_next])
+                         ^^^^^^^^^^ 今の最新の表を引く
+</pre></div>
+
+  <h3>なぜ SARSA だと困るのか</h3>
+  <p>SARSA の <code>target</code> には <code>a_next</code> が必要です。</p>
+  <div class="code"><pre>target = r + gamma * Q[s_next][a_next]
+                              ^^^^^^^^ これは誰が決めた？
+</pre></div>
+  <p class="why"><b><code>a_next</code> は「集めた時点の方策の判断」です</b>
+     <code>choose()</code> がそのときの <code>Q</code> を見て選んだ行動なので、
+     <strong>保存した 5 つ組に「あのときの方策」が焼き付いています</strong>。
+     <code>Q</code> を更新すると <code>choose()</code> の返す行動も変わり、
+     保存してある <code>a_next</code> は<strong>「今の自分ならもう選ばない行動」</strong>になる。
+     それを根拠に学習すると、<strong>存在しない方策の価値を計算している</strong>ことになります。</p>
+
+  <h3>実測: データ効率がどれだけ変わるか</h3>
+  <p>崖のマス目で「<strong>環境を何歩あるけば学習できるか</strong>」を測りました（10 シード中の成功数）。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">環境を歩いた歩数</th><th class="num">素の Q 学習</th><th class="num">リプレイあり（10 回ずつ再利用）</th></tr></thead>
+    <tbody>
+      <tr><td class="num">300</td><td class="num">0/10</td><td class="num">2/10</td></tr>
+      <tr><td class="num">600</td><td class="num">0/10</td><td class="num"><strong>10/10</strong></td></tr>
+      <tr><td class="num">2,000</td><td class="num">8/10</td><td class="num">10/10</td></tr>
+      <tr><td class="num">4,000</td><td class="num">10/10</td><td class="num">10/10</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><strong>同じ学習成果に必要な「実際に歩く回数」が 1/7 に減っています。</strong></p>
+
+  <div class="callout">
+    <span class="k">正直なところ: このマス目では SARSA にリプレイを付けても大体動く</span>
+    <p>理屈のうえでは不正なのですが、実際に試すと <strong>10 シード中 9 つは動いてしまいます</strong>
+       （壊れたのは 1 つだけ）。</p>
+    <div class="code"><pre>Q 学習 + リプレイ    成功 10/10   歩数 [7,7,7,7,7,7,7,7,7,7]
+SARSA + リプレイ     成功  9/10   歩数 [9,9,9,9,9,30,9,9,9,9]
+</pre></div>
+    <p>18 マスしかなく方策があまり変わらないので、<code>a_next</code> が古くなっても大差ないためです。
+       <strong>差が効いてくるのは規模が大きいとき</strong>——
+       方策がニューラルネットで大きく変化し、バッファに何十万件も溜まっている状況では、
+       古い <code>a_next</code> は現在の方策とかけ離れます。</p>
+  </div>
+
+  <h3>どんな集め方のデータでも使える</h3>
+  <p>保存した 5 つ組に方策の情報が入っていない、ということは——
+     <strong>誰がどう集めたデータでも構わない</strong>ということです。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>データの出どころ</th><th>Q 学習（off-policy）</th><th>SARSA（on-policy）</th></tr></thead>
+    <tbody>
+      <tr><td>いま歩いて集めたばかり</td><td class="ok">使える</td><td class="ok">使える</td></tr>
+      <tr><td>1 時間前の自分が集めた</td><td class="ok">使える</td><td class="ng">使えない</td></tr>
+      <tr><td>完全にでたらめな歩行</td><td class="ok">使える</td><td class="ng">使えない</td></tr>
+      <tr><td>人間が操作した記録</td><td class="ok">使える</td><td class="ng">使えない</td></tr>
+      <tr><td>同じデータを 100 回使う</td><td class="ok">使える</td><td class="ng">使えない</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>なぜこれが実機で決定的なのか</b>
+     シミュレーションなら 4,000 歩も 600 歩も一瞬です。<strong>実機では違います。</strong></p>
+  <ul>
+    <li>振り子を 1 歩進める ＝ 実時間 0.01 秒。4,000 歩で 40 秒（これは軽いほう）</li>
+    <li>だが<strong>エピソードごとに人が手で初期姿勢に戻す</strong>なら、1 エピソード数十秒</li>
+    <li>崖に相当する失敗が<strong>ハードウェアの破損</strong>なら、試行回数そのものに上限がある</li>
+  </ul>
+  <p class="why"><strong>「実際に動かす回数」が高価な場面では、
+     1 回の経験を何度も使えるかどうかが決定的になります。</strong>
+     実機寄りの研究で off-policy 手法（SAC など）が好まれるのはこのためです。</p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">on-policy / off-policy</span></div>
+    <dl>
+      <dt>何が違うのか</dt>
+      <dd><strong>「データを集めた方策」と「学習している方策」が同じか違うか</strong>。
+        同じなら on-policy、違ってよければ off-policy。</dd>
+      <dt>実際に何が変わるか</dt>
+      <dd><strong>データを使い回せるかどうか</strong>。
+        off-policy は過去のデータを<b>リプレイバッファ</b>（＝経験を溜めておく箱）に貯めて
+        何度も学習に使える。on-policy は使い捨て。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 7 でアルゴリズムを選ぶとき。
+        <strong>PPO は on-policy、SAC と DQN は off-policy</strong>。
+        <strong>実機では 1 歩が高価</strong>（時間がかかる・壊れる）なので、
+        データを使い回せる off-policy が有利になりやすい。</dd>
+    </dl>
+  </div>
+
+  <div class="callout">
+    <span class="k">では on-policy は劣っているのか</span>
+    <p>そうではありません。<strong>off-policy は学習が不安定になりやすい</strong>という弱点があります。
+       古いデータと今の方策がかけ離れていると、見当違いな更新をしてしまう。</p>
+    <p><strong>PPO が on-policy なのに広く使われているのは、安定して学習が進むから</strong>です。
+       シミュレーションならデータは安く大量に作れるので、使い捨てても困りません。
+       <strong>「シミュレータがあるなら PPO、実機データが貴重なら off-policy」</strong>
+       というのが大まかな住み分けです。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>方策を直接いじる道</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Step 8 で実装する PPO は、ここまでとは<strong>発想が違う系統</strong>に属します。
+       <strong>名前と考え方だけ</strong>先に置いておきます。実装は Step 8 です。</p>
+  </div>
+
+  <p>ここまでの手法はすべて<strong>価値の表を作り、そこから行動を決めていました</strong>。
+     <code>Q</code> を学び、<code>argmax</code> で方策を導く。方策は<strong>結果として出てくるもの</strong>でした。</p>
+
+  <p>もうひとつの道があります。<strong>価値を経由せず、方策そのものを直接いじる</strong>——
+     <b>方策勾配法</b>（policy gradient）と呼ばれる系統です。</p>
+
+  <div class="code"><pre>価値ベース   Q を学ぶ &rarr; argmax で方策が決まる        <span class="cmt"># Q 学習、DQN</span>
+方策ベース   方策を直接いじる                          <span class="cmt"># 方策勾配、PPO</span>
+</pre></div>
+
+  <p class="why"><b>考え方は拍子抜けするほど素朴です</b>
+     <strong>「うまくいった行動の確率を上げ、うまくいかなかった行動の確率を下げる」</strong>。
+     それだけです。「うまくいった」の度合いを測るのに何を使うかというと——
+     <strong>5-c で出てきた<b>アドバンテージ</b> <code>A = Q &minus; V</code></strong> です。
+     平均よりどれだけ良かったか、その分だけ確率を動かす。</p>
+
+  <div class="callout tip">
+    <span class="k">なぜ振り子では方策ベースが要るのか</span>
+    <p>振り子のトルクは<strong>連続値</strong>です。
+       <code>argmax</code> を取ろうにも、<strong>無限にある選択肢を全部比べることができません</strong>。
+       方策ベースなら「トルクを直接出力する関数」を学べばよいので、この問題が起きません。
+       <strong>連続的な行動を扱うロボット制御で方策ベースが主流なのは、これが理由</strong>です。</p>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      &sect;03 の 2 枚の経路図を<strong>自分で再現する</strong>ため。
+      更新式を 1 箇所変えるだけで行動が変わるのを見ると、
+      <strong>「アルゴリズムの違い」が具体物になります</strong>。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——Step 7 で PPO / SAC / DQN のどれを使うか選ぶとき、
+      <strong>on-policy か off-policy かを判断軸にできる</strong>。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      新しいファイル <code>toy/cliff.py</code> を作ってください。
+      <strong>5-e の <code>gridworld_q.py</code> は残しておいてください。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>崖のあるマス目を作る</h3>
+    <p class="why"><b>この段階ですること</b> 環境を作るだけ。<strong>写経で構いません。</strong>
+      5-e までのマス目と違うのは<strong>報酬の付け方</strong>です。</p>
+    <div class="code"><pre>import numpy as np
+
+CLIFF = [
+    "......",
+    "......",
+    "S!!!!G",
+]
+DELTA = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+N_ROW, N_COL = 3, 6
+START, GOAL = (2, 0), (2, 5)
+STATES = [(r, c) for r in range(N_ROW) for c in range(N_COL)]
+
+
+def step(s, a):
+    dr, dc = DELTA[a]
+    r, c = s[0] + dr, s[1] + dc
+    if not (0 &lt;= r &lt; N_ROW and 0 &lt;= c &lt; N_COL):
+        r, c = s                                  <span class="cmt"># 外に出ようとしたら留まる</span>
+    nxt = (r, c)
+    if CLIFF[nxt[0]][nxt[1]] == "!":
+        return START, -100.0, False               <span class="cmt"># 崖: 大損してスタートに逆戻り</span>
+    return nxt, (0.0 if nxt == GOAL else -1.0), nxt == GOAL
+
+
+def make_Q():
+    return {s: [0.0] * 4 for s in STATES}
+
+
+def choose(Q, s, rng, eps=0.1):
+    if rng.random() &lt; eps:
+        return int(rng.integers(4))
+    return int(np.argmax(Q[s]))
+</pre></div>
+    <p class="why"><b>報酬が変わっています</b>
+      5-b で比べた<strong>案 A（1 歩ごとに罰）</strong>を使っています。
+      ゴールで <code>0</code>、それ以外は <code>&minus;1</code>、崖は <code>&minus;100</code>。
+      <strong>ゴールすれば必ず終わるので <code>&gamma; = 1.0</code> でも発散しません。</strong>
+      割引せずに済むぶん、経路の長さが収益にそのまま出ます。</p>
+    <p class="why"><b>崖に落ちてもエピソードは終わりません</b>
+      <code>return START, -100.0, False</code> の <code>False</code> に注目してください。
+      <strong>スタートに引き戻されるだけで、やり直しになります。</strong>
+      落ちるたびに &minus;100 が積み上がるので、「落ちやすい経路」は収益が大きく下がります。</p>
+    <p><b>確認方法</b> 崖に落ちる 1 歩を試します。</p>
+    <div class="code"><pre>print(step((2, 0), 1))    <span class="cmt"># スタートから右へ -> ((2, 0), -100.0, False)</span>
+print(step((2, 0), 0))    <span class="cmt"># スタートから上へ -> ((1, 0), -1.0, False)</span>
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>2 つの更新式を書き分ける</h3>
+    <p class="why"><b>この段階ですること</b> &sect;02 の 2 行をコードにします。
+      <strong>今回の本題はここだけ</strong>です。</p>
+    <div class="code"><pre>def learn(kind, n_ep=3000, alpha=0.1, eps=0.1, gamma=1.0, seed=0, cap=200):
+    rng = np.random.default_rng(seed)
+    Q = make_Q()
+    returns = []
+    for ep in range(n_ep):
+        s = START
+        a = choose(Q, s, rng, eps)          <span class="cmt"># 最初の行動を先に決めておく</span>
+        total = 0.0
+        for t in range(cap):
+            s_next, r, done = step(s, a)
+            total += r
+            a_next = choose(Q, s_next, rng, eps)    <span class="cmt"># 次の行動も先に決める</span>
+
+            if kind == "q":
+                target = r + (0.0 if done else gamma * max(Q[s_next]))
+            else:
+                target = ???                <span class="cmt"># ← ここだけ考える（SARSA）</span>
+
+            Q[s][a] += alpha * (target - Q[s][a])
+            s, a = s_next, a_next
+            if done:
+                break
+        returns.append(total)
+    return Q, returns
+</pre></div>
+    <p>Q 学習の行がすぐ上にあります。&sect;02 の表を見ながら、
+      <strong><code>max<sub>a'</sub> Q(s_next)</code> を何に置き換えればいいか</strong>を書いてください。
+      使える変数は <code>a_next</code> です。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>                target = r + (0.0 if done else gamma * Q[s_next][a_next])
+</pre></div>
+      <p class="why"><b>違いは <code>max(Q[s_next])</code> と <code>Q[s_next][a_next]</code> だけ</b>
+        前者は「4 つのうち最大」、後者は「<strong>実際に次に選ぶ 1 つ</strong>」。
+        <code>a_next</code> は <code>choose()</code> が返したものなので、
+        <strong>10 回に 1 回はでたらめな行動</strong>です。
+        <strong>その「たまに失敗する自分」が価値の見積もりに混ざります。</strong></p>
+      <p class="why"><b><code>s, a = s_next, a_next</code> の行に注目</b>
+        SARSA では<strong>次の行動を先に決めてしまう</strong>ので、
+        次のループではそれをそのまま使います。
+        Q 学習だけなら <code>a_next</code> は不要ですが、
+        <strong>ここでは 2 つを同じループで書き分けたいので両方用意しています</strong>。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>経路を比べる</h3>
+    <p class="why"><b>この段階ですること</b> 両方を学習させ、
+      <strong>&epsilon; を切って歩かせた経路</strong>を見比べます。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>def greedy_path(Q, cap=30):
+    s, path = START, [START]
+    for t in range(cap):
+        s, r, done = step(s, int(np.argmax(Q[s])))
+        path.append(s)
+        if done:
+            return path
+    return path
+
+
+for kind, name in (("q", "Q 学習  (off-policy)"), ("sarsa", "SARSA  (on-policy)")):
+    Q, returns = learn(kind)
+    path = greedy_path(Q)
+    print(f"{name}")
+    print(f"  経路         : {path}")
+    print(f"  歩数         : {len(path) - 1}")
+    print(f"  学習中の平均収益: {np.mean(returns[-500:]):.2f}")
+</pre></div>
+    <p><b>確認方法</b> こういう出力になります。</p>
+    <div class="code"><pre>Q 学習  (off-policy)
+  経路         : [(2, 0), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (2, 5)]
+  歩数         : 7
+  学習中の平均収益: -22.84
+
+SARSA  (on-policy)
+  経路         : [(2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (1, 5), (2, 5)]
+  歩数         : 9
+  学習中の平均収益: -14.00
+</pre></div>
+    <p class="why"><b>経路の行番号を追ってください</b>
+      Q 学習は <code>(1,1)〜(1,4)</code> と<strong>崖のすぐ真上</strong>を通ります。
+      SARSA は <code>(0,0)〜(0,5)</code> と<strong>一段上に避けています</strong>。
+      <strong>更新式の 1 箇所を変えただけでこうなります。</strong></p>
+    <p class="why"><b>そして成績は逆転しています</b>
+      短い経路を見つけたのは Q 学習なのに、<strong>学習中の平均収益は SARSA が 1.6 倍良い</strong>。
+      <strong>「良いアルゴリズム」は目的によって変わる</strong>という実例です。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>Step 5 のまとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>Q 学習が「でたらめに歩いても学べる」のは <code>max</code> のおかげ。
+          <strong>右辺に実際の行動 <code>a</code> が出てこない</strong></li>
+      <li><code>max<sub>a'</sub> Q(s')</code> を <code>Q(s',a')</code> に変えると <b>SARSA</b>。
+          <strong>「たまに失敗する自分」を織り込む</strong>ので崖を避ける</li>
+      <li><b>off-policy</b> ＝ 集めた方策と学ぶ方策が違ってよい ＝ <strong>データを使い回せる</strong></li>
+      <li><b>on-policy</b> ＝ 同じでなければならない ＝ <strong>更新したらデータは捨てる</strong>。
+          ただし<strong>学習は安定しやすい</strong>（PPO がこれ）</li>
+      <li><b>方策勾配法</b>は価値を経由せず方策を直接いじる。
+          <strong>連続的な行動を扱えるので、ロボット制御ではこちらが主流</strong></li>
+    </ol>
+  </div>
+
+  <div class="recap">
+    <span class="k">Step 5 全体で手に入れたもの</span>
+    <ol>
+      <li><b>5-a</b> MDP ＝ 状態・行動・遷移・報酬・割引率。探しているのは<b>方策</b>ひとつ</li>
+      <li><b>5-b</b> <b>収益 G</b> と <b>割引率 &gamma;</b>。目的は「収益の平均を最大にすること」</li>
+      <li><b>5-c</b> <b>V</b> / <b>Q</b> / <b>A</b>。価値は<strong>状態と方策の組</strong>の性質</li>
+      <li><b>5-d</b> <b>ベルマン方程式</b>。2 つの壁（遷移を知らない／状態が無限）という見取り図</li>
+      <li><b>5-e</b> <b>Q 学習</b>を実装。64.6 歩 &rarr; <b>6 歩</b></li>
+      <li><b>5-f</b> <b>on/off-policy</b>。データを使い回せるかどうか</li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="f1"><span>SARSA の更新式を書き、Q 学習との違いが 1 箇所だけだと確認した</span></label>
+    <label><input type="checkbox" data-ck="f2"><span>崖のマス目で、2 つが違う経路を選ぶのを自分で再現した</span></label>
+    <label><input type="checkbox" data-ck="f3"><span>Q 学習が「でたらめに歩いても学べる」理由を <code>max</code> の言葉で説明できる</span></label>
+    <label><input type="checkbox" data-ck="f4"><span>on-policy / off-policy の違いを<strong>データの使い回し</strong>の観点で説明できる</span></label>
+    <label><input type="checkbox" data-ck="f5"><span>振り子で方策ベースが要る理由（行動が連続値）を説明できる</span></label>
+    <label><input type="checkbox" data-ck="f6"><span>MDP の 5 つ、<code>V</code>/<code>Q</code>/<code>A</code> の関係、ベルマン方程式を、見ないで書ける</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次は Step 6 — 振り子に戻ります</span>
+    <p>Phase B の前半が終わりました。<strong>ここから振り子に戻ります。</strong>
+       Step 6 でやるのは、<strong>あなたの MuJoCo モデルを「環境」として RL ライブラリに繋ぐ</strong>こと。
+       5-a で見た <code>step()</code> と同じ形のものを、振り子について書きます。</p>
+    <p>そこで<strong>壁 B（状態が無限）</strong>に初めて正面からぶつかります。
+       14 マスの表は作れません。どうするかは Step 7・8 の主題です。</p>
+    <p>先に考えておいてください——
+       <strong>振り子の「状態」として、何をエージェントに渡しますか。</strong>
+       角度と角速度をそのまま渡すとして、<strong>角度には厄介な性質</strong>があります。
+       Step 4 で <code>wrap()</code> を書いたときに一度ぶつかったはずです。何が問題でしょうか。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 5-f</span>
+  <span>数値はすべて実測（3000 エピソード）</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step05f-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

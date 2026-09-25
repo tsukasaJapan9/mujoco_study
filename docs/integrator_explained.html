@@ -1,0 +1,1024 @@
+<title>timestep と積分器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --vio:#6B4FA0; --grid:#E3EAE8;
+    --ok:#0D6C61; --ng:#B3261E;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --vio:#A98FD8; --grid:#212C2F;
+      --ok:#4FC6B5; --ng:#E8776D;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --vio:#A98FD8; --grid:#212C2F;
+    --ok:#4FC6B5; --ng:#E8776D;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:940px; margin:0 auto; padding:0 24px 96px; }
+  h1,h2,h3 { font-family:var(--f-display); text-wrap:balance; line-height:1.4; margin:0; }
+  h3 { font-size:16.5px; font-weight:700; margin-top:8px; }
+  p { margin:0; max-width:64ch; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:64px 0 36px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:16px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+
+  section { padding-top:56px; display:flex; flex-direction:column; gap:20px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+  .sec-head h2 { font-size:22px; font-weight:700; }
+
+  .fig { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         padding:24px 20px; box-shadow:var(--shadow); overflow-x:auto; }
+  .fig svg { display:block; width:100%; height:auto; min-width:560px; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:10px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:520px; }
+  th,td { text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td.ok { color:var(--ok); font-weight:600; font-size:13px; }
+  td.ng { color:var(--ng); font-weight:600; font-size:13px; }
+
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+  .codewrap { position:relative; }
+  pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.7; background:var(--surface);
+        border:1px solid var(--rule); border-radius:4px; padding:16px 18px; overflow-x:auto; margin:0; }
+  pre .c { color:var(--muted); }
+  pre .k { color:var(--sim); }
+  .copy { position:absolute; top:8px; right:8px; font-family:var(--f-mono); font-size:10.5px;
+          letter-spacing:.08em; text-transform:uppercase; padding:4px 9px; opacity:.55; }
+  .codewrap:hover .copy { opacity:1; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:16px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout.tip .k { color:var(--sim); }
+  .callout p { font-size:14px; color:var(--ink-2); }
+
+  .eq { background:var(--surface-2); border:1px solid var(--rule); border-radius:4px;
+        padding:14px 18px; font-family:var(--f-mono); font-size:13.5px; line-height:2;
+        overflow-x:auto; }
+  .eq b { color:var(--sim); font-weight:600; }
+
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong { color:var(--ink); font-weight:600; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- interactive ---- */
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr;
+         overflow:hidden; }
+  .lab-controls { padding:22px 20px; border-right:1px solid var(--rule);
+                  display:flex; flex-direction:column; gap:18px; background:var(--surface-2); }
+  .lab-stage { padding:22px 20px; display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .ctrl { display:flex; flex-direction:column; gap:7px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim);
+               font-variant-numeric:tabular-nums; font-weight:600; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  input[type=range]:focus-visible { outline:2px solid var(--sim); outline-offset:3px; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button { font-family:var(--f-display); font-size:12.5px; font-weight:500; cursor:pointer;
+           background:var(--surface); color:var(--ink); border:1px solid var(--rule-strong);
+           border-radius:3px; padding:6px 12px; transition:background .12s, border-color .12s; }
+  button:hover { border-color:var(--sim); color:var(--sim); }
+  button:focus-visible { outline:2px solid var(--sim); outline-offset:2px; }
+
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; gap:1px; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.08em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+
+  .plots { display:grid; grid-template-columns:1fr 1fr; gap:16px; min-width:0; }
+  .plot { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .plot .pt { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.1em;
+              text-transform:uppercase; color:var(--muted); font-weight:600; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; background:var(--surface-2); }
+
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; font-family:var(--f-mono); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .legend i { width:14px; height:3px; border-radius:2px; display:inline-block; }
+  .legend b { font-weight:600; font-size:11px; padding:1px 6px; border-radius:2px; }
+  .st-ok { color:var(--ok); } .st-ng { color:var(--ng); }
+
+  @media (max-width:860px) {
+    .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); }
+    .plots { grid-template-columns:1fr; }
+  }
+  ul { margin:0; padding-left:20px; color:var(--ink-2); font-size:14.5px; max-width:64ch; }
+  li { margin:5px 0; }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+</style>
+
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">01</span><span class="t">そもそも、なぜ「積分」なのか</span></a></li>
+    <li><a href="#s02"><span class="n">02</span><span class="t">1 ステップの中身を、式で見る</span></a></li>
+    <li><a href="#s03"><span class="n">03</span><span class="t">なぜ壊れるのか</span></a></li>
+    <li><a href="#s04"><span class="n">04</span><span class="t">自分で壊してみる</span></a></li>
+    <li><a href="#s05"><span class="n">05</span><span class="t">MuJoCo で測ったしきい値</span></a></li>
+    <li><a href="#s06"><span class="n">06</span><span class="t">XML のどこに書くか</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Step 3 · 補助教材</div>
+  <h1>timestep と積分器は、何をしているのか</h1>
+  <p><code>&lt;option timestep="0.002" integrator="Euler"/&gt;</code> の 2 つの値。
+     片方は「何秒ごとに計算するか」、もう片方は「その 1 回で次をどう見積もるか」。
+     この 2 つがどう噛み合って、なぜ<strong>硬い系だけが壊れる</strong>のかを最後まで追う。</p>
+</header>
+
+<section style="padding-top:40px;">
+  <div class="aim">
+    <span class="k">この補助教材のねらい</span>
+    <p>Step 3 の §02 は「どの integrator を選ぶか」の<strong>結論と実測表</strong>を与えている。
+       だが結論だけでは、表に無い条件——自分が組んだロボットモデル——に出会ったとき何もできない。<br>
+       ここで扱うのは<strong>機構のほう</strong>。1 ステップの更新式が実際にどう書かれていて、
+       誤差がどういう条件で増幅されるのか。到達点は
+       <strong>「この設定は壊れるか」を実行前に手で計算できるようになる</strong>こと。<br>
+       Step 3 の課題 1 に取りかかる前か、課題 1 で発散を観察した直後に読むのがよい。</p>
+  </div>
+</section>
+
+<!-- ============ 01 ============ -->
+<section id="s01">
+  <div class="sec-head">
+    <div class="eyebrow">01</div>
+    <h2>そもそも、なぜ「積分」なのか</h2>
+    <p>物理エンジンが直接計算できるのは<strong>加速度</strong>だけ。
+       だが画面に描くために欲しいのは<strong>位置</strong>。この距離を埋める作業が積分。</p>
+  </div>
+
+  <p>ニュートンの運動方程式が与えてくれるのは、いまこの瞬間の加速度ひとつだけ。
+     振り子なら、いまの角度 θ といまの角速度 θ̇ を入れると角加速度 <span class="dd">θ</span> が出てくる。</p>
+
+  <div class="eq">M(θ) · <b><span class="dd">θ</span></b>  =  −m g l<sub>c</sub> sin θ  −  k<sub>p</sub>(θ − θ<sub>目標</sub>)  −  k<sub>v</sub> θ̇</div>
+
+  <p>ここから位置を得るには、加速度を 2 回積分しなければならない。
+     ところが加速度は θ と θ̇ に依存し、その θ と θ̇ は積分の結果として決まる。
+     ぐるぐる回っていて、手で解くことはできない（振り子は単振り子ですら解析解が楕円積分になる）。</p>
+
+  <p>そこで<strong>時間を細切れにして、加速度が一定だと思い込んで少しだけ進める</strong>。
+     進んだ先で加速度を計算し直して、また少し進める。これを延々繰り返す。
+     この「少し」の幅が <code>timestep</code>、「どう進めるか」の手続きが <code>integrator</code>。</p>
+
+  <div class="callout tip">
+    <span class="k">2 つの値の役割</span>
+    <p><strong>timestep（Δt）</strong> 1 回の計算で進める時間。<code>0.002</code> なら 2 ミリ秒 = 1 秒間に 500 回計算する。<br>
+       <strong>integrator</strong> その 1 回で、次の θ と θ̇ をどの式で見積もるか。
+       同じ Δt でも、式が違えば結果も安定性も変わる。</p>
+  </div>
+
+  <div class="fig">
+    <svg viewBox="0 0 880 300" role="img" aria-label="連続的な真の軌道を、有限の時間刻みで折れ線として近似する図">
+      <g font-family="IBM Plex Sans JP, sans-serif" font-size="12.5">
+        <text x="16" y="24" fill="var(--muted)" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="1.5">TRUE vs DISCRETE</text>
+
+        <line x1="70" y1="250" x2="840" y2="250" stroke="var(--rule-strong)" stroke-width="1.5"/>
+        <line x1="70" y1="60" x2="70" y2="250" stroke="var(--rule-strong)" stroke-width="1.5"/>
+        <text x="846" y="254" fill="var(--muted)" font-size="12">t</text>
+        <text x="46" y="58" fill="var(--muted)" font-size="12">θ</text>
+
+        <!-- true curve -->
+        <path d="M70,230 C170,120 250,80 350,90 C450,100 520,160 620,200 C700,232 760,238 840,225"
+              fill="none" stroke="var(--sim)" stroke-width="2.5" opacity=".85"/>
+        <text x="360" y="76" fill="var(--sim)" font-size="12.5" font-weight="600">真の運動（連続）</text>
+
+        <!-- discrete polyline (deliberately offset, coarse) -->
+        <polyline points="70,230 198,150 326,96 454,108 582,168 710,224 838,244"
+                  fill="none" stroke="var(--real)" stroke-width="2.5" stroke-dasharray="1 0"/>
+        <g fill="var(--real)">
+          <circle cx="70" cy="230" r="4"/><circle cx="198" cy="150" r="4"/>
+          <circle cx="326" cy="96" r="4"/><circle cx="454" cy="108" r="4"/>
+          <circle cx="582" cy="168" r="4"/><circle cx="710" cy="224" r="4"/>
+          <circle cx="838" cy="244" r="4"/>
+        </g>
+        <text x="600" y="255" fill="var(--real)" font-size="12.5" font-weight="600">シミュレーション（離散）</text>
+
+        <!-- timestep bracket -->
+        <g stroke="var(--muted)" stroke-width="1">
+          <line x1="198" y1="150" x2="198" y2="272"/>
+          <line x1="326" y1="96" x2="326" y2="272"/>
+          <line x1="198" y1="272" x2="326" y2="272"/>
+        </g>
+        <text x="262" y="290" fill="var(--muted)" font-size="12" text-anchor="middle">Δt = timestep</text>
+
+        <!-- error gap -->
+        <line x1="454" y1="100" x2="454" y2="108" stroke="var(--ng)" stroke-width="2"/>
+        <text x="466" y="130" fill="var(--muted)" font-size="11.5">1 ステップごとの誤差が積み上がる</text>
+      </g>
+    </svg>
+    <figcaption>滑らかな曲線を折れ線で置き換えるのがシミュレーション。Δt を小さくすれば折れ線は曲線に近づくが、その分だけ計算回数が増える。</figcaption>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="s02">
+  <div class="sec-head">
+    <div class="eyebrow">02</div>
+    <h2>1 ステップの中身を、式で見る</h2>
+    <p>4 つの integrator の違いは、たった数行の更新式の違いでしかない。
+       <code>a(θ, θ̇)</code> は運動方程式から出てくる角加速度とする。</p>
+  </div>
+
+  <h3>陽的オイラー法 — 教科書の最初に出てくるが、MuJoCo は使わない</h3>
+  <div class="eq">
+    θ̇<sub>新</sub> = θ̇ + Δt · a(θ, θ̇)<br>
+    θ<sub>新</sub>&nbsp; = θ + Δt · <b>θ̇</b> &nbsp;&nbsp;<span style="color:var(--muted)">← 古い速度を使う</span>
+  </div>
+  <p>いまの加速度でまっすぐ進めるだけ。単純だが、振動する系ではエネルギーが必ず増え続け、
+     どんなに Δt を小さくしても最後には発散する。</p>
+
+  <h3><code>Euler</code> — MuJoCo の既定。semi-implicit（準陰的）</h3>
+  <div class="eq">
+    θ̇<sub>新</sub> = θ̇ + Δt · a(θ, θ̇)<br>
+    θ<sub>新</sub>&nbsp; = θ + Δt · <b>θ̇<sub>新</sub></b> &nbsp;&nbsp;<span style="color:var(--muted)">← 更新した速度を使う</span>
+  </div>
+  <p>違いは 2 行目の 1 箇所だけ。<strong>更新したばかりの速度で位置を進める</strong>。
+     このわずかな差でエネルギーが暴走しなくなり、振動系に対して桁違いに強くなる。
+     MuJoCo が単に <code>Euler</code> と呼んでいるのはこちら。</p>
+
+  <h3><code>RK4</code> — 1 ステップで加速度を 4 回評価する</h3>
+  <p>ステップの始点・中点 2 回・終点で加速度を計算し、重み付き平均で進める。
+     誤差は Δt<sup>4</sup> に比例するので<strong>精度</strong>は圧倒的。ただし計算コストは 4 倍。
+     そして後で見るとおり、<strong>精度が高いことと壊れにくいことは別物</strong>。</p>
+
+  <h3><code>implicitfast</code> — 速度依存の力だけを「次の時刻の速度」で評価する</h3>
+  <div class="eq">
+    θ̇<sub>新</sub> = θ̇ + Δt · [ f<sub>位置</sub>(θ) − k<sub>v</sub> · <b>θ̇<sub>新</sub></b> ] / M
+    &nbsp;&nbsp;<span style="color:var(--muted)">← 未知数が両辺に出る</span><br>
+    <span style="color:var(--muted)">整理して</span> &nbsp; θ̇<sub>新</sub> = ( θ̇ + Δt · f<sub>位置</sub>(θ)/M ) / ( 1 + Δt · k<sub>v</sub>/M )
+  </div>
+  <p>減衰やアクチュエータの <code>kv</code> のような<strong>速度に比例する力</strong>を、
+     「進んだ後の速度」で評価する。未知数が両辺に現れるので連立方程式を解く必要があるが、
+     その代わり分母 <code>(1 + Δt·kv/M)</code> が必ず 1 より大きくなり、
+     <strong>Δt をどれだけ大きくしても速度が増幅されない</strong>。これが安定性の正体。</p>
+
+  <div class="callout">
+    <span class="k">ここが分岐点</span>
+    <p>陽的な方法（Euler・RK4）は「いまの状態から未来を予測する」。
+       予測が外れると誤差が生まれ、その誤差が次のステップで増幅されると発散する。<br>
+       陰的な方法（implicitfast・implicit）は「<strong>その式を満たす未来を逆算する</strong>」。
+       解くコストはかかるが、増幅が原理的に起きない。</p>
+  </div>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="s03">
+  <div class="sec-head">
+    <div class="eyebrow">03</div>
+    <h2>なぜ壊れるのか — 増幅率がすべてを決める</h2>
+    <p>発散するかどうかは、実は<strong>手計算で予測できる</strong>。
+       そして予測値は MuJoCo の実測と小数点以下まで一致する。</p>
+  </div>
+
+  <h3>まず 1 ステップを手で追う — ブレーキが効きすぎて逆走する</h3>
+
+  <p>いちばん単純な形で見る。ばね（kp）をいったん忘れて、
+     <strong>ダンパ（kv）だけ</strong>の世界を考える。減衰の力は速度に比例するブレーキ。</p>
+
+  <div class="eq">
+    θ̇<sub>新</sub> = θ̇ + Δt · (−k<sub>v</sub> · θ̇) / M
+    = θ̇ · <b>( 1 − k<sub>v</sub>Δt / M )</b>
+  </div>
+
+  <p>次の速度は、いまの速度に <b>( 1 − k<sub>v</sub>Δt/M )</b> を掛けただけ。
+     この<strong>掛け算の係数</strong>がすべてを決める。
+     <code>stiff_pendulum.xml</code> の値（M = 0.0567、k<sub>v</sub> = 40）で計算してみる。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Δt</th><th>k<sub>v</sub>Δt / M</th><th>速度に掛かる係数</th><th>1 ステップ後</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1 ms</td><td class="num">0.705</td><td class="num">+0.295</td><td class="ok">30% に縮む → 安定</td></tr>
+        <tr><td class="num">2 ms</td><td class="num">1.410</td><td class="num">−0.410</td><td class="ok">逆向きだが 41% に縮む → 安定</td></tr>
+        <tr><td class="num">2.84 ms</td><td class="num">2.000</td><td class="num">−1.000</td><td>ちょうど境界。減りも増えもしない</td></tr>
+        <tr><td class="num">5 ms</td><td class="num">3.525</td><td class="num">−2.525</td><td class="ng">逆向きに 2.5 倍 → 発散</td></tr>
+        <tr><td class="num">10 ms</td><td class="num">7.049</td><td class="num">−6.049</td><td class="ng">逆向きに 6 倍 → 即死</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">何が起きているのか</span>
+    <p>ブレーキの仕事は<strong>速度をゼロに近づける</strong>こと。ところがシミュレータは
+       「ステップ開始時点のブレーキ力が Δt の間ずっと一定」だと思い込んで進める。<br>
+       Δt が長すぎると、<strong>ゼロを通り過ぎて逆向きに走り出す</strong>。
+       通り過ぎる量が元の速度の 2 倍を超えると、
+       <strong>ブレーキをかけたのに元より速くなる</strong>。次のステップではもっと強いブレーキがかかり、
+       もっと大きく行き過ぎる。これが発散の正体。<br>
+       境界は <code>k<sub>v</sub>Δt/M = 2</code>、つまり <b>Δt = 2M/k<sub>v</sub></b>。</p>
+  </div>
+
+  <p>掛け算なので、超えた瞬間から<strong>指数関数的</strong>に膨らむ。実際に Δt = 5 ms で
+     初速 1.0 rad/s から始めると:</p>
+
+  <div class="eq" style="line-height:1.85">
+    step 1 → −2.52 &nbsp; step 2 → +6.37 &nbsp; step 3 → −16.1 &nbsp; step 4 → +40.6<br>
+    step 5 → −103 &nbsp;&nbsp; step 6 → +259 &nbsp;&nbsp; step 7 → −654 &nbsp;&nbsp; step 8 → +1651
+  </div>
+
+  <p>符号が毎回ひっくり返りながら 2.5 倍ずつ増えていく。
+     3 秒 = 600 ステップ後には <code>inf</code>。<strong>ばねを一切使っていない</strong>のに壊れることに注目。
+     「硬さ」はばね定数だけの話ではない。</p>
+
+  <h3>本物の MuJoCo で同じことが起きているのを見る</h3>
+
+  <p><code>kp=2000 kv=40</code>、<code>Δt=0.005</code>、初期角度 0.5 rad。
+     最初の 10 ステップを表示したもの。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>step</th><th>θ [rad]</th><th>θ̇ [rad/s]</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td class="num">0.059</td><td class="num">−88.2</td><td>行き過ぎて反対側へ</td></tr>
+        <tr><td class="num">2</td><td class="num">1.120</td><td class="num">+212.2</td><td>もっと大きく戻る</td></tr>
+        <tr><td class="num">3</td><td class="num">−2.547</td><td class="num">−733.3</td><td></td></tr>
+        <tr><td class="num">4</td><td class="num">8.955</td><td class="num">+2300.3</td><td></td></tr>
+        <tr><td class="num">5</td><td class="num">−27.97</td><td class="num">−7385.9</td><td>毎ステップ約 3 倍</td></tr>
+        <tr><td class="num">10</td><td class="num">9368.7</td><td class="num">+2460039</td><td class="ng">もう戻れない</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>同じモデルで <code>Δt=0.002</code> にすると、θ は 0.5 → 0.429 → 0.398 → 0.355 …
+     と<strong>静かに目標へ落ちていく</strong>。式も物理も同じで、変えたのは刻み幅だけ。</p>
+
+  <h3>「硬さ × timestep」が一定を超えると壊れる</h3>
+
+  <p>境界の式 <code>Δt = 2M/k<sub>v</sub></code> を裏返すと <code>k<sub>v</sub> · Δt = 2M</code>。
+     つまり<strong>硬さと刻み幅の積</strong>に上限がある。
+     片方を 2 倍にしたら、もう片方を半分にしないと同じ場所に留まれない。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>kp</th><th>kv</th><th>MuJoCo 実測しきい値</th><th>2M/k<sub>v</sub>（ダンパ由来）</th><th>2/ω（ばね由来）</th></tr></thead>
+      <tbody>
+        <tr><td class="num">2000</td><td class="num">40</td><td class="num">2.67 ms</td><td class="num">2.84 ms</td><td class="num">10.65 ms</td></tr>
+        <tr><td class="num">2000</td><td class="num">20</td><td class="num">4.64 ms</td><td class="num">5.67 ms</td><td class="num">10.65 ms</td></tr>
+        <tr><td class="num">2000</td><td class="num">10</td><td class="num">6.81 ms</td><td class="num">11.35 ms</td><td class="num">10.65 ms</td></tr>
+        <tr><td class="num">1000</td><td class="num">20</td><td class="num">5.09 ms</td><td class="num">5.67 ms</td><td class="num">15.07 ms</td></tr>
+        <tr><td class="num">500</td><td class="num">10</td><td class="num">9.37 ms</td><td class="num">11.35 ms</td><td class="num">21.31 ms</td></tr>
+        <tr><td class="num">4000</td><td class="num">80</td><td class="num">1.38 ms</td><td class="num">1.42 ms</td><td class="num">7.53 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">この表の読み方</span>
+    <p><strong>1 行目と最終行を比べる。</strong>kp と kv を両方 2 倍（2000/40 → 4000/80）にしたら、
+       しきい値は 2.67 → 1.38 ms とちょうど半分になった。<strong>硬さ × Δt が保存量</strong>だという意味。<br>
+       <strong>実測は常に 2M/k<sub>v</sub> より少し小さい。</strong>
+       ばねの分がわずかに上乗せされるから。だが<strong>どの行でも 2/ω より 2M/k<sub>v</sub> のほうが
+       小さく、実測はそちらに寄り添っている</strong>——効いている制約は一貫してダンパのほう。<br>
+       <strong>kv を 40 → 10 に下げるだけで、しきい値は 2.67 → 6.81 ms に広がる。</strong>
+       発散したとき timestep を下げる前に、まず kv を見直すべき理由がこれ。</p>
+  </div>
+
+  <p>更新式はどれも「いまの状態 (θ, θ̇) に行列を掛けて次の状態を出す」形に書ける。
+     この行列の<strong>固有値の絶対値の最大 |g|</strong> が増幅率。</p>
+
+  <div class="eq">
+    |g| &lt; 1 &nbsp;→&nbsp; 誤差は毎ステップ縮む &nbsp;→&nbsp; <b>安定</b><br>
+    |g| &gt; 1 &nbsp;→&nbsp; 誤差は毎ステップ膨らむ &nbsp;→&nbsp; <span style="color:var(--ng)">発散</span>
+  </div>
+
+  <p>|g| がわずかに 1 を超えるだけで十分に致命的。1.01 でも 1500 ステップ（3 秒）後には
+     10<sup>6</sup> 倍になる。これが「気づいたら NaN」の中身。</p>
+
+  <h3>2 つの上限が同時にかかる</h3>
+  <p>硬い position アクチュエータには <code>kp</code>（ばね）と <code>kv</code>（ダンパ）の 2 つがある。
+     陽的な方法では、それぞれが独立に Δt の上限を課す。</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>由来</th><th>上限の式</th><th>意味</th></tr></thead>
+      <tbody>
+        <tr><td><b>ばね</b> k<sub>p</sub></td><td class="num">Δt &lt; 2 / ω &nbsp;&nbsp;(ω = √(k<sub>p</sub>/M))</td>
+            <td>1 周期を最低 3 ステップ程度で刻めないと振動を追えない</td></tr>
+        <tr><td><b>ダンパ</b> k<sub>v</sub></td><td class="num">Δt &lt; 2M / k<sub>v</sub></td>
+            <td>減衰が強すぎると、1 ステップで行き過ぎて逆向きに大きくなる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="k">意外な事実 — 効いているのは kp ではなく kv</span>
+    <p><code>models/stiff_pendulum.xml</code>（M = 0.0567 kg·m²）に <code>kp=2000 kv=40</code> を入れると：<br>
+       ばね由来の上限 = 2/187.7 = <b>10.65 ms</b>　／　ダンパ由来の上限 = 2×0.0567/40 = <b>2.84 ms</b><br>
+       <strong>厳しいのはダンパのほう</strong>。MuJoCo の実測しきい値は <b>2.67 ms</b> で、ダンパ側の予測とほぼ一致する。
+       「kp を上げたら壊れた」と思っていたものの正体は、多くの場合セットで上げた kv のほうだった。<br>
+       そして <code>implicitfast</code> が陰的に扱うのは、まさにこの<strong>速度依存項＝kv</strong>。
+       効いている制約をピンポイントで外すから、あれほど劇的に効く。</p>
+  </div>
+</section>
+
+<!-- ============ 04 LAB ============ -->
+<section id="s04">
+  <div class="sec-head">
+    <div class="eyebrow">04 · 実験</div>
+    <h2>自分で壊してみる</h2>
+    <p><code>stiff_pendulum.xml</code> と同じ振り子（M = 0.0567 kg·m²）を、
+       4 つの方式で同時に回す。スライダを動かして、どこで折れ線が破綻するかを見る。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kp">kp（ばね）</label><span class="val" id="v-kp">2000</span></div>
+        <input type="range" id="s-kp" min="0" max="4000" step="50" value="2000">
+        <div class="hint">サーボの硬さ。上げるほど目標角度に強く引き戻す</div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kv">kv（ダンパ）</label><span class="val" id="v-kv">40</span></div>
+        <input type="range" id="s-kv" min="0" max="100" step="1" value="40">
+        <div class="hint">速度に比例するブレーキ。ここが陽解法の首を絞める</div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-dt">timestep</label><span class="val" id="v-dt">2.00 ms</span></div>
+        <input type="range" id="s-dt" min="0" max="100" step="1" value="52">
+        <div class="hint">0.1 ms 〜 20 ms。右へ動かすほど 1 ステップが粗くなる</div>
+      </div>
+      <div class="btns">
+        <button type="button" data-preset="2000,40,2">既定値</button>
+        <button type="button" data-preset="2000,40,5">課題 1-2 の発散点</button>
+        <button type="button" data-preset="2000,0,10">kv を 0 に</button>
+        <button type="button" data-preset="500,10,10">kp=500 kv=10</button>
+      </div>
+      <div class="ctrl">
+        <div class="hint" style="border-top:1px solid var(--rule); padding-top:14px;">
+          初期角度 0.5 rad から 3 秒間、目標角度 0 で回した結果。
+          物理は MuJoCo の簡約モデルで、実機の MuJoCo と 14 桁一致することを確認済み。
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">ω（重力込み）</span><span class="rv" id="r-w">187.8<small> rad/s</small></span></div>
+        <div><span class="rk">ばね上限 2/ω</span><span class="rv" id="r-lk">10.65<small> ms</small></span></div>
+        <div><span class="rk">ダンパ上限 2M/kv</span><span class="rv" id="r-lc">2.84<small> ms</small></span></div>
+        <div><span class="rk">いまの Δt</span><span class="rv" id="r-dt">2.00<small> ms</small></span></div>
+      </div>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="plots">
+        <div class="plot">
+          <span class="pt">θ(t) — 3 秒間の角度</span>
+          <canvas id="cv-traj" width="760" height="420"></canvas>
+        </div>
+        <div class="plot">
+          <span class="pt">増幅率 |g| — Δt を変えたとき</span>
+          <canvas id="cv-amp" width="760" height="420"></canvas>
+        </div>
+      </div>
+
+      <div class="hint" style="font-size:12px; color:var(--muted);">
+        右のグラフで曲線が水平線 |g| = 1 を上へ抜けた瞬間が、その方式の限界。
+        縦の点線がいま選んでいる Δt。左のグラフの破綻と必ず対応する。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="s05">
+  <div class="sec-head">
+    <div class="eyebrow">05 · 実測</div>
+    <h2>MuJoCo で測ったしきい値</h2>
+    <p><code>stiff_pendulum.xml</code> と同じ構成で、Δt を二分探索して発散する境界を求めた結果。
+       03 の手計算とどれだけ合うかを並べる。</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>条件</th><th>integrator</th><th>MuJoCo 実測</th><th>線形解析の予測</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="3">kp=2000<br>kv=40</td><td><code>Euler</code></td><td class="num">2.67 ms</td><td class="num">2.66 ms</td></tr>
+        <tr><td><code>RK4</code></td><td class="num">4.29 ms</td><td class="num">4.28 ms</td></tr>
+        <tr><td><code>implicitfast</code></td><td class="num">44.95 ms</td><td class="num">42.63 ms</td></tr>
+        <tr><td>kp=2000<br>kv=0</td><td><code>Euler</code></td><td class="num">10.65 ms</td><td class="num">10.65 ms</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>数値解析の教科書に出てくる式が、そのまま実機の物理エンジンの挙動を言い当てている。
+     <strong>発散は不可解な事故ではなく、事前に計算できる現象</strong>。</p>
+
+  <h3>発散表（3 秒間、初期角度 0.5 rad）</h3>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>timestep</th><th colspan="4">kp=2000 kv=40</th></tr>
+        <tr><th></th><th>Euler</th><th>implicitfast</th><th>implicit</th><th>RK4</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">0.5 ms</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">1 ms</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">2 ms</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">3 ms</td><td class="ng">発散</td><td class="ok">安定</td><td class="ok">安定</td><td class="ok">安定</td></tr>
+        <tr><td class="num">5 ms</td><td class="ng">発散</td><td class="ok">安定</td><td class="ok">安定</td><td class="ng">発散</td></tr>
+        <tr><td class="num">10 ms</td><td class="ng">発散</td><td class="ok">安定</td><td class="ok">安定</td><td class="ng">発散</td></tr>
+        <tr><td class="num">20 ms</td><td class="ng">発散</td><td class="ok">安定</td><td class="ok">安定</td><td class="ng">発散</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>RK4 が Euler より少しマシな程度で力尽きている</strong>点に注目。
+     4 次精度の高級な方法でも、陽解法である限り硬さには勝てない。
+     一方 <code>implicitfast</code> は 20 ms でも平然と回り続ける。</p>
+
+  <div class="callout tip">
+    <span class="k">自分で再現する</span>
+    <p>下のスクリプトで上の表を再現できる。<code>d.warning</code> を見るのがポイント。
+       MuJoCo は発散を検知すると警告を出して<strong>自動的に状態をリセットする</strong>ので、
+       <code>qpos</code> が有限かどうかだけを見ていると発散を見逃す。</p>
+  </div>
+
+  <div class="codewrap">
+    <button class="copy" type="button">copy</button>
+    <pre><span class="c"># 発散のしきい値を二分探索する</span>
+import numpy as np, mujoco
+
+def diverges(dt, integ, kp, kv, T=3.0, q0=0.5):
+    m = build(dt, integ, kp, kv)          <span class="c"># option/actuator を差し替えて MjModel を作る</span>
+    d = mujoco.MjData(m); d.qpos[0] = q0
+    for _ in range(int(T / dt)):
+        mujoco.mj_step(m, d)
+        <span class="c"># MuJoCo は発散すると警告を立てて状態をリセットする。ここを見ないと見逃す</span>
+        if d.warning[mujoco.mjtWarning.mjWARN_BADQACC].number &gt; 0:
+            return True
+        if not np.isfinite(d.qpos).all() or abs(d.qpos[0]) &gt; 1e3:
+            return True
+    return False
+
+lo, hi = 1e-4, 0.05
+for _ in range(40):                        <span class="c"># 40 回で十分な精度が出る</span>
+    mid = (lo + hi) / 2
+    if diverges(mid, "Euler", 2000, 40): hi = mid
+    else:                                 lo = mid
+print(f"しきい値 = {lo*1000:.2f} ms")</pre>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="s06">
+  <div class="sec-head">
+    <div class="eyebrow">06</div>
+    <h2>XML のどこに書くか</h2>
+    <p><code>&lt;option&gt;</code> は <code>&lt;mujoco&gt;</code> の直下。
+       body ごとに書き分けるものではなく、<strong>シーン全体で 1 つだけ</strong>の設定。</p>
+  </div>
+
+  <div class="codewrap">
+    <button class="copy" type="button">copy</button>
+    <pre>&lt;mujoco&gt;
+  &lt;statistic extent="1.5" center="0 0 0.5"/&gt;
+  &lt;compiler angle="radian"/&gt;
+
+  <span class="c">&lt;!-- ここ。物理エンジン全体の設定 --&gt;</span>
+  <span class="k">&lt;option timestep="0.002" integrator="Euler"/&gt;</span>
+
+  &lt;visual&gt; ... &lt;/visual&gt;
+  &lt;asset&gt; ... &lt;/asset&gt;
+  &lt;worldbody&gt; ... &lt;/worldbody&gt;
+  &lt;actuator&gt; ... &lt;/actuator&gt;
+&lt;/mujoco&gt;</pre>
+  </div>
+
+  <p>トップレベル要素の順序は MJCF の仕様上は自由だが、慣例は
+     <strong>compiler → option → visual → asset → worldbody → actuator → sensor</strong>。
+     読む人（半年後の自分を含む）のために揃えておく。</p>
+
+  <p>ここに書いた値は Python から <code>model.opt.timestep</code> /
+     <code>model.opt.integrator</code> として読み書きできる。
+     課題 1-2 で実行時に書き換えているのは、まさにこの <code>&lt;option&gt;</code> の中身。</p>
+
+  <div class="callout tip">
+    <span class="k">実務上の指針</span>
+    <p>迷ったら <code>integrator="implicitfast"</code>、<code>timestep="0.002"</code> から始める。
+       これがロボット RL の実質的な標準。<br>
+       発散したら、まず<strong>ゲイン（特に kv）を下げられないか</strong>を疑う。
+       timestep を下げるのは最後の手段——Step 10 で数千環境を並列に回すとき、
+       timestep はそのまま学習時間に跳ね返るから。</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // stiff_pendulum.xml から MuJoCo が導出した値（mj_fullM / body_mass / body_ipos で確認済み）
+  var M = 0.05674252497529379;   // 一般化慣性 [kg m^2]
+  var MGL = 1.6231352604037026;  // mass * g * lc [N m]
+
+  var SCHEMES = [
+    { id: "Euler",        label: "Euler",        color: "--real" },
+    { id: "RK4",          label: "RK4",          color: "--vio"  },
+    { id: "implicitfast", label: "implicitfast", color: "--sim"  }
+  ];
+
+  var dtValues = (function () {   // 0.1ms 〜 20ms を対数で 101 段
+    var a = [], i;
+    for (i = 0; i <= 100; i++) a.push(0.0001 * Math.pow(200, i / 100));
+    return a;
+  })();
+
+  var el = {
+    kp: document.getElementById("s-kp"), kv: document.getElementById("s-kv"),
+    dt: document.getElementById("s-dt"),
+    vkp: document.getElementById("v-kp"), vkv: document.getElementById("v-kv"),
+    vdt: document.getElementById("v-dt"),
+    rw: document.getElementById("r-w"), rlk: document.getElementById("r-lk"),
+    rlc: document.getElementById("r-lc"), rdt: document.getElementById("r-dt"),
+    legend: document.getElementById("legend"),
+    traj: document.getElementById("cv-traj"), amp: document.getElementById("cv-amp")
+  };
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  // ---- 積分（非線形。MuJoCo の各 integrator に対応） ----
+  function accel(q, v, kp, kv) {
+    return (-MGL * Math.sin(q) - kp * q - kv * v) / M;
+  }
+
+  function simulate(scheme, kp, kv, dt) {
+    var T = 3.0, n = Math.round(T / dt), q = 0.5, v = 0, pts = [[0, 0.5]], i;
+    var step = Math.max(1, Math.floor(n / 1200));   // 描画点を間引く
+    for (i = 1; i <= n; i++) {
+      if (scheme === "Euler") {              // semi-implicit: 速度を先に更新して位置に使う
+        v += dt * accel(q, v, kp, kv);
+        q += dt * v;
+      } else if (scheme === "RK4") {
+        var k1v = accel(q, v, kp, kv), k1q = v;
+        var k2v = accel(q + dt / 2 * k1q, v + dt / 2 * k1v, kp, kv), k2q = v + dt / 2 * k1v;
+        var k3v = accel(q + dt / 2 * k2q, v + dt / 2 * k2v, kp, kv), k3q = v + dt / 2 * k2v;
+        var k4v = accel(q + dt * k3q, v + dt * k3v, kp, kv),         k4q = v + dt * k3v;
+        q += dt / 6 * (k1q + 2 * k2q + 2 * k3q + k4q);
+        v += dt / 6 * (k1v + 2 * k2v + 2 * k3v + k4v);
+      } else {                               // implicitfast: kv 項だけ次時刻の速度で評価
+        v = (v + dt * (-MGL * Math.sin(q) - kp * q) / M) / (1 + dt * kv / M);
+        q += dt * v;
+      }
+      if (!isFinite(q) || Math.abs(q) > 1e3) return { pts: pts, diverged: true };
+      if (i % step === 0) pts.push([i * dt, q]);
+    }
+    return { pts: pts, diverged: false };
+  }
+
+  // ---- 増幅率（線形化した 2x2 行列の固有値の最大絶対値） ----
+  function spectralRadius(a, b, c, d) {
+    var tr = a + d, det = a * d - b * c, disc = tr * tr - 4 * det;
+    if (disc >= 0) {
+      var s = Math.sqrt(disc);
+      return Math.max(Math.abs((tr + s) / 2), Math.abs((tr - s) / 2));
+    }
+    return Math.sqrt(Math.abs(det));
+  }
+
+  function amplification(scheme, kp, kv, dt) {
+    var k = kp + MGL, c = kv;               // 重力も微小角で線形化してばねに足す
+    if (scheme === "Euler") {               // semi-implicit
+      return spectralRadius(1 - dt * dt * k / M, dt - dt * dt * c / M, -dt * k / M, 1 - dt * c / M);
+    }
+    if (scheme === "implicitfast") {
+      var s = 1 + dt * c / M;
+      return spectralRadius(1 - dt * dt * k / (M * s), dt / s, -dt * k / (M * s), 1 / s);
+    }
+    // RK4: I + (dtL) + (dtL)^2/2 + (dtL)^3/6 + (dtL)^4/24
+    var L = [0, 1, -k / M, -c / M];
+    var A = [1, 0, 0, 1], Tm = [1, 0, 0, 1], j;
+    for (j = 1; j <= 4; j++) {
+      var m00 = Tm[0] * L[0] + Tm[1] * L[2], m01 = Tm[0] * L[1] + Tm[1] * L[3];
+      var m10 = Tm[2] * L[0] + Tm[3] * L[2], m11 = Tm[2] * L[1] + Tm[3] * L[3];
+      Tm = [m00 * dt / j, m01 * dt / j, m10 * dt / j, m11 * dt / j];
+      A = [A[0] + Tm[0], A[1] + Tm[1], A[2] + Tm[2], A[3] + Tm[3]];
+    }
+    return spectralRadius(A[0], A[1], A[2], A[3]);
+  }
+
+  // ---- canvas ----
+  function prep(cv) {
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || 380, h = Math.round(w * 0.55);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + "px";
+    var g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    return { g: g, w: w, h: h };
+  }
+
+  function axes(g, w, h, pad, xlab, ylab) {
+    g.strokeStyle = cssVar("--rule-strong"); g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(pad.l, pad.t); g.lineTo(pad.l, h - pad.b); g.lineTo(w - pad.r, h - pad.b);
+    g.stroke();
+    g.fillStyle = cssVar("--muted");
+    g.font = "10px IBM Plex Mono, monospace";
+    g.fillText(xlab, w - pad.r - 26, h - pad.b + 26);
+    g.fillText(ylab, 4, pad.t + 4);
+  }
+
+  function drawTraj(kp, kv, dt) {
+    var p = prep(el.traj), g = p.g, w = p.w, h = p.h;
+    var pad = { l: 40, r: 12, t: 14, b: 30 };
+    var YMAX = 1.6;
+    var X = function (t) { return pad.l + t / 3.0 * (w - pad.l - pad.r); };
+    var Y = function (q) { return (h - pad.b + pad.t) / 2 - q / YMAX * (h - pad.t - pad.b) / 2; };
+
+    g.strokeStyle = cssVar("--grid"); g.lineWidth = 1;
+    [-1, -0.5, 0.5, 1].forEach(function (q) {
+      g.beginPath(); g.moveTo(pad.l, Y(q)); g.lineTo(w - pad.r, Y(q)); g.stroke();
+    });
+    g.strokeStyle = cssVar("--rule-strong");
+    g.beginPath(); g.moveTo(pad.l, Y(0)); g.lineTo(w - pad.r, Y(0)); g.stroke();
+    axes(g, w, h, pad, "3s", "θ");
+    g.fillStyle = cssVar("--muted"); g.font = "10px IBM Plex Mono, monospace";
+    g.fillText("0.5", 12, Y(0.5) + 3); g.fillText("0", 24, Y(0) + 3);
+    g.fillText("-0.5", 8, Y(-0.5) + 3);
+
+    var status = [];
+    SCHEMES.forEach(function (s) {
+      var r = simulate(s.id, kp, kv, dt);
+      status.push({ label: s.label, color: cssVar(s.color), diverged: r.diverged });
+      g.strokeStyle = cssVar(s.color);
+      g.lineWidth = 2; g.lineJoin = "round";
+      if (r.diverged) { g.globalAlpha = 0.9; g.setLineDash([4, 3]); }
+      g.beginPath();
+      r.pts.forEach(function (pt, i) {
+        var y = Math.max(pad.t - 40, Math.min(h - pad.b + 40, Y(pt[1])));
+        if (i === 0) g.moveTo(X(pt[0]), y); else g.lineTo(X(pt[0]), y);
+      });
+      g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1;
+      if (r.diverged) {
+        var last = r.pts[r.pts.length - 1];
+        g.fillStyle = cssVar("--ng");
+        g.beginPath(); g.arc(X(last[0]), Y(Math.max(-YMAX, Math.min(YMAX, last[1]))), 4, 0, 7); g.fill();
+      }
+    });
+    return status;
+  }
+
+  function drawAmp(kp, kv, dt) {
+    var p = prep(el.amp), g = p.g, w = p.w, h = p.h;
+    var pad = { l: 40, r: 12, t: 14, b: 30 };
+    var lo = Math.log10(0.0001), hi = Math.log10(0.02);
+    var X = function (t) { return pad.l + (Math.log10(t) - lo) / (hi - lo) * (w - pad.l - pad.r); };
+    // |g| は 0.5 〜 2.0 を表示（対数）
+    var glo = Math.log10(0.5), ghi = Math.log10(2.0);
+    var Y = function (v) {
+      var y = (Math.log10(Math.max(1e-3, v)) - glo) / (ghi - glo);
+      return (h - pad.b) - Math.max(-0.06, Math.min(1.06, y)) * (h - pad.t - pad.b);
+    };
+
+    g.strokeStyle = cssVar("--grid"); g.lineWidth = 1;
+    [0.001, 0.01].forEach(function (t) {
+      g.beginPath(); g.moveTo(X(t), pad.t); g.lineTo(X(t), h - pad.b); g.stroke();
+    });
+    axes(g, w, h, pad, "Δt", "|g|");
+    g.fillStyle = cssVar("--muted"); g.font = "10px IBM Plex Mono, monospace";
+    g.fillText("1ms", X(0.001) - 9, h - pad.b + 14);
+    g.fillText("10ms", X(0.01) - 12, h - pad.b + 14);
+    g.fillText("2.0", 14, Y(2.0) + 8); g.fillText("0.5", 14, Y(0.5) - 2);
+
+    // |g| = 1 の境界線
+    g.strokeStyle = cssVar("--ng"); g.lineWidth = 1.5; g.setLineDash([5, 4]);
+    g.beginPath(); g.moveTo(pad.l, Y(1)); g.lineTo(w - pad.r, Y(1)); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle = cssVar("--ng"); g.fillText("|g| = 1", w - pad.r - 46, Y(1) - 6);
+
+    SCHEMES.forEach(function (s) {
+      g.strokeStyle = cssVar(s.color); g.lineWidth = 2; g.beginPath();
+      for (var i = 0; i <= 240; i++) {
+        var t = Math.pow(10, lo + (hi - lo) * i / 240);
+        var v = amplification(s.id, kp, kv, t);
+        if (i === 0) g.moveTo(X(t), Y(v)); else g.lineTo(X(t), Y(v));
+      }
+      g.stroke();
+    });
+
+    // いま選んでいる Δt
+    g.strokeStyle = cssVar("--ink-2"); g.lineWidth = 1; g.setLineDash([2, 3]);
+    g.beginPath(); g.moveTo(X(dt), pad.t); g.lineTo(X(dt), h - pad.b); g.stroke();
+    g.setLineDash([]);
+  }
+
+  function render() {
+    var kp = +el.kp.value, kv = +el.kv.value, dt = dtValues[+el.dt.value];
+    el.vkp.textContent = kp;
+    el.vkv.textContent = kv;
+    el.vdt.textContent = (dt * 1000).toFixed(2) + " ms";
+
+    var w = Math.sqrt((kp + MGL) / M);
+    el.rw.innerHTML = w.toFixed(1) + "<small> rad/s</small>";
+    el.rlk.innerHTML = (2 / w * 1000).toFixed(2) + "<small> ms</small>";
+    el.rlc.innerHTML = kv > 0
+      ? (2 * M / kv * 1000).toFixed(2) + "<small> ms</small>"
+      : "&infin;<small> 制約なし</small>";
+    el.rdt.innerHTML = (dt * 1000).toFixed(2) + "<small> ms</small>";
+
+    var status = drawTraj(kp, kv, dt);
+    drawAmp(kp, kv, dt);
+
+    el.legend.innerHTML = status.map(function (s) {
+      return '<span><i style="background:' + s.color + '"></i>' + s.label +
+             ' <b class="' + (s.diverged ? "st-ng" : "st-ok") + '">' +
+             (s.diverged ? "発散" : "安定") + "</b></span>";
+    }).join("");
+  }
+
+  [el.kp, el.kv, el.dt].forEach(function (i) { i.addEventListener("input", render); });
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-preset]"), function (b) {
+    b.addEventListener("click", function () {
+      var v = b.getAttribute("data-preset").split(",");
+      el.kp.value = v[0]; el.kv.value = v[1];
+      var target = +v[2] / 1000, best = 0, bd = 1e9;
+      dtValues.forEach(function (d, i) {
+        if (Math.abs(d - target) < bd) { bd = Math.abs(d - target); best = i; }
+      });
+      el.dt.value = best;
+      render();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".copy"), function (b) {
+    b.addEventListener("click", function () {
+      var pre = b.parentNode.querySelector("pre");
+      navigator.clipboard.writeText(pre.innerText).then(function () {
+        var t = b.textContent; b.textContent = "copied";
+        setTimeout(function () { b.textContent = t; }, 1200);
+      });
+    });
+  });
+
+  window.addEventListener("resize", render);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  }
+  render();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

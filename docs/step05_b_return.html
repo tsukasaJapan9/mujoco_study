@@ -1,0 +1,833 @@
+<title>収益と割引率</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">あなたの案を試す</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">いま計算したものが「収益」</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">罰だけでは足りない場面</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">割引率 γ</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">γ をいくつにするか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 5-b</span>
+  <h1>収益と割引率</h1>
+  <p>「速く着くほうが良い」を、プログラムに伝わる数字にする。
+     前回あなたが出した案から始めて、そこに足りないものを見つける。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 5 の 2/6</span>
+    <span class="chip">toy/gridworld.py に追記</span>
+    <span class="chip">前提: 5-a</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>MDP</b> は状態・行動・遷移・報酬・割引率の 5 つを並べた呼び名。<strong>5 つ目の &gamma; だけ後回しにしてある</strong></li>
+      <li>強化学習が探しているのは <b>方策</b>（状態を受け取って行動を返す関数）ひとつだけ</li>
+      <li>ランダム方策は平均 <b>64.6 歩</b>。最短は <b>6 歩</b>。この差を縮めるのが目標</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 「ゴールで +1」だけだと 6 歩も 64 歩も同じ 1 点になってしまう。どう直すか？</p>
+    <p><b>2.</b> 残っていた 5 つ目、<b>割引率 &gamma;</b> は何のためにあるのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     前回の宿題であなたが出した<strong>「ステップ数を加味する」案をまず実装して</strong>、
+     本当に効くのかを数字で確かめます。
+     そのあと「その案では困る場面」を 1 つ見せて、&gamma; を導入します。
+     <strong>&gamma; は天下り式には出しません</strong>——必要になったところで出します。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>あなたの案を試す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>前回の宿題の答え合わせです。<strong>先に動かして数字を見ます</strong>。
+       理論の話はそのあと。</p>
+  </div>
+
+  <p>あなたの案は「ゴールまでかかったステップ数を加味する」でした。
+     いちばん素直な実装は、<strong>1 歩あるくたびに小さな罰を与える</strong>ことです。</p>
+  <div class="code"><pre>reward = (1.0 if nxt == GOAL else 0.0) - 0.01     <span class="cmt"># 歩くだけで 0.01 損する</span>
+</pre></div>
+
+  <p>この 1 行を入れて、5-a と同じ 2 万エピソードを走らせた結果です（すべて実測値）。</p>
+  <div class="tw"><table>
+    <thead><tr><th>1 歩あたりの罰</th><th class="num">最短 6 歩のとき</th><th class="num">ランダム方策の平均</th><th>区別できるか</th></tr></thead>
+    <tbody>
+      <tr><td>なし（5-a と同じ）</td><td class="num">+1.0000</td><td class="num">+0.9999</td><td class="ng">できない</td></tr>
+      <tr><td><strong>&minus;0.01</strong></td><td class="num">+0.9400</td><td class="num">+0.3533</td><td class="ok">できる</td></tr>
+      <tr><td>&minus;0.05</td><td class="num">+0.7000</td><td class="num">&minus;2.2331</td><td class="ok">できる</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>あなたの案は正しく効いています</b>
+     罰なしだと <code>+1.0000</code> と <code>+0.9999</code> で<strong>ほぼ区別がつきません</strong>
+     （ランダムでも 500 歩あれば 100% 着くので、どちらも「1 点もらえた」で終わり）。
+     罰を入れた途端に <code>0.94</code> 対 <code>0.35</code> と<strong>はっきり差が出ます</strong>。</p>
+
+  <div class="callout">
+    <span class="k">&minus;0.05 は強すぎます</span>
+    <p>ランダム方策の平均が <strong>&minus;2.23</strong>、つまり<strong>ゴールしても赤字</strong>になっています。
+       こうなると「ゴールを目指すより、その場でじっとしているほうがマシ」に見えかねません
+       （今回は止まれないので実害はありませんが）。
+       <strong>罰が強すぎると、やる気をなくす方策が最適になる</strong>——
+       これは Step 9 で扱う<b>報酬ハック</b>（＝設計者の意図と違う抜け道を学習が見つけること）の入り口です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>いま計算したものが「収益」</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§01 で計算した「1 エピソードで合計いくらもらえたか」に名前をつけます。
+       <strong>新しい計算は出てきません</strong>。もうやったことの呼び名です。</p>
+  </div>
+
+  <p><b>報酬</b>（reward）は <strong>1 歩ごとにもらう点</strong>でした。
+     それを<strong>そのエピソードの最後まで足し合わせたもの</strong>を
+     <b>収益</b>（return）と呼び、<code>G</code> と書きます。</p>
+
+  <div class="code"><pre>報酬  r1, r2, r3, ..., rT      <span class="cmt"># 1 歩ごとにもらう点</span>
+収益  G = r1 + r2 + r3 + ... + rT   <span class="cmt"># それを全部足したもの</span>
+</pre></div>
+
+  <p>6 歩でゴールした場合（罰 &minus;0.01）を手で計算するとこうなります。</p>
+  <div class="code"><pre>G = (-0.01) + (-0.01) + (-0.01) + (-0.01) + (-0.01) + (1.0 - 0.01)
+  = -0.05 + 0.99
+  = 0.94
+</pre></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">収益（return）G</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>1 回のエピソードで<strong>結局いくら得したか</strong>を表す 1 つの数。
+        報酬が「その場の点」なのに対し、収益は「<strong>最後までの合計</strong>」。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>方策の良し悪しは<strong>報酬 1 個では判断できない</strong>から。
+        「ゴールで +1」は最短でも遠回りでも同じ +1 で、差が出るのは合計を取ったときだけ。
+        §01 の表の数字は全部この合計。</dd>
+      <dt>どこに効くか</dt>
+      <dd><strong>強化学習の目的は、収益の平均を最大にする方策を見つけること</strong>——
+        これが唯一の目的関数。次回（5-c）の価値関数も、Step 8 の PPO も、
+        全部この 1 文を実現するための道具。</dd>
+    </dl>
+  </div>
+
+  <p class="why"><b>「平均」が付くことに注意</b>
+     方策が確率的だと、同じ方策でもエピソードごとに <code>G</code> は変わります。
+     だから比べるのは<strong>いつも平均</strong>です。
+     §01 の表の「ランダム方策の平均」がまさにそれで、2 万回の平均を取っています。
+     <strong>1 回の結果で方策を評価してはいけない</strong>、というのはここから来ます。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>罰だけでは足りない場面</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>あなたの案は正しく動きました。では &gamma; は何のために要るのか。
+       <strong>案A が壊れる場面を 1 つ見せます</strong>。
+       ここが &gamma; の存在理由なので、今回のいちばん大事な節です。</p>
+  </div>
+
+  <h3>終わらないタスクを考える</h3>
+  <p>マス目にはゴールがあるので、いつかエピソードが終わります。
+     では<strong>終わらないタスク</strong>ではどうなるか。</p>
+  <p>たとえば<strong>振り子を上端に立て続ける</strong>タスク。
+     「立っている間はずっと +1」というルールにすると、ゴールがないので永遠に続きます。
+     こういうものを <b>継続タスク</b>（continuing task）と呼びます
+     （対して、終わりがあるものは <b>エピソードタスク</b>）。</p>
+
+  <div class="code"><pre>G = 1 + 1 + 1 + 1 + ...  = 無限大
+</pre></div>
+
+  <p class="why"><b>これは致命的です</b>
+     どんな方策でも収益が無限大になるので、<strong>方策どうしを比べられません</strong>。
+     「1 秒だけ立って落ちる方策」も「ずっと立ち続ける方策」も、
+     十分長く回せばどちらも無限大。<strong>合計を取るという方法そのものが破綻します。</strong></p>
+
+  <div class="callout">
+    <span class="k">罰を足しても解決しません</span>
+    <p>「1 歩ごとに &minus;0.01」を入れても、
+       今度は <code>G = &minus;&infin;</code> になるだけで、やはり比べられません。
+       <strong>足し算を無限に続ける以上、何を足しても発散します。</strong></p>
+  </div>
+
+  <h3>解決策：遠い未来ほど軽く数える</h3>
+  <p>足す前に、<strong>1 歩先の報酬には 0.9 倍、2 歩先には 0.9&sup2; 倍</strong>……と重みを掛けます。</p>
+  <div class="code"><pre>G = 1 + 0.9 + 0.9&sup2; + 0.9&sup3; + ...  = 1 / (1 - 0.9) = 10
+</pre></div>
+  <p>無限に足しているのに、<strong>有限の値に収まりました</strong>。
+     これで方策どうしを比べられます。この <code>0.9</code> が <b>割引率 &gamma;</b> です。</p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>割引率 &gamma;</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&gamma; を正式に定義し、<strong>マス目で実際に数字を出します</strong>。
+       §04 では「発散を防ぐため」と説明しましたが、
+       実は<strong>もう 1 つの効き目</strong>があります。それがここで見えます。</p>
+  </div>
+
+  <p>収益の定義に &gamma; を入れます。<strong>今回出てくる唯一の式</strong>です。</p>
+  <div class="code"><pre>G = r1 + &gamma;&middot;r2 + &gamma;&sup2;&middot;r3 + &gamma;&sup3;&middot;r4 + ...
+</pre></div>
+  <p><code>&gamma;</code> は <code>0</code> 以上 <code>1</code> 以下の数です。
+     <code>&gamma; = 1</code> なら §03 の素朴な合計に戻ります。</p>
+
+  <h3>マス目で計算してみる</h3>
+  <p>報酬のルールは <strong>5-a のまま（ゴールで +1、罰なし）</strong>にして、
+     &gamma; だけを変えた実測値です。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&gamma;</th><th class="num">最短 6 歩の収益</th><th class="num">ランダム方策の平均</th><th class="num">差（倍率）</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.9</td><td class="num">0.59049</td><td class="num">0.05350</td><td class="num"><strong>11.0 倍</strong></td></tr>
+      <tr><td class="num">0.95</td><td class="num">0.77378</td><td class="num">0.15547</td><td class="num">5.0 倍</td></tr>
+      <tr><td class="num">0.99</td><td class="num">0.95099</td><td class="num">0.58372</td><td class="num">1.6 倍</td></tr>
+      <tr><td class="num">0.999</td><td class="num">0.99501</td><td class="num">0.93943</td><td class="num">1.1 倍</td></tr>
+      <tr><td class="num">1.0</td><td class="num">1.00000</td><td class="num">0.99990</td><td class="num">1.0 倍</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>&gamma; のもう 1 つの効き目</b>
+     報酬のルールを<strong>一切変えていない</strong>のに、
+     &gamma; を下げるだけで「最短」と「遠回り」に差がつきました。
+     <strong>&gamma; 自体が「速く着け」という圧力になっている</strong>のです。
+     遅く着くほど &gamma; が何度も掛かって小さくなるので。</p>
+
+  <div class="callout tip">
+    <span class="k">前回の宿題には答えが 2 つあった</span>
+    <p>あなたの案A（1 歩ごとに罰）と、案B（&gamma; を下げる）は
+       <strong>どちらも「速く着くほうが良い」を表現できます</strong>。
+       実務では<strong>両方同時に使う</strong>ことが多い。
+       案A は「何を良しとするか」の設計、案B は「どれくらい先まで考えるか」の設計で、
+       <strong>役割が違う</strong>からです。</p>
+  </div>
+
+  <p class="why"><b>&gamma; = 1 は使えるのか</b>
+     表のいちばん下を見てください。<code>&gamma; = 1.0</code> では
+     <code>1.00000</code> 対 <code>0.99990</code> で、<strong>5-a の問題に逆戻り</strong>しています。
+     エピソードが必ず終わるタスクなら &gamma; = 1 でも計算はできますが、
+     <strong>区別する力がない</strong>ので実際にはほとんど使いません。</p>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>&gamma; をいくつにするか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&gamma; は実験のたびに選ぶ必要があるので、<strong>選ぶ目安</strong>を持っておきます。
+       論文でよく見る 0.99 という値が<strong>何を意味しているか</strong>が分かれば到達点です。</p>
+  </div>
+
+  <p>&gamma; を決めるときは、<b>実効地平</b>（effective horizon）という目安を使います。</p>
+  <div class="code"><pre>実効地平 = 1 / (1 - &gamma;)      <span class="cmt"># 「何歩先まで気にするか」の目安</span>
+</pre></div>
+
+  <div class="tw"><table>
+    <thead><tr><th class="num">&gamma;</th><th class="num">実効地平</th><th class="num">その歩数先の重み</th><th class="num">重みが 1% を切る歩数</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.9</td><td class="num">10 歩</td><td class="num">0.349</td><td class="num">44 歩</td></tr>
+      <tr><td class="num">0.95</td><td class="num">20 歩</td><td class="num">0.359</td><td class="num">90 歩</td></tr>
+      <tr><td class="num">0.99</td><td class="num">100 歩</td><td class="num">0.366</td><td class="num">459 歩</td></tr>
+      <tr><td class="num">0.999</td><td class="num">1000 歩</td><td class="num">0.368</td><td class="num">4603 歩</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>3 列目がどれも 0.36 前後なのは偶然ではありません</b>
+     <code>&gamma;<sup>1/(1&minus;&gamma;)</sup></code> は必ず <code>1/e = 0.368</code> に近づきます。
+     つまり<strong>実効地平とは「報酬の重みが 1/3 くらいに減る歩数」</strong>のこと。
+     それより先もゼロではありませんが、影響は急速に小さくなります。</p>
+
+  <h3>選び方の指針</h3>
+  <ul>
+    <li><strong>タスクが終わるまでの歩数より、実効地平を長めに取る。</strong>
+        マス目は最短 6 歩・ランダムで 64 歩なので、
+        <code>&gamma; = 0.9</code>（10 歩）でも足りるが <code>0.95</code>（20 歩）のほうが安全</li>
+    <li><strong>短すぎると「遠くの報酬が見えない」。</strong>
+        ゴールが 100 歩先にあるのに <code>&gamma; = 0.9</code> だと、
+        ゴールの価値が <code>0.9<sup>100</sup> = 0.000027</code> まで潰れて学習できない</li>
+    <li><strong>長すぎると「区別がつかない」。</strong>
+        表の <code>&gamma; = 0.999</code> が 1.1 倍しか差がないのがその例</li>
+  </ul>
+
+  <div class="callout">
+    <span class="k">振り子では（Step 7 の伏線）</span>
+    <p>物理 1000Hz・制御 100Hz なら、1 ステップは <strong>0.01 秒</strong>。
+       <code>&gamma; = 0.99</code> の実効地平 100 ステップは <strong>ちょうど 1 秒</strong>にあたります。
+       スイングアップに 2.89 秒かかることを思い出すと、
+       <strong>1 秒しか先を見ない方策では振り上げを学べない</strong>可能性があります。
+       Step 7 で学習が進まないときに、まずここを疑うことになります。</p>
+  </div>
+</section>
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      §01 と §04 の表を<strong>自分の手元で再現する</strong>ため。
+      収益を計算する関数は 5-c 以降ずっと使い回すので、ここで作っておく。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——&gamma; を変えると何が変わるかを、自分で出した数字で説明できる。
+      <strong>Step 7 で学習が進まないとき、&gamma; を疑えるようになる。</strong></p>
+  </div>
+  <div class="callout tip">
+    <span class="k">考えてほしいのは 1 箇所だけです</span>
+    <p>段階 1 の穴埋めだけ手を止めてください。段階 2・3 はそのまま書き写して構いません。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>1 歩ごとの罰を入れる</h3>
+    <p class="why"><b>この段階ですること</b> <code>step()</code> の報酬の行を 1 行変えて、
+      §01 の表を再現します。</p>
+    <p><code>toy/gridworld.py</code> の <code>step()</code> に引数 <code>penalty</code> を足します。</p>
+    <div class="code"><pre>def step(state, action, penalty=0.0):
+    ...
+    nxt = (r, c)
+    reward = ???                      <span class="cmt"># ← ここだけ考える</span>
+    done = nxt == GOAL
+    return nxt, reward, done
+</pre></div>
+    <p><strong>ゴールに着いたら +1、それ以外は 0</strong>。
+      そこから<strong>どちらの場合も <code>penalty</code> を引く</strong>、という 1 行を書いてください。
+      元の行は <code>reward = 1.0 if nxt == GOAL else 0.0</code> でした。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    reward = (1.0 if nxt == GOAL else 0.0) - penalty
+</pre></div>
+      <p class="why"><b>括弧が要ります</b>
+        <code>1.0 if nxt == GOAL else 0.0 - penalty</code> と書くと、
+        <code>else</code> の側だけに <code>- penalty</code> が掛かります
+        （<code>0.0 - penalty</code> と解釈される）。
+        <strong>ゴールしたときだけ罰を免除する</strong>という別のルールになってしまう。
+        動いてしまうぶん見つけにくいバグです。</p>
+      <p class="why"><b>既定値を 0.0 にしておく理由</b>
+        <code>penalty=0.0</code> を既定にしておけば、
+        <strong>5-a で書いたコードがそのまま動きます</strong>。
+        あとから機能を足すときは、既存の呼び出しを壊さないようにするのが基本です。</p>
+    </div></details>
+    <p><b>確認方法</b> 2 万エピソード回して、§01 の表と同じ数字が出るか見ます。</p>
+    <div class="code"><pre>for penalty in (0.0, 0.01, 0.05):
+    rng = np.random.default_rng(1)
+    totals = []
+    for ep in range(20000):
+        state, total = START, 0.0
+        for t in range(500):
+            state, reward, done = step(state, rng.integers(4), penalty)
+            total += reward
+            if done:
+                break
+        totals.append(total)
+    print(f"penalty={penalty}  ランダム方策の平均収益 = {np.mean(totals):+.4f}")
+</pre></div>
+    <p>期待される出力は <code>+0.9999</code> / <code>+0.3533</code> / <code>-2.2331</code> です。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>収益を計算する関数を書く</h3>
+    <p class="why"><b>この段階ですること</b> 報酬のリストから収益 <code>G</code> を返す関数を 1 つ書きます。
+      <strong>写経で構いません。</strong>ただし「なぜ後ろから計算するのか」だけ読んでください。</p>
+    <div class="code"><pre>def G(rewards, gamma):
+    g = 0.0
+    for r in reversed(rewards):       <span class="cmt"># 後ろから前へ</span>
+        g = r + gamma * g
+    return g
+</pre></div>
+    <p class="why"><b>なぜ後ろから計算するのか</b>
+      定義どおり前から書くと <code>r1 + &gamma;&middot;r2 + &gamma;&sup2;&middot;r3 + ...</code> となり、
+      <strong>毎回 <code>&gamma;</code> の累乗を計算する</strong>ことになります。
+      後ろから畳むと、1 ステップあたり<strong>掛け算 1 回と足し算 1 回</strong>だけで済む。
+      累乗は歩数が増えると桁が小さくなりすぎて精度も落ちるので、この書き方が標準です。</p>
+    <p class="why"><b>この形は後でまた出てきます</b>
+      Step 8 で PPO を実装するとき、<b>アドバンテージ</b>という量を
+      <strong>まったく同じ「後ろから畳む」形</strong>で計算します。
+      今のうちにこのループの形に慣れておくと、そこで戸惑いません。</p>
+    <p><b>確認方法</b> 6 歩でゴールした場合を手で確かめます。</p>
+    <div class="code"><pre>print(G([0, 0, 0, 0, 0, 1.0], 1.0))    <span class="cmt"># -> 1.0</span>
+print(G([0, 0, 0, 0, 0, 1.0], 0.9))    <span class="cmt"># -> 0.59049  (= 0.9 の 5 乗)</span>
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>&gamma; を振って §04 の表を作る</h3>
+    <p class="why"><b>この段階ですること</b> &gamma; を 5 通り試して、
+      「最短」と「ランダム」の収益を並べます。<strong>写経で構いません。</strong></p>
+    <div class="code"><pre>OPT = [0, 0, 0, 0, 0, 1.0]            <span class="cmt"># 最短 6 歩。最後だけ +1</span>
+
+for gamma in (0.9, 0.95, 0.99, 0.999, 1.0):
+    rng = np.random.default_rng(1)
+    vals = []
+    for ep in range(20000):
+        state, rewards = START, []
+        for t in range(500):
+            state, reward, done = step(state, rng.integers(4))
+            rewards.append(reward)
+            if done:
+                break
+        vals.append(G(rewards, gamma))
+    print(f"gamma={gamma:&lt;6} 最短={G(OPT, gamma):.5f}  ランダム={np.mean(vals):.5f}")
+</pre></div>
+    <p><b>確認方法</b> §04 の表と一致すれば成功です。
+      <code>gamma=0.9</code> の行が <code>最短=0.59049  ランダム=0.05350</code> になります。</p>
+    <p class="why"><b>表ができたら、そこから読み取ってほしいこと</b>
+      <strong>&gamma; を上から下へ見ていくと、2 つの列が近づいていきます。</strong>
+      &gamma; = 1.0 では区別がつかない。
+      「&gamma; を下げるほど、せっかちになる」という感覚を数字で掴んでください。</p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><b>収益 G</b> ＝ 1 エピソードでもらった報酬の合計。
+          <strong>強化学習の目的は、収益の平均を最大にする方策を見つけること</strong>——これだけ</li>
+      <li>「速く着くほうが良い」の表現方法は 2 つ。
+          <strong>1 歩ごとの罰</strong>（何を良しとするかの設計）と
+          <strong>&gamma; を下げる</strong>（どこまで先を見るかの設計）</li>
+      <li><b>&gamma;</b> が要る本当の理由は<strong>終わらないタスクで合計が発散するのを防ぐため</strong>。
+          「せっかちにする」のは副次的な効き目</li>
+      <li><b>実効地平 = 1/(1&minus;&gamma;)</b>。&gamma;=0.99 なら 100 歩先まで。
+          <strong>タスクの長さより長めに取る</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="b1"><span>1 歩ごとの罰を実装し、<code>+0.3533</code> という数字を自分で出した</span></label>
+    <label><input type="checkbox" data-ck="b2"><span><code>G()</code> を書き、<code>G([0,0,0,0,0,1], 0.9) = 0.59049</code> を確認した</span></label>
+    <label><input type="checkbox" data-ck="b3"><span>&gamma; を 5 通り振って §04 の表を再現した</span></label>
+    <label><input type="checkbox" data-ck="b4"><span>&gamma; が必要な理由を「終わらないタスク」の言葉で説明できる</span></label>
+    <label><input type="checkbox" data-ck="b5"><span>&gamma;=0.99 が「何歩先まで見ているか」を答えられる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（5-c）でやること</span>
+    <p>今回で「方策の良さ ＝ 収益の平均」と決まりました。
+       でも<strong>これを実際に測るには、最後まで歩いてみるしかありません</strong>。
+       64 歩あるいてようやく 1 エピソード分の数字が 1 つ得られる。これでは効率が悪すぎます。</p>
+    <p>次回は「<strong>このマスは有望だ</strong>」を<strong>マスごとに数値で持つ</strong>方法を導入します。
+       <b>価値関数</b> と呼ばれるもので、5-a で作った 14 マスの表がついに埋まります。</p>
+    <p>先に考えておいてください——
+       <strong>ゴールの隣のマスと、スタート地点。どちらが「有望」ですか。その差を数字にするとしたら？</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 5-b</span>
+  <span>数値はすべて実測（2 万エピソード）</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step05b-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

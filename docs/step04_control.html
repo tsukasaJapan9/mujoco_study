@@ -1,0 +1,1530 @@
+<title>古典制御でウォームアップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">このステップで手に入るもの</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">なぜ RL の前に古典制御を通すのか</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">PD 制御を Python 側に出す</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">制御周期と物理周期を分ける</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">上端は不安定平衡</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">制御周期を落とすと何が壊れるか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">エネルギー整形</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">実験室</span></a></li>
+    <li><a href="#s09"><span class="n">08</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s10"><span class="n">09</span><span class="t">よく出る症状と対処</span></a></li>
+    <li><a href="#s11"><span class="n">10</span><span class="t">完了条件</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase A · Step 4</span>
+  <h1>古典制御でウォームアップ</h1>
+  <p>強化学習を一切使わずに、振り子を下から振り上げて上端に立てる。
+     ここで書く制御ループの構造が、そのまま実機の制御ループになる。</p>
+  <div class="meta">
+    <span class="chip">目安 8h</span>
+    <span class="chip">models/pendulum_torque.xml</span>
+    <span class="chip">control/pd_balance.py</span>
+    <span class="chip">control/swingup.py</span>
+    <span class="chip">前提: Step 3</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00 · 導入</span>
+    <h2>このステップで手に入るもの</h2>
+  </div>
+  <p>Step 3 では <code>&lt;position&gt;</code> が <code>f = kp(ctrl &minus; q) &minus; kv&middot;q&#775;</code> という
+     PD 制御そのものであることを見た。この Step では<strong>その式をシミュレータの外に出し、自分の Python コードで毎ステップ計算する</strong>。</p>
+
+  <div class="aim">
+    <span class="k">この Step が答える問い</span>
+    <p><b>1.</b> シミュレータに埋め込まれた PD を使わず自分で書くと、何ができるようになるのか？</p>
+    <p><b>2.</b> 実機では制御は 100Hz、物理は 1000Hz で動く。この<strong>周期の分離</strong>はコードのどこに現れ、落とすと何が壊れるのか？</p>
+    <p><b>3.</b> なぜ PD 制御だけでは振り子を立てられないのか？ 何を足せば立つのか？</p>
+  </div>
+
+  <p><b>なぜこの順番なのか。</b>
+     まず §01 で「なぜ RL の前にこれをやるのか」を片付ける。
+     §02 で PD を Python 側に出し、§03 でその呼び出し頻度を物理から切り離す——ここまでが<strong>制御ループの骨格</strong>で、Step 6 以降で方策がこの骨格の中に入る。
+     §04〜§05 は、その骨格を<strong>壊す 2 つの要因</strong>（トルク上限と制御周期）を順に見る。
+     §06 で PD の限界を超えるためのエネルギー整形に進み、§07 のスライダで全部を触ってから §08 の課題に入る。</p>
+
+  <div class="callout tip">
+    <span class="k">Step 3 との接続</span>
+    <p>Step 3 の課題 2 で、<code>velocity</code> アクチュエータが <code>kv=1.5</code> のせいで
+       <strong>1.179 rad で登りきれずに止まった</strong>のを見たはず。
+       あれが<strong>トルク飽和</strong>で、この Step の主役になる。
+       今回のモデルはトルク上限を <code>&plusmn;0.5 N&middot;m</code> まで絞るので、
+       重力トルクの最大 <code>1.623 N&middot;m</code> に対して<strong>約 1/3 の力しか出せない</strong>。
+       まっすぐ持ち上げるのは物理的に不可能で、そこがこの Step の面白いところ。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>なぜ RL の前に古典制御を通すのか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>この Step を<strong>飛ばしたくなる誘惑への答え</strong>を先に置く。
+       RL が目的なのに、なぜ手で制御器を設計するのか。
+       到達点は「古典制御は RL の前座ではなく、<strong>RL の結果を評価する唯一の物差し</strong>だ」と納得すること。</p>
+  </div>
+  <p>強化学習の実験には、<strong>学習が失敗したのか、そもそもタスクが解けないのか</strong>を切り分ける手段が要る。
+     報酬が上がらないとき、原因はアルゴリズムかもしれないし、報酬設計かもしれないし、
+     単に<strong>そのモデルではそのトルクで立たない</strong>だけかもしれない。</p>
+  <div class="tw"><table>
+    <thead><tr><th>ここで作るもの</th><th>後でどう効くか</th></tr></thead>
+    <tbody>
+      <tr><td>PD + スイングアップで立つという<strong>事実</strong></td><td>RL が立たないとき「タスクは解ける」と断言できる。原因をアルゴリズム側に絞れる</td></tr>
+      <tr><td>立つまでの<strong>所要時間</strong>（今回は約 2.9 秒）</td><td>学習した方策の速さを比べる基準線。Step 7 で報酬曲線の横に並べる</td></tr>
+      <tr><td><strong>制御ループの構造</strong></td><td>Step 6 の Gymnasium 環境で、<code>step()</code> の中身がこれと同じ形になる</td></tr>
+      <tr><td>トルク上限という<strong>物理的な限界</strong></td><td>Step 9 で「報酬設計が悪い」と「物理的に無理」を混同しなくなる</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <span class="k">実機では順序が逆にならない</span>
+    <p>実機のロボットを作ったとき、最初に書くのは必ず PD 制御。
+       モータが正しい向きに回るか、エンコーダの符号が合っているか、
+       ゲインを上げると発振するか——これらは<strong>PD を書かないと確かめられない</strong>。
+       Step 12 で実機を組んだとき、あなたが最初に動かすのはこの Step のコードの移植版になる。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02 · 本題</span>
+    <h2>PD 制御を Python 側に出す</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>Step 3 で読んだ <code>f = kp(ctrl &minus; q) &minus; kv&middot;q&#775;</code> を、
+       <strong>シミュレータの外側に書き写す</strong>。やることは式を移すだけだが、
+       移した瞬間に<strong>式を自由に書き換える権利</strong>が手に入る。
+       到達点は、制御則がエンジンの設定ではなく<strong>自分のコードの一行</strong>になること。
+       ここが分かれ目で、エネルギー整形も強化学習も、この一行を差し替えることでしか実現できない。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">PD 制御</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd><strong>今の誤差</strong>（P: 比例）と<strong>誤差の変化の速さ</strong>（D: 微分）だけから出力を決める制御則。
+        <code>&tau; = &minus;k<sub>p</sub>(&theta; &minus; &theta;*) &minus; k<sub>d</sub>&middot;&theta;&#775;</code>。
+        P はバネ、D はダンパに相当する。<strong>モデルの知識を一切使わない</strong>のが特徴で、
+        だからこそ質量も慣性も知らない相手に対して動く。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>Step 3 で <code>&lt;position&gt;</code> の正体がこの式だと読んだ。
+        読んで分かることと、<strong>自分で書いて動かすこと</strong>の間には差がある。
+        特に「<strong>どの周期で呼ぶか</strong>」は、埋め込み版では触れない。
+        それを触るためにここで外に出す。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 6 で方策の出力を関節トルクに変換する層がこれと同じ構造になる。
+        四足歩行の RL では<strong>方策が目標角度を出し、その下で PD が回る</strong>という
+        二層構造が標準で、下の層はここで書くものと同一。
+        Step 12 の実機でも、マイコン側で回るのはこの式。</dd>
+    </dl>
+  </div>
+
+  <h3>埋め込み版と自作版の対応</h3>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>埋め込み版（Step 3）</th><th>自作版（Step 4）</th></tr></thead>
+    <tbody>
+      <tr><td>アクチュエータ</td><td class="num">&lt;position kp kv/&gt;</td><td class="num">&lt;motor/&gt;</td></tr>
+      <tr><td><code>ctrl</code> に書くもの</td><td>目標角度 [rad]</td><td>トルク [N&middot;m]</td></tr>
+      <tr><td>式を評価する頻度</td><td><strong>毎 physics step</strong>（変えられない）</td><td><strong>自分で決める</strong></td></tr>
+      <tr><td>式の形</td><td>固定</td><td>自由（非線形項も足せる）</td></tr>
+      <tr><td>ゲインの変更</td><td>XML を書き換えて再コンパイル</td><td>変数を書き換えるだけ</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>骨格</h3>
+  <div class="code"><pre>import numpy as np
+
+def wrap(x):
+    <span class="cmt"># 角度差を -pi..pi に畳む。これを忘れると上端付近で符号が反転する</span>
+    return (x + np.pi) % (2 * np.pi) - np.pi
+
+def pd(theta, omega, theta_star, kp, kd, tau_max):
+    u = -kp * wrap(theta - theta_star) - kd * omega
+    return np.clip(u, -tau_max, tau_max)   <span class="cmt"># 飽和は自分で書く</span>
+</pre></div>
+  <p class="why"><b>なぜ <code>wrap</code> が要るのか</b>
+     上端は <code>&theta; = &pi;</code>。振り子が <code>&theta; = 3.10</code> から <code>&theta; = 3.20</code> を通り過ぎるとき、
+     <code>wrap</code> が無いと誤差は <code>&minus;0.04 &rarr; +0.06</code> と連続に動く——ここまでは良い。
+     しかし <code>qpos</code> が何周もして <code>&theta; = 9.5</code> になったとき、
+     誤差 <code>9.5 &minus; 3.14 = 6.36</code> は<strong>「6.36 rad 戻せ」という巨大な指令</strong>になる。
+     実際には <code>0.08 rad</code> ずれているだけなのに。
+     <strong>スイングアップでは振り子が何周もするので、これは必ず起きる。</strong></p>
+  <div class="callout">
+    <span class="k">ハマる前に</span>
+    <p><code>np.clip</code> で飽和させても、<strong>MuJoCo 側の <code>ctrlrange</code> でもう一度切られる</strong>。
+       両方が効くので、Python 側だけ <code>tau_max</code> を大きくしても出力は増えない。
+       「ゲインを上げても何も変わらない」と感じたら、
+       <code>model.actuator_ctrlrange[0]</code> を print して<strong>どちらで切られているか</strong>を確かめること。
+       実機でも同じで、ドライバの電流制限とコードの制限が二重にかかる。</p>
+  </div>
+</section>
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03 · 本題</span>
+    <h2>制御周期と物理周期を分ける</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§02 で制御則を外に出した。外に出したからこそ<strong>「何ステップに一度呼ぶか」を選べる</strong>。
+       実機ではこれは選択ではなく<strong>与えられた制約</strong>で、
+       マイコンの処理能力と通信速度が制御周期を決める。
+       到達点は、シミュレーションの中に<strong>実機の制約を先に持ち込む</strong>書き方を身につけること。
+       これをやらずに学習した方策は、実機に載せた瞬間に別物になる。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">デシメーション（decimation）</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>物理を <var>n</var> ステップ進めるあいだ、<strong>制御出力を 1 回だけ計算して n ステップ保持する</strong>こと。
+        <code>n = 物理周波数 / 制御周波数</code>。
+        物理 1000Hz・制御 100Hz なら <code>n = 10</code>。
+        保持するあいだ <code>data.ctrl</code> は<strong>書き換えない</strong>——これが実機の
+        「次の指令が来るまでモータは前の指令を出し続ける」状態に対応する。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>Step 3 で <code>timestep</code> の下限は<strong>物理の安定性</strong>で決まると学んだ。
+        制御周期はそれとは<strong>まったく別の理由</strong>で決まる量で、混同すると
+        「発散したから制御を速くする」という的外れな対処に走る。
+        2 つの周期があると認識するのが先決。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 6 の Gymnasium 環境で、<code>env.step()</code> 1 回が物理の何ステップに当たるかが
+        まさにこの <var>n</var>。<strong>方策が考える頻度</strong>を決めるので、
+        学習の難しさにも実機移植の成否にも直結する。
+        Step 11 では、実機の制御周期とシミュのそれがずれていること自体が Sim2Real ギャップになる。</dd>
+    </dl>
+  </div>
+
+  <h3>骨格</h3>
+  <div class="code"><pre>ctrl_hz = 100
+decimation = round((1 / model.opt.timestep) / ctrl_hz)   <span class="cmt"># 1000Hz / 100Hz = 10</span>
+u = 0.0
+
+for i in range(n_steps):
+    if i % decimation == 0:                <span class="cmt"># ここだけがセンサを読んで考える</span>
+        theta = data.qpos[0]
+        omega = data.qvel[0]
+        u = pd(theta, omega, np.pi, kp, kd, TAU_MAX)
+    data.ctrl[0] = u                       <span class="cmt"># 残りのステップは前の値を保持</span>
+    mujoco.mj_step(model, data)
+</pre></div>
+  <p class="why"><b>なぜ <code>data.ctrl[0] = u</code> がループの外に出ていないのか</b>
+     <code>if</code> の中に入れても結果は同じに見える（<code>ctrl</code> は勝手に消えない）。
+     だが<strong>毎ステップ書く形にしておくと、後でゼロ次ホールド以外の保持を試せる</strong>。
+     また、外乱やノイズを足す実験をするとき差し込み先がここになる。
+     実機の構造——「指令は保持され続ける」——を<strong>コードの形として見える</strong>ようにしておく意味もある。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>周波数</th><th>典型値</th><th>何が決めるか</th><th>Step 3 との関係</th></tr></thead>
+    <tbody>
+      <tr><td><strong>物理</strong></td><td class="num">500&ndash;2000 Hz</td><td>硬さ（kp・接触）と積分器。超えると<strong>発散</strong></td><td>Step 3 課題 1 で測ったしきい値</td></tr>
+      <tr><td><strong>制御</strong></td><td class="num">50&ndash;500 Hz</td><td>マイコンの処理能力、通信速度、センサの更新レート</td><td>別物。発散ではなく<strong>制御の失敗</strong>を招く</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <span class="k">実機との対応</span>
+    <p>シリアルバスサーボ（STS3215 など）は 1Mbps でも 1 指令あたり数百 &micro;s かかる。
+       12 関節を順に叩けば、それだけで <strong>50&ndash;100Hz が上限</strong>になる。
+       「シミュでは 1000Hz で制御していたのに実機は 50Hz しか出ない」は
+       Sim2Real 失敗の典型で、<strong>シミュ側を先に 50Hz に落としておく</strong>のが正しい対処。
+       Step 11 でこれを<strong>ドメインランダマイゼーションの軸</strong>として扱う。</p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04 · 本題</span>
+    <h2>上端は不安定平衡 — 引き込み領域はトルクが決める</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>制御ループの骨格ができたので、<strong>それを壊す要因の 1 つ目</strong>に進む。
+       上端で振り子を保持するとき、「どれくらい傾いた状態から立て直せるか」には
+       はっきりした限界がある。到達点は、その限界が<strong>ゲインではなくトルク上限で決まる</strong>と
+       計算で言えること。ゲイン調整に時間を溶かす前に、<strong>そもそも届くのか</strong>を判定できるようになる。</p>
+  </div>
+
+  <p>このモデルの実測値（<code>mj_fullM</code> と <code>body_mass</code> から）。</p>
+  <div class="tw"><table>
+    <thead><tr><th>量</th><th>値</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td>質量 <code>m</code></td><td class="num">0.661829 kg</td><td>カプセルの密度既定値 1000 から計算される</td></tr>
+      <tr><td>重心までの距離 <code>l</code></td><td class="num">0.25 m</td><td>長さ 0.5 m の一様な棒の中点</td></tr>
+      <tr><td>関節まわりの慣性 <code>I</code></td><td class="num">0.056743 kg&middot;m&sup2;</td><td><code>mj_fullM(m, d, M)</code> の <code>M[0,0]</code></td></tr>
+      <tr><td>最大重力トルク <code>m&middot;g&middot;l</code></td><td class="num">1.6231 N&middot;m</td><td>水平のとき最大。これに勝てないと持ち上がらない</td></tr>
+      <tr><td>トルク上限 <code>&tau;<sub>max</sub></code></td><td class="num">0.5 N&middot;m</td><td>モデルの <code>ctrlrange</code>。重力の <strong>約 1/3</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">不安定平衡と引き込み領域</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>上端（<code>&theta; = &pi;</code>）は<strong>力の釣り合う点だが、少しずれると倒れる方向に力が働く</strong>点。
+        下端と違って、制御をやめた瞬間に離れていく。
+        <strong>引き込み領域</strong>は、そこから制御を始めて上端に戻ってこられる初期状態の範囲。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>§06 のエネルギー整形は「上端の<strong>近く</strong>まで運んで PD に渡す」方式なので、
+        <strong>どこまで近づければ渡せるのか</strong>を先に知る必要がある。
+        この節の数値がそのまま §06 の切り替えしきい値になる。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 9 で、RL が学習した方策の頑健性を測るときの言葉になる。
+        「初期角度をどこまでランダム化してよいか」は引き込み領域の話。
+        Step 11 では実機のセンサ遅れがこの領域を<strong>狭める</strong>ことを扱う。</dd>
+    </dl>
+  </div>
+
+  <h3>計算で出せる</h3>
+  <p>上端から <code>&phi;</code> だけ傾いたとき、倒そうとする重力トルクは <code>m&middot;g&middot;l&middot;sin&phi;</code>。
+     モータが出せるのは <code>&tau;<sub>max</sub></code> まで。<strong>勝てるのは次の範囲だけ</strong>。</p>
+  <div class="code"><pre>|&phi;| &lt; arcsin(&tau;max / (m&middot;g&middot;l))  =  arcsin(0.5 / 1.6231)  =  0.3131 rad  =  17.9 度
+</pre></div>
+  <div class="callout tip">
+    <span class="k">検証済み</span>
+    <p>二分探索で実測した保持可能な最大初期角は <strong>0.3131 rad</strong>。理論値と一致する。
+       さらに <code>k<sub>p</sub></code> を 4 / 8 / 16 / 30 と変えても
+       <strong>すべて 0.3131 rad で変わらなかった</strong>。
+       ゲインをいくら上げても境界は動かない——そこでは <code>&tau;</code> がすでに飽和していて、
+       制御器は実質的に<strong>「全力で押す」しかしていない</strong>から。</p>
+  </div>
+  <p class="why"><b>ここが本質</b>
+     制御がうまくいかないとき、人はまずゲインを触る。
+     だがこの境界のように<strong>ゲインに一切依存しない限界</strong>が存在する。
+     触る前に「これはゲインの問題か、トルクの問題か」を計算で切り分けられると、
+     無駄な試行錯誤が消える。<strong>実機でモータを選ぶときの計算もこれと同じ</strong>で、
+     必要トルクは <code>m&middot;g&middot;l</code> から先に見積もる。</p>
+  <div class="callout">
+    <span class="k">Step 9 への伏線</span>
+    <p>RL でこの振り子を学習させると、方策は<strong>この境界を勝手に見つける</strong>。
+       報酬を上げようとすれば、物理的に可能な範囲の縁まで攻めるのが最適だから。
+       学習した方策の挙動が「妙に保守的」あるいは「ギリギリを攻める」と感じたとき、
+       それが物理の限界なのか報酬設計の副作用なのかを、この計算で判定できる。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 本題</span>
+    <h2>制御周期を落とすと何が壊れるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>骨格を壊す要因の 2 つ目。§03 で「制御周期は選べる」と言ったが、
+       <strong>落としすぎると何が起きるのか</strong>を具体的な数字で押さえる。
+       到達点は、ゲインを決めたときに<strong>必要な制御周期を見積もれる</strong>こと。
+       実機では逆に、制御周期が先に決まっていて<strong>使えるゲインの上限</strong>が決まる。</p>
+  </div>
+
+  <p>PD の閉ループは、上端まわりで線形化すると次の固有角周波数を持つ。</p>
+  <div class="code"><pre>&omega;n = sqrt((kp &minus; m&middot;g&middot;l) / I)      <span class="cmt"># kp &gt; m*g*l でないとそもそも立たない</span>
+</pre></div>
+  <p>トルクを飽和させない条件（<code>&tau;<sub>max</sub> = 20</code>）で、ゲインごとに
+     <strong>保持できる最低の制御周期</strong>を実測した。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">kp</th><th class="num">kd</th><th class="num">&omega;n [rad/s]</th><th class="num">&omega;n [Hz]</th><th class="num">最低制御周期</th><th class="num">倍率</th></tr></thead>
+    <tbody>
+      <tr><td class="num">8</td><td class="num">0.8</td><td class="num">10.60</td><td class="num">1.69</td><td class="num">10 Hz</td><td class="num">5.9x</td></tr>
+      <tr><td class="num">20</td><td class="num">2.0</td><td class="num">18.00</td><td class="num">2.86</td><td class="num">15 Hz</td><td class="num">5.2x</td></tr>
+      <tr><td class="num">50</td><td class="num">5.0</td><td class="num">29.20</td><td class="num">4.65</td><td class="num">40 Hz</td><td class="num">8.6x</td></tr>
+      <tr><td class="num">100</td><td class="num">10.0</td><td class="num">41.64</td><td class="num">6.63</td><td class="num">70 Hz</td><td class="num">10.6x</td></tr>
+      <tr><td class="num">200</td><td class="num">20.0</td><td class="num">59.13</td><td class="num">9.41</td><td class="num">120 Hz</td><td class="num">12.8x</td></tr>
+      <tr><td class="num">400</td><td class="num">40.0</td><td class="num">83.79</td><td class="num">13.34</td><td class="num">185 Hz</td><td class="num">13.9x</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>読み取れること</b>
+     <strong>硬い制御ほど速い制御周期を要求する。</strong>
+     必要な制御周波数はおおよそ<strong>閉ループ帯域の 6〜14 倍</strong>で、
+     「制御周期は帯域の 10 倍以上」という経験則がそのまま出ている。
+     裏を返せば、<strong>制御周期が 50Hz しか出ない実機では <code>kp</code> を 100 以上にできない</strong>。
+     シミュで <code>kp = 400</code> の硬い制御を学習させても、実機には載らない。</p>
+
+  <div class="callout">
+    <span class="k">今回のモデルでは、この表ほど壊れない</span>
+    <p><code>&tau;<sub>max</sub> = 0.5</code> のままだと、制御周期を <strong>10Hz まで落としても倒れない</strong>（実測）。
+       理由は §04 と同じで、<strong>常に飽和している制御器は実質的に「倒れる方向と逆に全力」という
+       符号だけの制御</strong>になり、細かい周期の違いが効かないから。
+       上の表を再現したければ <code>ctrlrange</code> を広げて飽和を外す必要がある。
+       <strong>「飽和がロバスト性を生む」</strong>のは実機でもよくある現象で、
+       性能は落ちるが壊れにくくなる。</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06 · 本題</span>
+    <h2>エネルギー整形 — PD が届かない領域へ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§04 で「上端から 17.9 度以内しか引き込めない」と分かった。
+       では<strong>真下（180 度ずれ）からどうやってそこへ運ぶのか</strong>。
+       到達点は、PD とは<strong>まったく違う発想の制御則</strong>——
+       位置ではなくエネルギーを目標にする——を 1 つ手に入れること。
+       これは Step 9 で報酬を設計するときの発想にそのままつながる。</p>
+  </div>
+
+  <h3>まず PD だけで試すとどうなるか</h3>
+  <p>真下から PD で <code>&theta;* = &pi;</code> を狙うと、<strong>立たない</strong>。
+     トルク上限を上げていくと、境界が見える。</p>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&tau;max [N&middot;m]</th><th>PD だけで立つか</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.5</td><td class="ng">失敗</td><td>0.32 rad 付近で重力と釣り合って静止する</td></tr>
+      <tr><td class="num">1.0</td><td class="ng">失敗</td><td>もう少し上がるが登りきれない</td></tr>
+      <tr><td class="num">1.230</td><td>&larr; <strong>ここが境界</strong>（実測）</td><td>振れの勢いを借りてぎりぎり越える</td></tr>
+      <tr><td class="num">1.5</td><td class="ok">成功</td><td>ほぼ力ずくで持ち上がる</td></tr>
+      <tr><td class="num">1.623</td><td class="ok">成功</td><td><code>m&middot;g&middot;l</code>。ここから上は静的にも持ち上がる</td></tr>
+    </tbody>
+  </table></div>
+  <p class="why"><b>なぜ PD だけでは無理なのか</b>
+     PD は<strong>「今いる場所と目標の差」しか見ていない</strong>。
+     真下にいるとき差は最大なので全力で押すが、トルクが足りなければ途中で釣り合って止まる。
+     <strong>「一度逆向きに振ってから勢いをつける」という発想が PD の式には存在しない</strong>。
+     目標に向かって進むことしかできないので、遠回りができない。</p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">新しい概念</span><span class="ct">エネルギー整形（energy shaping）</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>角度ではなく<strong>力学的エネルギーを目標値に合わせにいく</strong>制御則。
+        上端に静止している状態のエネルギー <code>E* = 2&middot;m&middot;g&middot;l</code> を目標にし、
+        足りなければ注入、多すぎれば抜く。
+        <code>&tau; = k&middot;&omega;&middot;(E* &minus; E)</code> という 1 行で書ける。</dd>
+      <dt>なぜ今出るか</dt>
+      <dd>§04 で PD の届く範囲が <strong>17.9 度</strong>と分かり、
+        真下からそこへ運ぶ手段が要るから。
+        <strong>PD で解けないタスクに初めて出会った</strong>ところで出すのが一番腑に落ちる。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 9 の報酬設計。「上端にいれば +1」という素朴な報酬では
+        真下から学習できない（報酬が一度も入らない）。
+        <strong>エネルギーを報酬に入れると学習が劇的に速くなる</strong>——
+        これは報酬整形（reward shaping）の代表例で、名前も発想もここから来ている。</dd>
+      <dt>もっと詳しく</dt>
+      <dd>下の<a href="#s08">実験室</a>で <code>k</code> を動かすと、
+        エネルギーが目標に張り付いていく様子を位相平面で見られる。</dd>
+    </dl>
+  </div>
+
+  <h3>式</h3>
+  <div class="code"><pre>E = 0.5 * I * omega**2 + m_g_l * (1 - cos(theta))   <span class="cmt"># 真下を 0 とした力学的エネルギー</span>
+E_star = 2 * m_g_l                                   <span class="cmt"># 上端で静止 = 3.2463 J</span>
+u = np.clip(k * omega * (E_star - E), -tau_max, tau_max)
+</pre></div>
+  <p class="why"><b>なぜ <code>&omega;</code> が掛かっているのか</b>
+     エネルギーを増やすには<strong>動いている向きに力をかける</strong>のが最も効率がよい
+     （仕事率 <code>= &tau;&middot;&omega;</code>）。
+     <code>&omega;</code> を掛けることで、右に振れているときは右へ、左に振れているときは左へ、
+     と自動的に符号が切り替わる。<strong>ブランコを漕ぐときに体を動かすタイミングと同じ</strong>。
+     そして <code>E</code> が <code>E*</code> に達すると括弧が 0 になり、力を入れるのをやめる。</p>
+  <div class="callout">
+    <span class="k">この式の弱点を先に</span>
+    <p><code>&omega; = 0</code> のとき <code>&tau; = 0</code> になる。
+       つまり<strong>完全に静止した真下から始めると、永遠に動き出さない</strong>。
+       <code>data.qvel[0] = 0.01</code> のようなわずかな初速を与えるか、
+       最初の一瞬だけ定トルクを入れる必要がある。
+       <strong>「理論的には正しいのに動かない」の典型例</strong>なので、
+       動かなかったらまず初速を疑うこと。</p>
+  </div>
+
+  <h3>2 つの制御則を切り替える</h3>
+  <div class="code"><pre>if abs(wrap(theta - np.pi)) &lt; SWITCH:
+    u = pd(theta, omega, np.pi, kp, kd, TAU_MAX)      <span class="cmt"># 上端近く: 立たせる</span>
+else:
+    u = energy(theta, omega, k, TAU_MAX)              <span class="cmt"># それ以外: 勢いをつける</span>
+</pre></div>
+  <div class="callout tip">
+    <span class="k">SWITCH の選び方には答えがある</span>
+    <p>§04 で求めた引き込み境界 <strong>0.3131 rad</strong> より<strong>内側</strong>でなければならない。
+       外側で渡すと PD が受け取った瞬間に負けて落ちる。
+       かといって狭すぎてもいけない——実測では <code>SWITCH = 0.1</code> は<strong>失敗</strong>した。
+       振り子が高速で通過するため、100Hz のサンプリングでは<strong>窓の中に一度も入らない</strong>。
+       <code>0.2〜0.3</code> が成功範囲で、教材の基準値は <code>0.3</code> を使う。</p>
+  </div>
+</section>
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07 · 実験室</span>
+    <h2>実験室 — 6 つのつまみで全部つながる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>§02〜§06 で出てきたパラメータを<strong>同時に触れる場所</strong>を置く。
+       課題に入る前にここで感触を掴んでおくと、自分のコードが動かないときに
+       <strong>「どのつまみの問題か」の見当がつく</strong>。
+       物理は MuJoCo と同じ定数（<code>I = 0.056743</code>, <code>m&middot;g&middot;l = 1.6231</code>,
+       <code>damping = 0.02</code>）を使っているので、<strong>ここで出る数字は課題の答えと一致する</strong>。</p>
+  </div>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kp">kp（PD の比例ゲイン）</label><span class="val" id="v-kp">8.0</span></div>
+        <input type="range" id="s-kp" min="0.5" max="60" step="0.5" value="8">
+        <span class="hint"><code>m&middot;g&middot;l = 1.62</code> より大きくないと上端で立たない</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-kd">kd（PD の微分ゲイン）</label><span class="val" id="v-kd">1.0</span></div>
+        <input type="range" id="s-kd" min="0" max="10" step="0.1" value="1">
+        <span class="hint">大きすぎると鈍くなり、切り替え直後に落ちる</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-ke">k（エネルギー整形ゲイン）</label><span class="val" id="v-ke">1.00</span></div>
+        <input type="range" id="s-ke" min="0" max="5" step="0.05" value="1">
+        <span class="hint">0 にすると振り上げをやめる。0.2 以下では届かない</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-sw">SWITCH（切り替えしきい値）</label><span class="val" id="v-sw">0.30</span></div>
+        <input type="range" id="s-sw" min="0.02" max="3.2" step="0.01" value="0.3">
+        <span class="hint">引き込み境界より内側、かつ通り過ぎない広さ。3.15 以上で PD のみになる</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-hz">制御周期</label><span class="val" id="v-hz">100 Hz</span></div>
+        <input type="range" id="s-hz" min="0" max="8" step="1" value="5">
+        <span class="hint">物理は 1000Hz 固定。ここだけを落とす</span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-top"><label for="s-tm">&tau;max（トルク上限）</label><span class="val" id="v-tm">0.50</span></div>
+        <input type="range" id="s-tm" min="0.1" max="3" step="0.05" value="0.5">
+        <span class="hint">1.62 を超えると力ずくで持ち上がる</span>
+      </div>
+      <div class="btns">
+        <button class="preset" type="button" data-p="8,1,1,0.3,5,0.5">基準値</button>
+        <button class="preset" type="button" data-p="8,1,1,3.2,5,0.5">PD だけ</button>
+        <button class="preset" type="button" data-p="8,1,1,0.1,5,0.5">窓が狭い</button>
+        <button class="preset" type="button" data-p="8,1,1,0.3,0,0.5">5Hz 制御</button>
+        <button class="preset" type="button" data-p="8,1,1,3.2,5,2.0">力ずく</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="readout">
+        <div><span class="rk">結果</span><span class="rv" id="r-ok">&mdash;</span></div>
+        <div><span class="rk">PD へ切替</span><span class="rv" id="r-sw">&mdash;</span></div>
+        <div><span class="rk">最大角速度</span><span class="rv" id="r-om">&mdash; <small>rad/s</small></span></div>
+        <div><span class="rk">引き込み境界</span><span class="rv" id="r-bs">&mdash; <small>rad</small></span></div>
+      </div>
+      <canvas id="cvT" width="640" height="210" aria-label="角度の時間変化"></canvas>
+      <canvas id="cvP" width="640" height="250" aria-label="位相平面"></canvas>
+      <p class="hint" style="font-size:12px;color:var(--muted)">
+        上: 角度 &theta;(t)。破線が上端 &plusmn;&pi;（どちら回りで立っても成功）。&nbsp;&nbsp;
+        下: 位相平面 (&theta;, &omega;)。灰の曲線が <strong>E = 2mgl</strong> の等エネルギー線で、
+        この線に乗れば上端に到達できる。teal が軌道、丸が PD へ切り替えた点。
+      </p>
+    </div>
+  </div>
+  <p class="why"><b>触る順番の提案</b>
+     ① まず「PD だけ」を押して、<strong>真下から立たないこと</strong>を見る。
+     ② 「力ずく」で <code>&tau;max = 2.0</code> にすると PD だけで立つ——<strong>トルクがあれば制御は易しい</strong>。
+     ③ 基準値に戻して <code>k</code> を 0 から上げていき、<strong>何回振れば届くか</strong>が変わるのを見る。
+     ④ 「窓が狭い」で、上端に<strong>届いているのに掴めない</strong>失敗を見る。
+     ⑤ 最後に制御周期を落として、どこで破綻するかを探す。</p>
+</section>
+
+<section id="s09">
+  <div class="sec-head">
+    <span class="eyebrow">08 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <p>ここからは自分のコードで測る。<strong>実験室の数値と一致すれば正解</strong>だが、
+     先に実験室で答えを見ないこと。<strong>予想 &rarr; 実行 &rarr; 照合</strong>の順を守る。</p>
+
+  <div class="task">
+    <span class="tno">課題 1</span>
+    <h3>トルクを絞ったモデルを作り、上端で保持する</h3>
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><b>なぜこの課題をやるのか</b>
+        Step 3 までは<strong>シミュレータに制御を任せて</strong>いた。
+        ここで初めて「センサを読む &rarr; 考える &rarr; 指令を書く」を自分のループとして書く。
+        1 自由度で書いておけば、多関節になっても構造は変わらない。</p>
+      <p><b>やり終えたとき言えること</b>
+        ——制御ループの 3 要素（観測・制御則・指令）がコードのどこにあるか指させる。
+        これを知らないと、Step 6 で Gymnasium の <code>step()</code> を書くときに
+        <strong>何をどこに置けばいいか分からなくなる</strong>。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-1</span><h4>models/pendulum_torque.xml を作る</h4></div>
+      <p class="why"><b>この段階の狙い</b> まだ制御は書かない。
+        <strong>「力ずくでは解けない」状況を先に作る</strong>。
+        トルクが足りていると課題 4 が自明になってしまう。</p>
+      <p><code>models/pendulum.xml</code> をコピーし、<strong>2 箇所を書き換えて 1 行を追加する</strong>。
+        <code>&lt;option&gt;</code> は <code>pendulum.xml</code> に存在しないので、
+        <code>&lt;compiler&gt;</code> の直後に新しく足す行。残り 2 つは既存の行の属性を変えるだけ。</p>
+      <div class="code"><pre>&lt;option timestep="0.001" integrator="implicitfast"/&gt;
+&lt;joint name="hinge" type="hinge" axis="0 1 0" damping="0.02"/&gt;
+&lt;motor name="torque" joint="hinge" gear="1" ctrlrange="? ?"/&gt;
+</pre></div>
+      <p><code>ctrlrange</code> は穴埋め。<strong>最大重力トルクは 1.623 N&middot;m</strong>。
+        まっすぐ持ち上げるのが不可能で、かつ数回振れば届く値を選ぶ。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <div class="code"><pre>&lt;motor name="torque" joint="hinge" gear="1" ctrlrange="-0.5 0.5"/&gt;
+</pre></div>
+        <p class="why"><b>なぜ 0.5 なのか</b>
+          <code>1.623 / 0.5 = 3.25</code> 倍の不足。
+          これくらいだと<strong>3 回ほど振れば届く</strong>ので、観察しやすく待ち時間も短い。
+          実測では <strong>振り返し 3 回・2.89 秒</strong>で上端に届く。
+          <code>0.2</code> まで絞ると 14 回・11.15 秒かかって観察が退屈になり、
+          <code>1.0</code> だと 1 回・1.52 秒で届いてしまう。
+          さらに <code>1.23</code> を超えると<strong>エネルギー整形なしの PD だけで立ってしまい、課題 4 が消滅する</strong>。</p>
+        <p class="why"><b>なぜ timestep を 0.001 にするのか</b>
+          制御周期で割り切れるようにするため。1000Hz なら 100Hz / 50Hz / 20Hz が
+          それぞれ 10 / 20 / 50 ステップちょうどになる。
+          Step 3 で見たとおり 0.002 でも物理的には安定だが、
+          <strong>割り切れないと「制御周期 100Hz」が実際には 100Hz にならない</strong>。</p>
+        <p class="why"><b>なぜ damping を 0.02 に下げるのか</b>
+          振り上げのたびに摩擦でエネルギーが逃げるため、
+          <strong>減衰が大きいほど上端に届くまでの時間が延び、やがて届かなくなる</strong>。
+          実測では <code>0.02</code> で <strong>2.89 秒</strong>、<code>0.05</code> のままだと <strong>4.51 秒</strong>、
+          <code>0.1</code> では<strong>いつまでも届かない</strong>。
+          実機のベアリングの粘性はこれより軽いので、0.02 のほうが現実にも近い。</p>
+      </div></details>
+      <p><b>確認方法</b> <code>uv run sim/view_model.py pendulum_torque.xml</code> で
+        <code>ctrlrange=[-0.5 0.5]</code> と <code>timestep=0.001</code> が表示されれば成功。</p>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-2</span><h4>物理定数を読み出す</h4></div>
+      <p class="why"><b>この段階の狙い</b> 制御則を書く前に、
+        <strong>相手の物理量を数値で押さえる</strong>。
+        §04・§05 の計算はすべてこの 3 つの値から出るので、
+        自分のモデルで同じ値が出ることを先に確かめておく。</p>
+      <div class="code"><pre>import mujoco, numpy as np
+
+model = mujoco.MjModel.from_xml_path("models/pendulum_torque.xml")
+data = mujoco.MjData(model)
+mujoco.mj_forward(model, data)
+
+M = np.zeros((model.nv, model.nv))
+mujoco.mj_fullM(model, data, M)        <span class="cmt"># 3.12 では第2引数が MjData</span>
+
+m = model.body_mass[1]
+l = abs(model.body_ipos[1][2])
+print("I    =", M[0, 0])
+print("mgl  =", m * 9.81 * l)
+</pre></div>
+      <p><b>確認方法</b> <code>I = 0.056743</code>, <code>mgl = 1.6231</code> が出れば一致。</p>
+      <div class="callout">
+        <span class="k">MuJoCo 3.12 の落とし穴</span>
+        <p>古い記事には <code>mj_fullM(model, M, data.qM)</code> と書いてあるが、
+          <strong>3.12 では <code>data.qM</code> は存在しない</strong>（<code>data.M</code> になった）。
+          引数順も <code>mj_fullM(model, data, M)</code> に変わっている。
+          <code>AttributeError: 'MjData' object has no attribute 'qM'</code> が出たらこれ。</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-3</span><h4>control/pd_balance.py — 上端付近から保持する</h4></div>
+      <p class="why"><b>この段階の狙い</b> <strong>すでに上端近くにいる状態から始める</strong>。
+        振り上げは課題 4 まで考えない。
+        問題を「保持」だけに絞れば、うまくいかないときの原因が PD の中にしかない。</p>
+      <div class="code"><pre>def wrap(x):
+    return (x + np.pi) % (2 * np.pi) - np.pi
+
+TAU_MAX = 0.5
+kp, kd = 8.0, 1.0
+ctrl_hz = 100
+decimation = round((1 / model.opt.timestep) / ctrl_hz)
+
+data.qpos[0] = np.pi + 0.1        <span class="cmt"># 上端から 0.1 rad 傾けて開始</span>
+data.qvel[0] = 0.0
+u = 0.0
+
+for i in range(6000):             <span class="cmt"># 6 秒</span>
+    if i % decimation == 0:
+        phi = wrap(data.qpos[0] - np.pi)
+        u = np.clip(-kp * phi - kd * data.qvel[0], -TAU_MAX, TAU_MAX)
+    data.ctrl[0] = u
+    mujoco.mj_step(model, data)
+
+print("最終誤差 =", wrap(data.qpos[0] - np.pi))
+</pre></div>
+      <p><b>確認方法</b> 最終誤差が <code>1e-4</code> 以下なら保持できている。
+        <code>&plusmn;2.8</code> 付近の値が出たら落ちて下でぶら下がっている。</p>
+      <p class="why"><b>先に予想すること</b>
+        <code>kp</code> を <code>1.0</code> にしたらどうなるか。
+        <strong>実行する前に答えを書いてから</strong>試すこと。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <p class="why">落ちる。<strong><code>kp</code> が <code>m&middot;g&middot;l = 1.623</code> を下回ると、
+          傾いたときに引き戻す力が重力に負ける</strong>ので、上端は不安定なまま。
+          <code>kp = 1.0</code> では 6 秒後の誤差が <code>&minus;3.05 rad</code>、つまり真下でぶら下がっている。</p>
+        <p class="why"><b>「ゲインが低いと追従が悪くなる」では足りない</b>
+          <code>kp</code> を下げると整定が遅くなるのは事実で、そこは連続的に悪化する。
+          だが <code>m&middot;g&middot;l</code> を境に<strong>性質そのものが変わる</strong>。</p>
+        <div class="tw"><table>
+          <thead><tr><th class="num">kp</th><th class="num">&omega;n = sqrt((kp&minus;mgl)/I)</th><th class="num">整定時間</th><th>結果</th></tr></thead>
+          <tbody>
+            <tr><td class="num">8.0</td><td class="num">10.60 rad/s</td><td class="num">0.6 s</td><td class="ok">立つ</td></tr>
+            <tr><td class="num">2.5</td><td class="num">3.93</td><td class="num">5.1 s</td><td class="ok">立つ</td></tr>
+            <tr><td class="num">2.0</td><td class="num">2.58</td><td class="num">12.2 s</td><td class="ok">立つ</td></tr>
+            <tr><td class="num">1.8</td><td class="num">1.77</td><td class="num">26.1 s</td><td class="ok">立つ</td></tr>
+            <tr><td class="num">1.7</td><td class="num">1.16</td><td class="num">60.3 s</td><td class="ok">立つ（遅いだけ）</td></tr>
+            <tr><td class="num">1.65</td><td class="num">0.69</td><td class="num">171.6 s</td><td class="ok">立つ</td></tr>
+            <tr><td class="num">1.5</td><td class="num">虚数</td><td class="num">&mdash;</td><td class="ng">倒れる</td></tr>
+            <tr><td class="num">1.0</td><td class="num">虚数</td><td class="num">&mdash;</td><td class="ng">倒れる</td></tr>
+          </tbody>
+        </table></div>
+        <p class="why"><b>崖の正体</b>
+          <code>kp</code> を下げると <code>&omega;n &rarr; 0</code>、つまり無限に遅くなる。
+          そして <code>kp &lt; m&middot;g&middot;l</code> でルートの中身が負になり、
+          <code>&omega;n</code> が<strong>虚数</strong>になる——「遅い」ではなく
+          <strong>指数関数的に発散する</strong>という意味。</p>
+        <p class="why">物理的には、倒そうとする重力トルク <code>&asymp; m&middot;g&middot;l&middot;&phi;</code> と
+          引き戻す制御トルク <code>kp&middot;&phi;</code> が<strong>どちらも &phi; に比例する</strong>から。
+          傾きの大きさに関係なく同じ比率で負け続けるので、挽回する機会が無い。
+          <strong><code>kp &gt; m&middot;g&middot;l</code> はゲイン調整ではなく成立条件</strong>で、
+          満たさなければ <code>kd</code> も制御周期も無関係に倒れる。</p>
+        <p class="why"><b>検証済み</b> 二分探索した境界は <strong>1.62414</strong>。
+          理論値 <code>m&middot;g&middot;l = 1.62314</code> と一致する
+          （差 0.001 は、境界付近では収束が遅すぎて 300 秒でも判定しきれないぶん）。
+          <strong>6 秒だけ回して「落ちた」と判定すると <code>kp = 1.7</code> を取りこぼす</strong>ので、
+          境界を測るときは十分長く回すこと。</p>
+      </div></details>
+    </div>
+
+    <div class="stage">
+      <div class="sh"><span class="sn">1-4</span><h4>ビューアで目視する</h4></div>
+      <p class="why"><b>この段階の狙い</b> 数値が合っていても<strong>見た目が変なこと</strong>はよくある。
+        符号を間違えて「下端で保持して成功に見える」のが典型。目で確かめる習慣をつける。</p>
+      <p><code>mujoco.viewer.launch_passive</code> でループを回し、
+        振り子が上を向いたまま静止していることを確認する。</p>
+      <p><b>確認方法</b> 上向きで止まっていれば成功。下を向いていたら <code>wrap</code> か符号を疑う。</p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 2</span>
+    <h3>引き込み領域を測り、計算値と照合する</h3>
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><b>なぜこの課題をやるのか</b>
+        <strong>ゲインを触っても動かない限界が存在する</strong>ことを、
+        自分の手で二分探索して確かめる。読んで納得するのと、
+        <code>kp</code> を 4 倍にしても境界が 1 桁目まで同じだと目にするのとでは残り方が違う。</p>
+      <p><b>やり終えたとき言えること</b>
+        ——制御がうまくいかないとき、<strong>ゲインの問題かトルクの問題かを計算で切り分けられる</strong>。
+        これを知らないと、物理的に不可能なタスクのゲイン調整に何時間も使うことになる。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">2-1</span><h4>保持できる最大初期角を二分探索する</h4></div>
+      <p class="why"><b>この段階の狙い</b> 課題 1-3 のコードを<strong>関数にする</strong>。
+        初期角を引数にして成否を返す形にしておくと、以降の課題が全部この関数の上に乗る。</p>
+      <div class="code"><pre>def hold(phi0, kp=8.0, kd=1.0, hz=100, tau=0.5, T=6.0):
+    <span class="cmt"># 上端から phi0 傾けて開始し、保持できたか True/False を返す</span>
+    ...
+    return abs(wrap(data.qpos[0] - np.pi)) &lt; 0.05
+
+lo, hi = 0.0, np.pi
+for _ in range(30):
+    mid = (lo + hi) / 2
+    if hold(mid): lo = mid
+    else:         hi = mid
+print("最大初期角 =", lo)
+</pre></div>
+      <p><b>確認方法</b> <code>0.3131</code> 付近の値が出れば正解。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">2-2</span><h4>ゲインを変えても境界が動かないことを確かめる</h4></div>
+      <p class="why"><b>この段階の狙い</b> <strong>1 変数だけを振る実験</strong>（Step 3 課題 1 と同じ作法）。
+        <code>kp</code> だけを動かし、境界が動くかどうかだけを見る。</p>
+      <p><code>(kp, kd)</code> を <code>(4, 0.5) / (8, 1) / (16, 2) / (30, 3)</code> と変えて 2-1 を繰り返す。</p>
+      <p class="why"><b>先に予想すること</b> ゲインを 7 倍にしたら境界は広がるか。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <p class="why"><strong>4 通りすべて 0.3131 rad で、まったく動かない。</strong>
+          境界付近ではトルクがすでに飽和しており、
+          制御器は<strong>「全力で押す」以上のことができない</strong>から。
+          理論値は <code>arcsin(&tau;max / m&middot;g&middot;l) = arcsin(0.5 / 1.6231) = 0.31314</code>。
+          <strong>ゲインはこの式に一度も現れない。</strong></p>
+        <p class="why"><b>確かめ方をもう一段</b>
+          <code>ctrlrange</code> を <code>&plusmn;1.0</code> に広げて 2-1 をやり直すと、
+          境界は <code>arcsin(1.0/1.6231) = 0.6638</code> に移動するはず（実測でも 0.6638）。
+          <strong>境界を動かすのはトルクだけ</strong>だと確認できる。</p>
+      </div></details>
+    </div>
+  </div>
+</section>
+  <div class="task">
+    <span class="tno">課題 3 · 壊す</span>
+    <h3>制御周期を落として破綻させる</h3>
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><b>なぜこの課題をやるのか</b>
+        <strong>実機の制約をシミュの中で先に踏む</strong>ため。
+        実機に載せてから「50Hz しか出ないので動きません」と気づくのが最悪の順序で、
+        シミュの段階で壊しておけば設計に織り込める。
+        あわせて、<strong>飽和が効いていると制御周期の影響が隠れる</strong>という
+        紛らわしい現象も見ておく。</p>
+      <p><b>やり終えたとき言えること</b>
+        ——ゲインを決めたときに<strong>必要な制御周波数を見積もれる</strong>。
+        逆に制御周波数が決まっているとき、<strong>使ってよいゲインの上限</strong>が言える。
+        これを知らないと、実機で発振したときに原因を延々と探すことになる。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">3-1</span><h4>まず現状のモデルで落としてみる</h4></div>
+      <p class="why"><b>この段階の狙い</b> 素直な予想が<strong>外れる</strong>のを体験する。
+        「制御周期を落とせば性能が落ちる」は正しいが、
+        このモデルでは<strong>想像よりずっと落ちない</strong>。その理由を考えるのが本題。</p>
+      <p>課題 2-1 の <code>hold()</code> の <code>hz</code> を
+        <code>100 / 50 / 20 / 10 / 8 / 5</code> と変える（<code>phi0 = 0.1</code> で固定）。</p>
+      <p class="why"><b>先に予想すること</b> 何 Hz で落ちると思うか。紙に書いてから実行する。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <p class="why"><strong>8Hz でもまだ保持でき、落ちるのは 5Hz から</strong>（実測）。
+          制御周期 0.125 秒というのは、<strong>倒れる時定数
+          <code>1/sqrt(m&middot;g&middot;l/I) = 1/5.348 = 0.187 秒</code></strong> と同じオーダーで、
+          直感的には保つはずがない。</p>
+        <p class="why"><b>なぜこんなに粘るのか</b>
+          <code>&tau;max = 0.5</code> では制御器がほぼ常に飽和していて、
+          出力は実質<strong>「倒れる向きと逆に全力」という符号だけの制御</strong>になっている。
+          符号は 0.125 秒に一度更新すれば十分間に合う。
+          <strong>飽和がロバスト性を生んでいる</strong>——性能と引き換えに壊れにくくなる、という現象。</p>
+      </div></details>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">3-2</span><h4>飽和を外してから落とす</h4></div>
+      <p class="why"><b>この段階の狙い</b> 3-1 の裏返し。<strong>飽和という交絡要因を取り除いて</strong>、
+        制御周期そのものの効果を見る。1 変数だけを振るために邪魔な変数を殺す、という同じ作法。</p>
+      <p><code>model.actuator_ctrlrange[0] = [-20, 20]</code> で飽和を外し、
+        <code>kp = 50, kd = 5</code> の硬い制御にして 3-1 を繰り返す。</p>
+      <p><b>確認方法</b> <strong>40Hz では保持でき、30Hz で落ちる</strong>（実測）。
+        <code>&omega;n = sqrt((50 &minus; 1.6231)/0.056743) = 29.2 rad/s = 4.65 Hz</code> なので、
+        <strong>帯域のおよそ 8.6 倍</strong>が必要だったことになる。</p>
+      <p class="why"><b>ここから持ち帰るもの</b>
+        <code>kp</code> を上げるほど必要な制御周波数が上がる。
+        §05 の表を自分で 1 行埋めたことになる。
+        <strong>実機の制御周期が 50Hz なら、<code>kp = 50</code> あたりが上限</strong>という
+        読み方ができるようになる。</p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="tno">課題 4 · 本題</span>
+    <h3>エネルギー整形でスイングアップする</h3>
+    <div class="goal">
+      <span class="k">この課題のねらい</span>
+      <p><b>なぜこの課題をやるのか</b>
+        この Step の到達点。<strong>PD では原理的に解けないタスクを、
+        制御則を 1 つ足すだけで解く</strong>。
+        「制御器を自分で書ける」ことの価値が最もはっきり出る場面で、
+        §02 で式を外に出した理由がここで回収される。</p>
+      <p><b>やり終えたとき言えること</b>
+        ——強化学習を使わずにこのタスクが解けると<strong>実物で示せる</strong>。
+        これが Step 7 以降で学習結果を評価する基準線になる。
+        <strong>基準線を持たずに RL を始めると、失敗の原因を永遠に特定できない。</strong></p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">4-1</span><h4>エネルギーを計算して確かめる</h4></div>
+      <p class="why"><b>この段階の狙い</b> 制御を書く前に<strong>測る関数だけを先に作る</strong>。
+        エネルギーが正しく計算できていないと、制御則をいくら直しても動かない。</p>
+      <div class="code"><pre>def energy(theta, omega):
+    return 0.5 * I * omega**2 + MGL * (1 - np.cos(theta))
+
+print(energy(0.0, 0.0))        <span class="cmt"># 真下で静止</span>
+print(energy(np.pi, 0.0))      <span class="cmt"># 上端で静止 = 目標値</span>
+</pre></div>
+      <p><b>確認方法</b> <code>0.0</code> と <code>3.2463</code> が出れば正しい。
+        2 つ目が <code>1.6231</code> になったら <code>(1 - cos)</code> を <code>cos</code> にしている。</p>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">4-2</span><h4>エネルギー整形だけで回す（PD に切り替えない）</h4></div>
+      <p class="why"><b>この段階の狙い</b> <strong>わざと片方だけで走らせて、何が足りないかを見る</strong>。
+        最初から 2 つを組み合わせると、動かないときにどちらが悪いか分からない。</p>
+      <div class="code"><pre>data.qpos[0] = 0.0
+data.qvel[0] = 0.01           <span class="cmt"># これが無いと永遠に動かない</span>
+k = 1.0
+
+for i in range(20000):
+    if i % decimation == 0:
+        th, om = data.qpos[0], data.qvel[0]
+        u = np.clip(k * om * (E_STAR - energy(th, om)), -TAU_MAX, TAU_MAX)
+    data.ctrl[0] = u
+    mujoco.mj_step(model, data)
+</pre></div>
+      <p class="why"><b>先に予想すること</b> 上端に到達するか。到達したらそこで止まるか。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <p class="why"><strong>上端の近くまでは行くが、止まらない。</strong>
+          実測では 20 秒間で上端への最接近が <code>0.161 rad</code>、
+          <strong>一度も上端に静止しない</strong>。
+          最終的なエネルギーは <code>3.2271</code> で目標 <code>3.2463</code> にほぼ一致しているのに、
+          <strong>最終角速度は 10.25 rad/s</strong>。</p>
+        <p class="why"><b>なぜそうなるのか</b>
+          エネルギー整形が制御しているのは<strong>エネルギーだけ</strong>で、
+          <strong>どこにいるかは一切見ていない</strong>。
+          <code>E = 2mgl</code> を満たす状態は「上端に静止」以外にもあり、
+          「真下を 10.7 rad/s で通過」も同じエネルギーを持つ。
+          振り子はその等エネルギー線上をぐるぐる回り続ける。
+          <strong>これが PD を足す理由</strong>——位置を見る制御が要る。</p>
+        <p class="why">実験室の位相平面で、灰色の曲線に軌道が張り付いていく様子として見える。</p>
+      </div></details>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">4-3</span><h4>PD と切り替える</h4></div>
+      <p class="why"><b>この段階の狙い</b> 2 つの制御則を<strong>状態で切り替える</strong>構造を書く。
+        これは<strong>有限状態機械</strong>の最小形で、
+        実機のロボットの制御は必ずこの形（起動・待機・歩行・停止…）になる。</p>
+      <div class="code"><pre>SWITCH = ???          <span class="cmt"># 課題 2 で測った値から決める</span>
+
+if abs(wrap(th - np.pi)) &lt; SWITCH:
+    u = np.clip(-kp * wrap(th - np.pi) - kd * om, -TAU_MAX, TAU_MAX)
+else:
+    u = np.clip(k * om * (E_STAR - energy(th, om)), -TAU_MAX, TAU_MAX)
+</pre></div>
+      <p><code>SWITCH</code> は穴埋め。<strong>課題 2-1 で測った 0.3131 rad</strong> との関係から決める。</p>
+      <details><summary>答えと解説を見る</summary><div class="dbody">
+        <p class="why"><code>SWITCH = 0.3</code>。
+          <strong>引き込み境界 0.3131 より内側</strong>でなければ、
+          PD が受け取った瞬間に負けて落ちる。</p>
+        <p class="why"><b>ではなぜ 0.05 のように余裕を取らないのか</b>
+          <strong>狭すぎると通り過ぎる。</strong>
+          上端を通過するときの角速度は大きく、100Hz のサンプリングでは
+          <strong>窓の中でセンサを読めないまま抜けてしまう</strong>。
+          実測では <code>SWITCH = 0.1</code> は失敗、<code>0.2</code> 以上で成功。
+          <strong>「内側だが狭すぎない」という両側からの制約</strong>がある。</p>
+        <p class="why"><b>確認方法</b> 基準設定（<code>k=1.0, kp=8, kd=1.0, SWITCH=0.3</code>, 100Hz）で
+          <strong>2.89 秒後に PD へ切り替わり、そのまま静止する</strong>。
+          振り返しは 3 回。最大角速度は 10.36 rad/s。</p>
+      </div></details>
+    </div>
+    <div class="stage">
+      <div class="sh"><span class="sn">4-4</span><h4>限界を測る</h4></div>
+      <p class="why"><b>この段階の狙い</b> 動いたところで終わらず、<strong>どこまでなら動くか</strong>を測る。
+        Step 7 以降で学習した方策を評価するときも、成功/失敗ではなく
+        <strong>どの条件範囲で成功するか</strong>を見るようになる。その練習。</p>
+      <p>次の 3 つを二分探索で求め、表にする。</p>
+      <ul>
+        <li>スイングアップが成功する<strong>最低の制御周期</strong></li>
+        <li>成功する <code>k</code> の<strong>下限</strong></li>
+        <li>成功する <code>SWITCH</code> の<strong>上下限</strong></li>
+      </ul>
+      <details><summary>実測値を見る（自分で測ってから）</summary><div class="dbody">
+        <div class="tw"><table>
+          <thead><tr><th>量</th><th class="num">実測値</th><th>理由</th></tr></thead>
+          <tbody>
+            <tr><td>最低制御周期</td><td class="num">4.73 Hz</td><td>6Hz では成功、5Hz で失敗。上端の窓を捉えられなくなる</td></tr>
+            <tr><td><code>k</code> の下限</td><td class="num">0.2 &lt; k &le; 0.5</td><td>0.2 では減衰に負けてエネルギーが溜まらない</td></tr>
+            <tr><td><code>SWITCH</code> の範囲</td><td class="num">0.2 &ndash; 0.31</td><td>下は通り過ぎ、上は引き込み境界 0.3131</td></tr>
+          </tbody>
+        </table></div>
+        <p class="why"><code>k</code> は<strong>上限がほぼ無い</strong>のが面白いところ。
+          <code>k = 10</code> でも成功する。
+          <code>&tau;</code> が飽和するので、<code>k</code> を上げてもある所から先は
+          <strong>出力が「全力」で頭打ちになる</strong>だけだから。
+          <strong>飽和する系ではゲインの上側が鈍感になる</strong>——
+          これは Step 9 で報酬の係数を調整するときにも似た形で現れる。</p>
+      </div></details>
+    </div>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sec-head">
+    <span class="eyebrow">09</span>
+    <h2>よく出る症状と対処</h2>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>症状</th><th>よくある原因</th><th>確かめ方</th></tr></thead>
+    <tbody>
+      <tr><td>上端付近で急に暴れる / 符号が反転する</td><td><code>wrap</code> を書いていない</td><td><code>theta - np.pi</code> を print。<code>6.28</code> 近い値が出たら確定</td></tr>
+      <tr><td>ゲインを上げても出力が変わらない</td><td>MuJoCo の <code>ctrlrange</code> で切られている</td><td><code>model.actuator_ctrlrange[0]</code> を print。Python 側の <code>clip</code> と二重</td></tr>
+      <tr><td>スイングアップが永遠に始まらない</td><td>真下で <code>&omega; = 0</code> のため <code>&tau; = 0</code></td><td><code>data.qvel[0] = 0.01</code> を入れる</td></tr>
+      <tr><td>上端に届くが掴めずに回り続ける</td><td><code>SWITCH</code> が狭すぎて窓を通過している</td><td>毎ステップ <code>min(abs(wrap(th-pi)))</code> を記録して最接近を見る</td></tr>
+      <tr><td>PD に切り替えた瞬間に落ちる</td><td><code>SWITCH</code> が引き込み境界 0.3131 より外</td><td>切り替え時の <code>&phi;</code> と <code>&omega;</code> を print</td></tr>
+      <tr><td>上端で立たずに必ず倒れる</td><td><code>kp &lt; m&middot;g&middot;l = 1.623</code></td><td><code>kp</code> を 8 にして再試行。直れば原因確定</td></tr>
+      <tr><td>下端で静止して「成功」に見える</td><td>目標角の符号ミス、または目視していない</td><td>ビューアで見る。数値だけを信用しない</td></tr>
+      <tr><td><code>AttributeError: ... 'qM'</code></td><td>MuJoCo 3.12 で API が変わった</td><td><code>mj_fullM(model, data, M)</code> の引数順に直す</td></tr>
+      <tr><td>制御周期を変えても挙動が変わらない</td><td><code>timestep</code> で割り切れていない</td><td><code>decimation</code> を print。1 になっていないか</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s11">
+  <div class="sec-head">
+    <span class="eyebrow">10</span>
+    <h2>完了条件</h2>
+  </div>
+  <div class="check">
+    <label><input type="checkbox" data-ck="c1"><span>PD 制御を自分で書き、上端で倒立を保持できた</span></label>
+    <label><input type="checkbox" data-ck="c2"><span><code>kp &gt; m&middot;g&middot;l</code> が安定化の最低条件であることを、式と実測の両方で確認した</span></label>
+    <label><input type="checkbox" data-ck="c12"><span><code>kp</code> を下げたときの「遅くなる」と「倒れる」の境目が <code>m&middot;g&middot;l</code> であることを説明できる</span></label>
+    <label><input type="checkbox" data-ck="c3"><span>引き込み領域を二分探索で測り、<code>arcsin(&tau;max / m&middot;g&middot;l)</code> と一致することを確かめた</span></label>
+    <label><input type="checkbox" data-ck="c4"><span>ゲインを変えても引き込み領域が動かない理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="c5"><span>制御周期と物理周期を分けて実装し、<code>decimation</code> が何を表すか説明できる</span></label>
+    <label><input type="checkbox" data-ck="c6"><span>飽和を外した状態で制御周期を落とし、性能が落ちることを確認した</span></label>
+    <label><input type="checkbox" data-ck="c7"><span>飽和しているときに制御周期の影響が隠れる理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="c8"><span>エネルギー整形でスイングアップできた</span></label>
+    <label><input type="checkbox" data-ck="c9"><span>「なぜ PD だけではスイングアップできないか」を説明できる</span></label>
+    <label><input type="checkbox" data-ck="c10"><span>「なぜエネルギー整形だけでは上端に留まれないか」を説明できる</span></label>
+    <label><input type="checkbox" data-ck="c11"><span>スイングアップ成功の限界（制御周期・k・SWITCH）を自分で測って表にした</span></label>
+  </div>
+  <div class="callout tip">
+    <span class="k">次のステップ</span>
+    <p>Step 5 から Phase B に入り、強化学習の言葉を揃える。
+       この Step で書いた制御ループは、<strong>そのまま MDP の図式に翻訳できる</strong>——
+       <code>data.qpos</code> / <code>data.qvel</code> が<strong>状態</strong>、
+       <code>data.ctrl</code> が<strong>行動</strong>、<code>decimation</code> が<strong>1 ステップの長さ</strong>。
+       違うのは、制御則を人が設計するか、データから学ぶかだけ。
+       <strong>今日書いた <code>swingup.py</code> は捨てずに取っておくこと。</strong>
+       Step 7 で学習した方策と並べて比較する。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase A / Step 4</span>
+  <span>数値はすべて mujoco 3.12.0 で実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- copy buttons ---------- */
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  /* ---------- checklist ---------- */
+  var KEY = "mujoco-step04-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+
+  /* ---------- swing-up lab ---------- */
+  /* 物理定数は models/pendulum_torque.xml の実測値と同一 */
+  var I = 0.056743, MGL = 1.6231353, C = 0.02, DT = 0.001, N = 20000;
+  var ESTAR = 2 * MGL;
+  var HZ = [5, 8, 10, 20, 50, 100, 200, 500, 1000];
+
+  var cvT = document.getElementById("cvT");
+  var cvP = document.getElementById("cvP");
+  if (!cvT || !cvP) return;
+  var el = {
+    kp: document.getElementById("s-kp"), kd: document.getElementById("s-kd"),
+    ke: document.getElementById("s-ke"), sw: document.getElementById("s-sw"),
+    hz: document.getElementById("s-hz"), tm: document.getElementById("s-tm")
+  };
+  var out = {
+    kp: document.getElementById("v-kp"), kd: document.getElementById("v-kd"),
+    ke: document.getElementById("v-ke"), sw: document.getElementById("v-sw"),
+    hz: document.getElementById("v-hz"), tm: document.getElementById("v-tm"),
+    ok: document.getElementById("r-ok"), sw2: document.getElementById("r-sw"),
+    om: document.getElementById("r-om"), bs: document.getElementById("r-bs")
+  };
+
+  function wrap(x) { return ((x + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; }
+  function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+  function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function simulate(kp, kd, k, sw, hz, tau) {
+    var dec = Math.round((1 / DT) / hz);
+    var th = 0, om = 0.01, u = 0;
+    var TH = new Float64Array(N), OM = new Float64Array(N);
+    var tSwitch = -1, omMax = 0;
+    for (var i = 0; i < N; i++) {
+      if (i % dec === 0) {
+        var phi = wrap(th - Math.PI);
+        if (Math.abs(phi) < sw) {
+          if (tSwitch < 0) tSwitch = i * DT;
+          u = clamp(-kp * phi - kd * om, -tau, tau);
+        } else {
+          var E = 0.5 * I * om * om + MGL * (1 - Math.cos(th));
+          u = clamp(k * om * (ESTAR - E), -tau, tau);
+        }
+      }
+      var acc = (u - MGL * Math.sin(th) - C * om) / I;
+      om += acc * DT; th += om * DT;
+      if (!isFinite(th)) { th = 0; om = 0; }
+      TH[i] = th; OM[i] = om;
+      if (Math.abs(om) > omMax) omMax = Math.abs(om);
+    }
+    return { TH: TH, OM: OM, tSwitch: tSwitch, omMax: omMax,
+             ok: Math.abs(wrap(th - Math.PI)) < 0.05 };
+  }
+
+  function fit(cv) {
+    var w = cv.clientWidth || 640;
+    var dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(parseInt(cv.getAttribute("height"), 10) * dpr);
+    cv.style.height = cv.getAttribute("height") + "px";
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: parseInt(cv.getAttribute("height"), 10) };
+  }
+
+  function drawTime(r) {
+    var f = fit(cvT), ctx = f.ctx, w = f.w, h = f.h;
+    var pad = { l: 46, r: 12, t: 14, b: 26 };
+    ctx.clearRect(0, 0, w, h);
+    var ymin = -Math.PI - 0.6, ymax = Math.max(4.2, Math.PI + 1);
+    for (var i = 0; i < N; i++) { if (r.TH[i] > ymax) ymax = r.TH[i]; if (r.TH[i] < ymin) ymin = r.TH[i]; }
+    function X(t) { return pad.l + (t / (N * DT)) * (w - pad.l - pad.r); }
+    function Y(v) { return pad.t + (1 - (v - ymin) / (ymax - ymin)) * (h - pad.t - pad.b); }
+
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var t = 0; t <= 20; t += 5) { ctx.moveTo(X(t), pad.t); ctx.lineTo(X(t), h - pad.b); }
+    ctx.stroke();
+
+    /* 上端は +pi と -pi の両方。どちら回りで立っても成功なので両方に引く */
+    ctx.strokeStyle = tok("--rule-strong"); ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    [Math.PI, -Math.PI].forEach(function (v) {
+      if (v < ymin || v > ymax) return;
+      ctx.moveTo(pad.l, Y(v)); ctx.lineTo(w - pad.r, Y(v));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 1.6; ctx.beginPath();
+    for (var j = 0; j < N; j += 2) {
+      var px = X(j * DT), py = Y(r.TH[j]);
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    if (r.tSwitch >= 0) {
+      ctx.fillStyle = tok("--real");
+      ctx.beginPath(); ctx.arc(X(r.tSwitch), Y(r.TH[Math.round(r.tSwitch / DT)]), 4, 0, 6.29); ctx.fill();
+    }
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillText("theta [rad]", 6, pad.t + 9);
+    ctx.fillText("+pi", pad.l - 24, Y(Math.PI) + 4);
+    ctx.fillText("-pi", pad.l - 24, Y(-Math.PI) + 4);
+    ctx.fillText("t [s]", w - pad.r - 26, h - 8);
+    ctx.fillText("0", pad.l - 12, Y(0) + 4);
+  }
+
+  function drawPhase(r, tau) {
+    var f = fit(cvP), ctx = f.ctx, w = f.w, h = f.h;
+    var pad = { l: 46, r: 12, t: 14, b: 26 };
+    ctx.clearRect(0, 0, w, h);
+    var omLim = Math.max(4, Math.ceil(r.omMax + 1));
+    function X(v) { return pad.l + ((v + Math.PI) / (2 * Math.PI)) * (w - pad.l - pad.r); }
+    function Y(v) { return pad.t + (1 - (v + omLim) / (2 * omLim)) * (h - pad.t - pad.b); }
+
+    ctx.strokeStyle = tok("--grid"); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0));
+    ctx.moveTo(X(0), pad.t); ctx.lineTo(X(0), h - pad.b); ctx.stroke();
+
+    /* E = 2mgl の等エネルギー線（ホモクリニック軌道） */
+    ctx.strokeStyle = tok("--rule-strong"); ctx.lineWidth = 1.4;
+    [1, -1].forEach(function (sgn) {
+      ctx.beginPath();
+      for (var i = 0; i <= 240; i++) {
+        var th = -Math.PI + (2 * Math.PI) * i / 240;
+        var v = 2 * MGL * (1 + Math.cos(th)) / I;
+        var om = sgn * Math.sqrt(Math.max(0, v));
+        if (i === 0) ctx.moveTo(X(th), Y(om)); else ctx.lineTo(X(th), Y(om));
+      }
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = tok("--sim"); ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    var prevT = null;
+    for (var j = 0; j < N; j += 2) {
+      var th2 = wrap(r.TH[j]), om2 = clamp(r.OM[j], -omLim, omLim);
+      var px = X(th2), py = Y(om2);
+      /* wrap で ±pi を跨いだ箇所は線を繋がない */
+      if (prevT === null || Math.abs(th2 - prevT) > 3.0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+      prevT = th2;
+    }
+    ctx.stroke();
+
+    /* 上端（wrap すると ±pi）と切り替え点 */
+    ctx.fillStyle = tok("--bad");
+    [-Math.PI, Math.PI].forEach(function (t) {
+      ctx.beginPath(); ctx.arc(X(t), Y(0), 3.5, 0, 6.29); ctx.fill();
+    });
+    if (r.tSwitch >= 0) {
+      var idx = Math.round(r.tSwitch / DT);
+      ctx.fillStyle = tok("--real");
+      ctx.beginPath(); ctx.arc(X(wrap(r.TH[idx])), Y(clamp(r.OM[idx], -omLim, omLim)), 5, 0, 6.29); ctx.fill();
+    }
+    ctx.fillStyle = tok("--muted");
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillText("omega [rad/s]", 6, pad.t + 9);
+    ctx.fillText("theta [rad]", w - pad.r - 58, h - 8);
+    ctx.fillText("-pi", pad.l - 14, Y(0) - 5);
+    ctx.fillText("+pi", w - pad.r - 20, Y(0) - 5);
+  }
+
+  function draw() {
+    var kp = parseFloat(el.kp.value), kd = parseFloat(el.kd.value),
+        k = parseFloat(el.ke.value), sw = parseFloat(el.sw.value),
+        hz = HZ[parseInt(el.hz.value, 10)], tau = parseFloat(el.tm.value);
+    out.kp.textContent = kp.toFixed(1);
+    out.kd.textContent = kd.toFixed(1);
+    out.ke.textContent = k.toFixed(2);
+    out.sw.textContent = sw >= 3.15 ? "PD のみ" : sw.toFixed(2);
+    out.hz.textContent = hz + " Hz";
+    out.tm.textContent = tau.toFixed(2);
+
+    var r = simulate(kp, kd, k, sw, hz, tau);
+    out.ok.textContent = r.ok ? "成功" : "失敗";
+    out.ok.style.color = r.ok ? tok("--sim") : tok("--bad");
+    out.sw2.textContent = r.tSwitch >= 0 ? r.tSwitch.toFixed(2) + " s" : "—";
+    out.om.innerHTML = r.omMax.toFixed(2) + ' <small>rad/s</small>';
+    var b = tau >= MGL ? "なし" : Math.asin(tau / MGL).toFixed(4);
+    out.bs.innerHTML = b + ' <small>rad</small>';
+    drawTime(r); drawPhase(r, tau);
+  }
+
+  Object.keys(el).forEach(function (k) { el[k].addEventListener("input", draw); });
+  Array.prototype.forEach.call(document.querySelectorAll(".preset"), function (b) {
+    b.addEventListener("click", function () {
+      var v = b.dataset.p.split(",");
+      el.kp.value = v[0]; el.kd.value = v[1]; el.ke.value = v[2];
+      el.sw.value = v[3]; el.hz.value = v[4]; el.tm.value = v[5];
+      draw();
+    });
+  });
+  window.addEventListener("resize", draw);
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  }
+  draw();
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

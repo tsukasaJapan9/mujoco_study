@@ -1,0 +1,947 @@
+<title>全部つないで動かす</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">データ収集（部品 2）</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">学習ループ（部品 5）</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">論文に書かれていない実装詳細</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 8-d</span>
+  <h1>全部つないで動かす</h1>
+  <p>残りの部品は 2 つ。どちらも新しい概念はない。
+     <strong>つなぐと振り子が立つ。</strong></p>
+  <div class="meta">
+    <span class="chip">90 分</span>
+    <span class="chip">Step 8 の 4/5</span>
+    <span class="chip">algos/ppo_min.py</span>
+    <span class="chip">前提: 8-c</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li>部品 1（ネットワーク）、3（GAE）、4（損失）ができている</li>
+      <li>残るのは<strong>部品 2（データ収集）と 5（学習ループ）</strong></li>
+      <li>SB3 の基準値: 30 万ステップで <b>&minus;254</b>、100 万で <b>+24.55</b>。古典制御は <b>+28.31</b></li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 5 つの部品をどういう順番で回せばいいのか？</p>
+    <p><b>2.</b> 論文に書かれていないが性能を左右する実装詳細とは何か？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題に答えたあと、残り 2 部品を作ってつなぎます。
+     そのあと<strong>実装詳細</strong>を扱います——
+     <strong>これを知らないと「式は合っているのに学習しない」に陥ります</strong>。
+     実際、この教材を作る過程でも 2 回そうなりました。</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>宿題は「環境 1 つでも同じ結果になるか」でした。
+       <strong>答えは「ならない」</strong>で、しかも<strong>その差は非常に大きい</strong>です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>7-a では環境を 4 つ並べました（<code>n_envs=4</code>）。
+       自作実装では環境 1 つで書きます。
+       <strong>同じ総ステップ数なら、結果は同じになるでしょうか。</strong></p>
+  </div>
+
+  <p><b>答え：なりません。同じにするには <code>n_steps</code> を調整する必要があります。</b></p>
+
+  <p>7-a の設定を思い出してください。<code>n_envs=4</code>、<code>n_steps=2048</code>。
+     SB3 の <code>n_steps</code> は<strong>環境 1 つあたり</strong>なので、
+     <strong>1 回の更新に使うデータは 4 &times; 2048 = 8192</strong> です。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">1 更新あたりのデータ</th><th class="num">20 万ステップでの更新回数</th></tr></thead>
+    <tbody>
+      <tr><td>SB3（4 環境 &times; 2048）</td><td class="num">8192</td><td class="num">24 回</td></tr>
+      <tr><td>自作（1 環境 &times; 2048）</td><td class="num">2048</td><td class="num"><strong>97 回</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>実測: これだけで結果が変わります</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">n_steps</th><th class="num">20 万ステップ後の報酬</th><th class="num">上端滞在</th><th class="num">最終 std</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2048</td><td class="num ng">&minus;473.03</td><td class="num ng">0.0 / 500</td><td class="num">0.385</td></tr>
+      <tr><td class="num"><strong>8192</strong></td><td class="num ok"><strong>&minus;225.86</strong></td><td class="num ok"><strong>64.5 / 500</strong></td><td class="num">0.627</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>2048 では局所解にはまりました</b>
+     診断を見ると <code>approx_kl</code> が <strong>0.0001</strong> まで落ち、
+     <code>std</code> が <strong>0.385</strong> まで縮んでいました。
+     <strong>更新が止まり、探索も死んでいる</strong>状態です。</p>
+  <p class="why"><b>データが少ないまま何度も更新すると、そのデータに過剰に合わせます</b>
+     結果としてエントロピーが早く落ち、<strong>探索をやめてしまいます</strong>。
+     8-c で見たとおり PPO は<strong>同じデータを 10 エポック使い回す</strong>ので、
+     <strong>データが少ないとその影響が強く出ます。</strong></p>
+
+  <div class="callout">
+    <span class="k">7-b で読んだ指標がそのまま診断に使えます</span>
+    <p><code>approx_kl</code> が小さすぎる、<code>std</code> が早く落ちる——
+       <strong>7-b で学んだ読み方が、自作実装のデバッグでもそのまま効きます。</strong>
+       「式は合っているのに学習しない」を切り分けられたのは、指標があったからです。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>データ収集（部品 2）</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>新しい概念はありません。</strong>5-a で書いたループと同じ形です。
+       ただし<strong>保存するものが増えます</strong>。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>保存するもの</th><th>何に使うか</th></tr></thead>
+    <tbody>
+      <tr><td><code>obs</code></td><td>更新時にネットに入れ直す</td></tr>
+      <tr><td><code>action</code></td><td>新しい <code>log_prob</code> を計算するため</td></tr>
+      <tr><td><b><code>log_prob</code></b></td><td><strong>8-c の ratio の分母</strong></td></tr>
+      <tr><td><code>reward</code></td><td>GAE の材料</td></tr>
+      <tr><td><code>value</code></td><td>GAE の材料</td></tr>
+      <tr><td><b><code>next_value</code></b></td><td><strong>8-b &sect;05 の <code>&delta;</code> に必要</strong></td></tr>
+      <tr><td><b><code>end</code></b></td><td><strong>8-b &sect;05 の畳み込みを断つ</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><pre>for t in range(n_steps):
+    ot = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+    with torch.no_grad():                       <span class="cmt"># 収集中は勾配不要</span>
+        a, lp, v = net.act(ot)
+    O[t], A[t], LP[t], V[t] = obs, a.numpy()[0], lp.item(), v.item()
+
+    raw = np.clip(a.numpy()[0], -1.0, 1.0)
+    nxt, r, term, trunc, _ = env.step(raw)
+    R[t] = r
+
+    if term:
+        NV[t] = 0.0                             <span class="cmt"># 終端: その先は無い</span>
+    else:
+        with torch.no_grad():
+            _, nv, _ = net(torch.as_tensor(nxt, dtype=torch.float32).unsqueeze(0))
+        NV[t] = nv.item()                       <span class="cmt"># 打ち切りでも未来は足す</span>
+    E[t] = float(term or trunc)
+
+    if term or trunc:
+        obs, _ = env.reset()
+    else:
+        obs = nxt
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k">2 箇所だけ注意が要ります</span>
+    <p><b>① <code>torch.no_grad()</code> で囲む</b><br>
+      収集中は学習しないので勾配が不要です。
+      <strong>これが 8-a で触れた「明示的な <code>detach</code> が要らない」理由</strong>——
+      ここで作った値は最初から履歴を持ちません。</p>
+    <p><b>② リセット前に <code>next_value</code> を取る</b><br>
+      <code>env.reset()</code> すると観測が変わってしまいます。
+      <strong>打ち切り時点の観測で <code>V</code> を計算してから</strong>リセットします
+      （8-b &sect;05）。</p>
+  </div>
+
+  <p class="why"><b><code>unsqueeze(0)</code> の意味</b>
+     <code>obs</code> は <code>(3,)</code> ですが、ネットは<strong>バッチ次元</strong>を期待します
+     （<code>network_shapes_explained.html</code>）。
+     <code>(1, 3)</code> にしてから渡し、返ってきた <code>(1, 1)</code> から
+     <code>[0]</code> で取り出しています。</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>学習ループ（部品 5）</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>5 部品をつなぐ順番を決めます。<strong>ここも新しい概念はありません。</strong></p>
+  </div>
+
+  <div class="code"><pre>for update in range(n_updates):
+    ① データを集める（n_steps ぶん）           <span class="cmt"># 部品 2</span>
+    ② GAE でアドバンテージを作る               <span class="cmt"># 部品 3</span>
+    ③ アドバンテージを正規化する
+    ④ 同じデータで epochs 回、損失を最小化      <span class="cmt"># 部品 4</span>
+       └ ミニバッチに分けて勾配降下
+</pre></div>
+
+  <div class="code"><pre>    idx = np.arange(n_steps)
+    for _ in range(epochs):                     <span class="cmt"># 既定 10 回</span>
+        np.random.shuffle(idx)
+        for s in range(0, n_steps, batch_size): <span class="cmt"># 既定 64 ずつ</span>
+            b = idx[s:s + batch_size]
+            d, v = net.dist(Ot[b])
+            lp = d.log_prob(At[b]).sum(-1)
+
+            ratio = (lp - LPt[b]).exp()
+            a1 = ratio * ADVt[b]
+            a2 = torch.clamp(ratio, 1 - clip, 1 + clip) * ADVt[b]
+            pg = -torch.min(a1, a2).mean()
+
+            vl = ((v - RETt[b]) ** 2).mean()
+            ent = d.entropy().sum(-1).mean()
+            loss = pg + vf_coef * vl - ent_coef * ent
+
+            opt.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(net.parameters(), max_grad)
+            opt.step()
+</pre></div>
+
+  <p class="why"><b>二重ループの意味</b>
+     外側が<strong>エポック</strong>（同じデータを何周するか）、内側が<strong>ミニバッチ</strong>。
+     <code>n_steps=8192</code>、<code>batch_size=64</code>、<code>epochs=10</code> なら、
+     <strong>1 更新あたり 1,280 回の勾配降下</strong>を行います。</p>
+
+  <p class="why"><b>毎エポックでシャッフルします</b>
+     同じ順番で回すと、<strong>データの並び順に依存した学習</strong>になります。
+     軌跡は時間順に並んでいるので、<strong>シャッフルしないと偏ります</strong>。</p>
+
+  <div class="callout">
+    <span class="k">ここが 5-f の「使い捨て」との折り合いです</span>
+    <p>on-policy なら本来 1 回使ったら捨てるべきでした。
+       PPO は<strong>10 エポック使い回す代わりに、クリップで方策が離れないようにしています</strong>。
+       <strong>8-c で作った仕組みが、ここで効いています。</strong></p>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>論文に書かれていない実装詳細</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>PPO の論文に書かれていない、しかし<strong>性能を大きく左右する</strong>処理をまとめます。
+       <strong>「式は合っているのに学習しない」の主犯</strong>です。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>処理</th><th>やること</th><th>無いとどうなるか</th></tr></thead>
+    <tbody>
+      <tr><td><b>アドバンテージ正規化</b></td><td><code>(adv - mean) / std</code></td>
+          <td>報酬スケールごとに <code>lr</code> 調整が必要になる</td></tr>
+      <tr><td><b>勾配クリップ</b></td><td><code>clip_grad_norm_(params, 0.5)</code></td>
+          <td>たまに出る大きな勾配で方策が壊れる</td></tr>
+      <tr><td><b>十分な <code>n_steps</code></b></td><td>1 更新あたり 8192 程度</td>
+          <td class="ng"><strong>&sect;01 の実測: &minus;473 で停滞</strong></td></tr>
+      <tr><td><b>エピソード境界の処理</b></td><td>8-b &sect;05</td>
+          <td>アドバンテージが静かに狂う</td></tr>
+      <tr><td><b>行動のスケーリング</b></td><td>環境の <code>action_space</code> に合わせる</td>
+          <td class="ng"><strong>実測: 学習がまったく進まない</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="k">この教材を作る過程で 2 回やらかしました</span>
+    <p><b>① 行動のスケーリング忘れ</b><br>
+      標準の <code>Pendulum-v1</code> は行動範囲が <code>[-2, 2]</code> なのに、
+      <code>[-1, 1]</code> で切っていました。
+      <strong>エラーは出ず、学習だけが進まない。</strong></p>
+    <p><b>② エピソード境界の取り違え</b><br>
+      打ち切り時に<strong>次のエピソードの最初の観測</strong>で <code>V</code> を計算していました。
+      8-b &sect;05 で「ここを忘れると静かに狂う」と書いたところを、自分で踏みました。</p>
+    <p><strong>どちらも 7-b の指標を見て初めて切り分けられました。</strong></p>
+  </div>
+
+  <h3>勾配クリップについて</h3>
+  <div class="code"><pre>nn.utils.clip_grad_norm_(net.parameters(), 0.5)</pre></div>
+  <p class="why"><b>8-c のクリップとは別物です</b>
+     8-c は<strong>方策の変化量</strong>を制限しました。
+     こちらは<strong>勾配そのものの大きさ</strong>を制限します。
+     <strong>名前が似ていますが、かかる場所が違います。</strong></p>
+  <p class="why">たまたま大きなアドバンテージが出たとき、
+     <strong>1 回の更新でネットが壊れる</strong>のを防ぎます。
+     <strong>効くのは稀ですが、効くときは致命傷を防ぎます。</strong></p>
+</section>
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>自分で書いた PPO で振り子を立たせる</strong>——Step 8 の到達点です。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——<code>PPO("MlpPolicy", venv)</code> の中で起きていることを、
+      <strong>自分の書いたコードとして</strong>説明できる。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      段階 3 の学習には <strong>20 分ほど</strong>かかります。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>データ収集を書く</h3>
+    <p class="why"><b>この段階ですること</b> &sect;02 のループを <code>algos/ppo_min.py</code> に足します。
+      <strong>写経で構いません。</strong></p>
+    <div class="code"><pre>def collect(env, net, obs, n_steps, obs_dim, act_dim, lo, hi):
+  O = np.zeros((n_steps, obs_dim), dtype=np.float32)
+  A = np.zeros((n_steps, act_dim), dtype=np.float32)
+  LP = np.zeros(n_steps, dtype=np.float32)
+  R = np.zeros(n_steps, dtype=np.float32)
+  V = np.zeros(n_steps, dtype=np.float32)
+  NV = np.zeros(n_steps, dtype=np.float32)
+  E = np.zeros(n_steps, dtype=np.float32)
+  ep_rets, ep_ret = [], 0.0
+
+  for t in range(n_steps):
+    ot = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+    with torch.no_grad():
+      a, lp, v = net.act(ot)
+    O[t], A[t], LP[t], V[t] = obs, a.numpy()[0], lp.item(), v.item()
+
+    raw = np.clip(a.numpy()[0], -1.0, 1.0)
+    nxt, r, term, trunc, _ = env.step(lo + (raw + 1.0) * 0.5 * (hi - lo))
+    R[t] = r
+    ep_ret += r
+
+    if term:
+      NV[t] = 0.0
+    else:
+      with torch.no_grad():
+        _, nv, _ = net(torch.as_tensor(nxt, dtype=torch.float32).unsqueeze(0))
+      NV[t] = nv.item()
+    E[t] = float(term or trunc)
+
+    if term or trunc:
+      ep_rets.append(ep_ret); ep_ret = 0.0
+      obs, _ = env.reset()
+    else:
+      obs = nxt
+
+  return obs, (O, A, LP, R, V, NV, E), ep_rets
+</pre></div>
+    <p class="why"><b>行動のスケーリングを入れてあります</b>
+      <code>lo + (raw + 1) * 0.5 * (hi - lo)</code> は
+      <strong>6-b で環境側に入れたものと同じ式</strong>です。
+      自作の振り子は <code>[-1,1]</code> なので実質そのままですが、
+      <strong>他の環境で試すときに必要</strong>になります（&sect;04 の失敗例）。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>学習ループを書く</h3>
+    <p class="why"><b>この段階ですること</b> 5 部品をつなぎます。
+      <strong>穴埋めは損失の 1 行だけ</strong>です。</p>
+    <div class="code"><pre>def train(env_fn, obs_dim, act_dim, total_steps=1_000_000, n_steps=8192,
+          epochs=10, batch_size=64, lr=3e-4, gamma=0.99, lam=0.95,
+          clip=0.2, vf_coef=0.5, ent_coef=0.0, max_grad=0.5, seed=0):
+  torch.manual_seed(seed); np.random.seed(seed)
+  env = env_fn()
+  lo, hi = env.action_space.low, env.action_space.high
+  net = ActorCritic(obs_dim, act_dim)
+  opt = torch.optim.Adam(net.parameters(), lr=lr)
+  obs, _ = env.reset(seed=seed)
+
+  for update in range(total_steps // n_steps):
+    obs, (O, A, LP, R, V, NV, E), rets = collect(
+        env, net, obs, n_steps, obs_dim, act_dim, lo, hi)
+
+    adv = gae(R, V, NV, E, gamma, lam)        <span class="cmt"># 部品 3</span>
+    ret = adv + V
+
+    Ot, At = torch.as_tensor(O), torch.as_tensor(A)
+    LPt, RETt = torch.as_tensor(LP), torch.as_tensor(ret)
+    ADVt = torch.as_tensor(adv)
+    ADVt = (ADVt - ADVt.mean()) / (ADVt.std() + 1e-8)   <span class="cmt"># 実装詳細</span>
+
+    idx = np.arange(n_steps)
+    for _ in range(epochs):
+      np.random.shuffle(idx)
+      for s in range(0, n_steps, batch_size):
+        b = idx[s:s + batch_size]
+        d, v = net.dist(Ot[b])
+        lp = d.log_prob(At[b]).sum(-1)
+
+        ratio = (lp - LPt[b]).exp()
+        a1 = ratio * ADVt[b]
+        a2 = torch.clamp(ratio, 1 - clip, 1 + clip) * ADVt[b]
+        pg = -torch.min(a1, a2).mean()
+        vl = ((v - RETt[b]) ** 2).mean()
+        ent = d.entropy().sum(-1).mean()
+
+        loss = ???                          <span class="cmt"># ← ここだけ考える</span>
+
+        opt.zero_grad(); loss.backward()
+        nn.utils.clip_grad_norm_(net.parameters(), max_grad)
+        opt.step()
+
+    print(f"  step={(update+1)*n_steps:>8}  ep_rew={np.mean(rets[-20:]) if rets else 0:8.2f}",
+          flush=True)
+  return net
+</pre></div>
+    <p>8-c &sect;05 の 3 項を 1 つにまとめる行です。<strong>符号に注意</strong>してください。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>        loss = pg + vf_coef * vl - ent_coef * ent
+</pre></div>
+      <p class="why"><b><code>pg</code> はすでに符号が反転しています</b>
+        <code>pg = -torch.min(...)</code> の時点で「小さくしたい量」になっているので、
+        <strong>ここでは足すだけ</strong>です。</p>
+      <p class="why"><b><code>ent</code> は引きます</b>
+        エントロピーは<strong>大きいほうが良い</strong>（探索が続く）ので、
+        損失としては引き算で入れます。
+        <strong>既定の <code>ent_coef=0.0</code> では効きません</strong>が、
+        7-c で試したとおり必要になれば上げられます。</p>
+      <p class="why"><b><code>vf_coef=0.5</code> はなぜ 0.5 か</b>
+        方策の損失と価値の損失の<strong>桁を合わせる</strong>ためです。
+        価値の損失は 2 乗なので大きくなりがちで、
+        <strong>そのまま足すと Critic の学習が支配してしまいます</strong>。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>振り子で学習させる</h3>
+    <p class="why"><b>この段階ですること</b> 動かします。<strong>20 分かかります。</strong></p>
+    <div class="code"><pre>import numpy as np
+import torch
+from gymnasium.wrappers import TimeLimit
+from envs.pendulum_env import PendulumEnv
+
+
+def make_env():
+    return TimeLimit(PendulumEnv(), max_episode_steps=500)
+
+
+if __name__ == "__main__":
+    net = train(make_env, obs_dim=3, act_dim=1, total_steps=1_000_000, n_steps=8192)
+    torch.save(net.state_dict(), "algos/ppo_min_pendulum.pt")
+</pre></div>
+    <div class="code"><pre>uv run python -m algos.ppo_min</pre></div>
+    <p><b>確認方法</b> こういう推移になります（実測、<code>seed=0</code>）。</p>
+    <div class="code"><pre>  step=   40960  ep_rew= -494.11
+  step=  122880  ep_rew= -336.33
+  step=  204800  ep_rew= -226.08
+  step=  409600  ep_rew=  -25.94
+  step=  614400  ep_rew=   39.98
+  step= 1000000  ep_rew=   45.62
+</pre></div>
+    <div class="callout">
+      <span class="k">n_steps=8192 を守ってください</span>
+      <p>&sect;01 で見たとおり、<code>2048</code> にすると
+        <strong>&minus;473 で停滞します</strong>。
+        <strong>ここだけは省略できません。</strong></p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 4</span>
+    <h3>SB3 と比べる</h3>
+    <p class="why"><b>この段階ですること</b> Step 6 で作った <code>evaluate()</code> で採点し、
+      <strong>同じ土俵に並べます</strong>。</p>
+    <div class="code"><pre>from train.eval import evaluate
+
+net = ActorCritic(3, 1)
+net.load_state_dict(torch.load("algos/ppo_min_pendulum.pt"))
+net.eval()
+
+
+def my_policy(env, obs):
+    with torch.no_grad():
+        mu, _, _ = net(torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0))
+    return np.clip(mu.numpy()[0], -1, 1)      <span class="cmt"># 評価では平均だけ使う</span>
+
+
+total, up = evaluate(my_policy)
+print(f"自作 PPO    : 合計報酬 {total:.2f}   上端 {up:.1f}/500")
+</pre></div>
+    <p><b>確認方法</b> 次のようになります（実測）。</p>
+    <div class="code"><pre>自作 PPO    : 合計報酬 47.36   上端 223.5/500
+  ランダム    : -499.50   (  0.0/500)
+  古典制御    :   28.31   (216.2/500)
+  SB3 (100万) :   24.55   (207.5/500)
+</pre></div>
+    <p class="why"><b>評価では <code>mu</code> だけ使います</b>
+      <code>dist.sample()</code> ではなく<strong>分布の中心</strong>を使う——
+      7-a の <code>deterministic=True</code> と同じことです。
+      <strong>本番では探索を切ります</strong>（6-d）。</p>
+    <div class="callout tip">
+      <span class="k">自作が SB3 を上回りました</span>
+      <p><strong>47.36 対 24.55。</strong>ただし<strong>1 シードの結果</strong>です——
+        7-d で学んだとおり、<strong>これだけでは「勝った」と言えません</strong>。</p>
+      <p>差の主因は<strong>設定の違い</strong>だと考えられます。
+        SB3 は <code>n_envs=4 &times; n_steps=2048</code>、自作は <code>1 &times; 8192</code>。
+        1 更新あたりのデータ量は同じですが、
+        <strong>収集のしかたが違います</strong>（4 環境の並列 vs 1 環境の連続）。</p>
+    </div>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li>残り 2 部品（データ収集・学習ループ）に<strong>新しい概念は無い</strong>。
+          5-a で書いたループと同じ形</li>
+      <li><strong>収集は <code>torch.no_grad()</code> で囲む。</strong>
+          これで <code>detach</code> が不要になる</li>
+      <li><strong>リセット前に <code>next_value</code> を取る</strong>（8-b &sect;05）</li>
+      <li><b>n_steps が決定的</b>。2048 では <strong>&minus;473 で停滞</strong>、8192 なら <strong>&minus;226</strong></li>
+      <li>論文に書かれていない実装詳細——<strong>アドバンテージ正規化・勾配クリップ・
+          行動スケーリング・エピソード境界</strong></li>
+      <li>自作 PPO で <strong>+47.36 / 上端 223.5</strong>。
+          古典制御（+28.31）も SB3（+24.55）も上回った。<strong>ただし 1 シード</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="r1"><span><code>collect()</code> を書いた</span></label>
+    <label><input type="checkbox" data-ck="r2"><span><code>train()</code> の損失の行を書いた</span></label>
+    <label><input type="checkbox" data-ck="r3"><span>100 万ステップ学習させ、報酬が <code>+40</code> 前後まで上がった</span></label>
+    <label><input type="checkbox" data-ck="r4"><span><code>evaluate()</code> で採点し、3 つの基準線と並べた</span></label>
+    <label><input type="checkbox" data-ck="r5"><span><code>n_steps</code> が小さいと停滞する理由を、7-b の指標で説明できる</span></label>
+    <label><input type="checkbox" data-ck="r6"><span>実装詳細を 3 つ以上挙げられる</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（8-e）でやること</span>
+    <p>Step 8 の最終回です。<strong>&lambda; を振って挙動の違いを確かめます</strong>
+       （ロードマップの完了条件）。
+       そして Phase B 全体——Step 5 から 8 まで——を振り返ります。</p>
+    <p>先に考えておいてください——
+       <strong>8-b で &lambda;=0 は TD、&lambda;=1 はモンテカルロだと確かめました。
+       実際に学習させたら、どちらが速いでしょうか。</strong>
+       そして<strong>極端な値ではどう壊れるでしょうか。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 8-d</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step08d-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

@@ -1,0 +1,875 @@
+<title>振り子を環境にする</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">宿題の答え合わせ</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">Gymnasium は共通のお作法</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">reset と step の形</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase B · Step 6-a</span>
+  <h1>振り子を環境にする</h1>
+  <p>マス目を離れて振り子に戻る。
+     5-a で書いた <code>step()</code> と同じものを、MuJoCo の振り子について書く。</p>
+  <div class="meta">
+    <span class="chip">40 分</span>
+    <span class="chip">Step 6 の 1/4</span>
+    <span class="chip">envs/pendulum_env.py</span>
+    <span class="chip">前提: Step 5</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">前回までで分かっていること</span>
+    <ol>
+      <li><b>環境</b>は <code>step(s, a)</code> という関数。<strong>遷移 P と報酬 r を実装したもの</strong>で、学習中は変わらない</li>
+      <li><b>方策</b>が学習されるもの。環境と方策の間を<b>観測</b>と<b>行動</b>が流れる</li>
+      <li>壁が 2 つある。<b>A: 遷移を知らない</b>／<b>B: 状態が無限</b>。
+          <strong>振り子では B にぶつかる</strong>（角度が連続値なので 14 マスの表が作れない）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 振り子の「状態」として、エージェントに何を渡すべきか？</p>
+    <p><b>2.</b> 自分の MuJoCo モデルを、RL ライブラリが使える形にするには何を書けばいいのか？</p>
+  </div>
+
+  <p><b>今回の進め方。</b>
+     宿題の答え合わせから始めます。そのあと <b>Gymnasium</b> という共通規格を紹介し、
+     <strong>5-a のマス目と 1 対 1 で対応させながら</strong>最小の環境を作ります。
+     <strong>報酬の設計や学習は出てきません</strong>——動く箱を作るところまでが今回です。</p>
+
+  <div class="callout tip">
+    <span class="k">先に準備</span>
+    <p>ライブラリを 1 つ追加します。</p>
+    <div class="code"><pre>uv add gymnasium
+</pre></div>
+    <p>検証に使ったのは <code>gymnasium 1.3.0</code> と <code>mujoco 3.12.0</code> です。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>宿題の答え合わせ</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>「角度をそのまま渡すと何が困るか」に答えます。
+       <strong>ここを間違えると、あとで学習が進まない原因として跳ね返ってきます</strong>。
+       しかも<strong>エラーは出ません</strong>。静かに性能が落ちるだけなので、先に潰しておきます。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">宿題</span>
+    <p>振り子の「状態」として何をエージェントに渡しますか。
+       角度と角速度をそのまま渡すとして、<strong>角度には厄介な性質</strong>があります。
+       Step 4 で <code>wrap()</code> を書いたときに一度ぶつかったはずです。何が問題でしょうか。</p>
+  </div>
+
+  <p><b>答え：角度は一周すると元に戻るのに、数字は戻らない。</b></p>
+
+  <p>上端は <code>&theta; = &pi; = 3.1416</code> です。
+     そのわずかに手前と、わずかに行き過ぎたところを比べます。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>渡し方</th><th class="num">&theta; = +3.13</th><th class="num">&theta; = &minus;3.13</th><th class="num">2 点の差</th></tr></thead>
+    <tbody>
+      <tr><td>生の角度</td><td class="num">+3.13</td><td class="num">&minus;3.13</td><td class="num ng"><strong>6.2600</strong></td></tr>
+      <tr><td><code>cos</code>, <code>sin</code></td><td class="num">(&minus;1.00, +0.012)</td><td class="num">(&minus;1.00, &minus;0.012)</td><td class="num ok"><strong>0.0232</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>この 2 点は物理的にほぼ同じ状態です</b>
+     どちらも「ほぼ真上、ほんの少しだけ傾いている」。
+     なのに<strong>生の角度で渡すと、数字の上では 6.26 も離れて見えます</strong>——
+     振り子が取りうる範囲でいちばん遠い 2 点に見えてしまう。</p>
+  <p class="why">エージェントにとって観測は<strong>ただの数字の並び</strong>です。
+     近い状態には近い数字、遠い状態には遠い数字が来ることを前提に学習します。
+     <strong>その前提が上端でだけ壊れる</strong>。
+     しかも上端は<strong>まさに立たせたい場所</strong>です。</p>
+
+  <h3>何周もする問題もあります</h3>
+  <p>スイングアップでは振り子が何周もします。<code>qpos</code> は畳まれずに増え続けます。</p>
+  <div class="code"><pre>theta =  0.5000  ->  cos, sin = (+0.8776, +0.4794)
+theta =  6.7832  ->  cos, sin = (+0.8776, +0.4794)   <span class="cmt"># 1 周した。同じ値になる</span>
+theta = 13.0664  ->  cos, sin = (+0.8776, +0.4794)   <span class="cmt"># 2 周した。やはり同じ</span>
+</pre></div>
+  <p class="why"><b><code>cos</code> と <code>sin</code> に変換すると自動的に畳まれます</b>
+     何周していようが、<strong>同じ姿勢なら同じ観測</strong>になる。
+     Step 4 で <code>wrap()</code> を手書きしたのと同じ問題を、
+     <strong>関数を書かずに解いています</strong>。</p>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">いちばん大事な語</span><span class="ct">観測（observation）</span></div>
+    <dl>
+      <dt>何をするもの</dt>
+      <dd>環境がエージェントに渡す数字の並び。
+        <strong>状態そのものではなく、状態を「エージェントに見せる形に加工したもの」</strong>。
+        今回は <code>[cos&theta;, sin&theta;, &omega;]</code> の 3 つ。</dd>
+      <dt>なぜ「状態」と呼び分けるのか</dt>
+      <dd>MuJoCo の中の本当の状態は <code>qpos</code> と <code>qvel</code> です。
+        <strong>そこから何を、どう加工して渡すかは設計者が決めます</strong>。
+        渡さない情報もあれば、今回のように形を変えて渡す情報もある。</dd>
+      <dt>どこに効くか</dt>
+      <dd>Step 9 の主題そのもの。<strong>観測の設計は学習の成否を直接左右します</strong>。
+        Step 11 では「シミュでは取れるが実機では測れない情報」を
+        観測から外す作業（特権情報の扱い）が出てきます。</dd>
+    </dl>
+  </div>
+
+  <div class="callout">
+    <span class="k">角速度はそのままで良いのか</span>
+    <p>良いです。<strong>角速度に周期性はありません</strong>——
+       10 rad/s と &minus;10 rad/s は本当に違う状態です。
+       変換が要るのは<strong>周期を持つ量だけ</strong>。
+       ロボットの関節角は基本的にこれに該当するので、
+       <strong>四足歩行の論文でも関節角は sin/cos で渡すのが定番</strong>です。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>Gymnasium は共通のお作法</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>新しいライブラリが出てきますが、<strong>中身は 5-a で書いたものと同じ</strong>です。
+       「何が新しくて、何が同じか」をはっきりさせます。</p>
+  </div>
+
+  <p><b>Gymnasium</b> は、<strong>環境の書き方を統一する規格</strong>です。
+     ライブラリというより<strong>取り決め</strong>だと思ってください。</p>
+
+  <p>なぜ規格が要るのか。Step 7 で使う学習ライブラリ（SB3）は、
+     <strong>あなたの振り子のことを何も知りません</strong>。
+     それでも学習させられるのは、<strong>「環境とはこういう関数を持つもの」という約束</strong>が
+     あるからです。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>5-a で自分で書いたもの</th><th>Gymnasium での名前</th><th>何が違うか</th></tr></thead>
+    <tbody>
+      <tr><td><code>step(s, a)</code></td><td><code>env.step(action)</code></td><td><strong>状態を引数で渡さない</strong>。環境が自分で覚えている</td></tr>
+      <tr><td><code>s = START</code></td><td><code>env.reset()</code></td><td>エピソードの最初に呼ぶ。初期状態を返す</td></tr>
+      <tr><td>（無かった）</td><td><code>observation_space</code></td><td>観測の形と範囲の宣言</td></tr>
+      <tr><td>（無かった）</td><td><code>action_space</code></td><td>行動の形と範囲の宣言</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>いちばん大きな違いは「状態を持つ」こと</b>
+     5-a の <code>step(s, a)</code> は<strong>状態を引数で受け取って</strong>いました。
+     Gymnasium の <code>env.step(action)</code> は<strong>行動しか受け取りません</strong>。
+     今どこにいるかは環境が内部に持っています（振り子なら <code>self.data</code>）。</p>
+  <p class="why"><b>これは 5-d の議論と繋がっています</b>
+     5-d で「ベルマン方程式は <code>step(s, a)</code> と任意の場所を指定できるから使える」と言いました。
+     <strong>Gymnasium の環境では、それができません</strong>——
+     今いる場所からしか進めない。<strong>壁 A がインタフェースの形として現れています</strong>。</p>
+
+  <div class="callout">
+    <span class="k">なぜ空間（space）の宣言が要るのか</span>
+    <p>SB3 は<strong>ニューラルネットの入力と出力のサイズを自動で決めます</strong>。
+       そのために「観測は何次元か」「行動は何次元でどの範囲か」を知る必要がある。
+       <code>observation_space</code> と <code>action_space</code> は<strong>そのための申告</strong>です。
+       詳しくは次回 6-b で扱います。</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>reset と step の形</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>実際に書く 2 つの関数の<strong>戻り値の形</strong>を確認します。
+       <strong>ここの個数と順番を間違えるのが最頻出のつまずき</strong>なので、先に固めます。</p>
+  </div>
+
+  <h3><code>reset()</code> は 2 つ返す</h3>
+  <div class="code"><pre>observation, info = env.reset(seed=0)
+</pre></div>
+  <p><code>info</code> は<strong>デバッグ用の自由な辞書</strong>です。学習には使われません。
+     必要なければ空の <code>{}</code> を返します。</p>
+
+  <h3><code>step()</code> は 5 つ返す</h3>
+  <div class="code"><pre>observation, reward, terminated, truncated, info = env.step(action)
+</pre></div>
+  <div class="tw"><table>
+    <thead><tr><th>戻り値</th><th>意味</th><th>5-a では</th></tr></thead>
+    <tbody>
+      <tr><td><code>observation</code></td><td>次の観測</td><td><code>next_state</code></td></tr>
+      <tr><td><code>reward</code></td><td>その 1 歩の報酬</td><td><code>reward</code></td></tr>
+      <tr><td><code>terminated</code></td><td><strong>タスクとして終わった</strong>か（ゴール、失敗）</td><td><code>done</code></td></tr>
+      <tr><td><code>truncated</code></td><td><strong>時間切れで打ち切った</strong>か</td><td>無かった</td></tr>
+      <tr><td><code>info</code></td><td>デバッグ用の辞書</td><td>無かった</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="k">terminated と truncated は必ず分ける</span>
+    <p>5-a の <code>done</code> が<strong>2 つに分かれています</strong>。
+       混同すると<strong>エラーを出さずに学習が壊れます</strong>。
+       理由は 5-d で書いた「<code>done</code> のとき未来の価値を足さない」という話に直結しますが、
+       <strong>今回は「2 つある」とだけ覚えて、どちらも <code>False</code> にしておいてください</strong>。
+       正しい使い分けは 6-c でまとめて扱います。</p>
+  </div>
+
+  <p class="why"><b>古い記事は 4 つ返しています</b>
+     Gymnasium の前身である <code>gym</code> では
+     <code>obs, reward, done, info</code> の 4 つでした。
+     <strong>ネットのコードをコピーすると個数が合わずに落ちます</strong>。
+     <code>ValueError: not enough values to unpack</code> が出たらこれを疑ってください。</p>
+</section>
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04 · 課題</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="goal">
+    <span class="k">この課題のねらい</span>
+    <p><b>なぜこの課題をやるのか</b>
+      <strong>動く箱を先に作る</strong>ため。観測の設計も報酬も後回しにして、
+      まず「<code>reset</code> して <code>step</code> したら値が返ってくる」状態を作ります。
+      ここが土台になり、6-b 以降はこのファイルに手を入れていきます。</p>
+    <p><b>やり終えたとき言えること</b>
+      ——MuJoCo のモデルと RL ライブラリの<strong>境界がどこにあるか</strong>を指させる。
+      <strong>自作ロボットを RL に繋ぐときに毎回書くのがこのファイル</strong>です。</p>
+  </div>
+  <div class="callout tip">
+    <span class="k">進め方</span>
+    <p>穴埋めは <strong>段階 2 の 1 箇所だけ</strong>です。
+      <code>envs/pendulum_env.py</code> を新規作成してください（<code>envs/</code> フォルダも）。
+      モデルは Step 4 で作った <code>models/pendulum_torque.xml</code> をそのまま使います。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 1</span>
+    <h3>骨格を書く</h3>
+    <p class="why"><b>この段階ですること</b> クラスの外側だけ作ります。まだ動きません。</p>
+    <div class="code"><pre>from pathlib import Path
+
+import numpy as np
+import mujoco
+import gymnasium as gym
+from gymnasium import spaces
+
+ROOT = Path(__file__).resolve().parent.parent
+MODEL_PATH = str(ROOT / "models" / "pendulum_torque.xml")
+TAU_MAX = 0.5          <span class="cmt"># ctrlrange と合わせる</span>
+CTRL_HZ = 100          <span class="cmt"># Step 4 と同じ制御周期</span>
+
+
+class PendulumEnv(gym.Env):
+  metadata = {"render_modes": [], "render_fps": CTRL_HZ}
+
+  def __init__(self):
+    self.model = mujoco.MjModel.from_xml_path(MODEL_PATH)
+    self.data = mujoco.MjData(self.model)
+    self.frame_skip = round((1 / self.model.opt.timestep) / CTRL_HZ)
+
+    self.observation_space = spaces.Box(
+      low=np.array([-1.0, -1.0, -20.0], dtype=np.float32),
+      high=np.array([1.0, 1.0, 20.0], dtype=np.float32),
+      dtype=np.float32,
+    )
+    self.action_space = spaces.Box(-1.0, 1.0, shape=(1,), dtype=np.float32)
+</pre></div>
+    <p class="why"><b><code>gym.Env</code> を継承します</b>
+      これが「Gymnasium の約束を守ります」という宣言です。
+      継承しておくと <code>self.np_random</code> という乱数生成器が使えるようになります
+      （段階 3 で使います）。</p>
+    <p class="why"><b>モデルのパスは <code>__file__</code> 基準にします</b>
+      <code>"models/pendulum_torque.xml"</code> と相対パスで書くと、
+      <strong>実行時のカレントディレクトリ</strong>から探しに行くので、
+      別の場所から実行した途端に見つからなくなります。
+      <code>sim/view_model.py</code> と同じ書き方に揃えておくと安全です。
+      <strong>Step 7 で SB3 が別プロセスから環境を読み込むとき、ここが効いてきます。</strong></p>
+    <p class="why"><b><code>frame_skip</code> は Step 4 の <code>decimation</code> と同じもの</b>
+      物理 1000Hz・制御 100Hz なので <strong>10</strong> になります。
+      <strong>名前が変わるだけで中身は同じ</strong>です。</p>
+    <div class="callout">
+      <span class="k">確認用スクリプトの置き場所に注意</span>
+      <p>下のコードを <strong><code>envs/</code> の中に置いて直接実行すると失敗します</strong>。</p>
+      <div class="code"><pre>$ uv run envs/main.py
+ModuleNotFoundError: No module named 'envs'
+</pre></div>
+      <p>Python は<strong>実行したスクリプトのあるディレクトリ</strong>を検索パスの先頭に置くので、
+        <code>envs/</code> から見ると <code>envs</code> というパッケージは存在しません。
+        <strong>確認用スクリプトはプロジェクトのルートに置いてください</strong>
+        （例: <code>try_env.py</code>）。
+        <code>envs/</code> は環境の定義だけを置く場所にしておくと、
+        <code>sim/</code> や <code>control/</code> と役割が揃います。</p>
+      <p>どうしても <code>envs/</code> の中に置きたい場合は
+        <code>uv run python -m envs.main</code> とモジュールとして実行すれば動きます。</p>
+    </div>
+    <p><b>確認方法</b> ルートに <code>try_env.py</code> を作って実行します。</p>
+    <div class="code"><pre>from envs.pendulum_env import PendulumEnv
+env = PendulumEnv()
+print("frame_skip =", env.frame_skip)      <span class="cmt"># -> 10</span>
+print(env.observation_space.shape)          <span class="cmt"># -> (3,)</span>
+print(env.action_space.shape)               <span class="cmt"># -> (1,)</span>
+</pre></div>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 2</span>
+    <h3>観測を作る</h3>
+    <p class="why"><b>この段階ですること</b> &sect;01 の結論をコードにします。
+      <strong>今回の本題はここだけ</strong>です。</p>
+    <div class="code"><pre>  def _obs(self):
+    theta = self.data.qpos[0]
+    omega = self.data.qvel[0]
+    return np.array(???, dtype=np.float32)      <span class="cmt"># ← ここだけ考える</span>
+</pre></div>
+    <p>&sect;01 で決めたのは <strong>3 つの数字</strong>でした。
+      <code>observation_space</code> の <code>low</code> / <code>high</code> が
+      <code>[-1, -1, -20]</code> と <code>[1, 1, 20]</code> になっているのがヒントです。
+      <strong>最初の 2 つが &plusmn;1 に収まる量</strong>で、3 つ目だけ範囲が違います。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    return np.array([np.cos(theta), np.sin(theta), omega], dtype=np.float32)
+</pre></div>
+      <p class="why"><b>順番は自分で決めて構いません</b>
+        ただし<strong>一度決めたら絶対に変えないこと</strong>。
+        <code>observation_space</code> の範囲と対応が崩れますし、
+        学習済みの方策は<strong>並び順まで含めて覚えています</strong>。
+        順番を入れ替えると、学習済みモデルが意味不明な動きをします。</p>
+      <p class="why"><b><code>dtype=np.float32</code> を忘れないでください</b>
+        NumPy の既定は <code>float64</code> です。
+        <code>observation_space</code> で <code>float32</code> と宣言したのに
+        <code>float64</code> を返すと、<strong>6-d の <code>check_env</code> で弾かれます</strong>。
+        SB3 も内部で <code>float32</code> を前提にしているので、揃えておくのが安全です。</p>
+      <p class="why"><b>なぜ角速度の範囲を &plusmn;20 にしたのか</b>
+        Step 4 でスイングアップを測ったとき、<strong>最大角速度は 10.36 rad/s</strong> でした。
+        その倍を取って余裕を見ています。
+        <strong>範囲は「絶対に超えない値」ではなく「だいたいこのくらい」で構いません</strong>
+        （超えてもエラーにはなりません）。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 3</span>
+    <h3>reset を書く</h3>
+    <p class="why"><b>この段階ですること</b> エピソードの最初に呼ばれる関数です。
+      <strong>写経で構いません。</strong></p>
+    <div class="code"><pre>  def reset(self, *, seed=None, options=None):
+    super().reset(seed=seed)                    <span class="cmt"># 乱数の種を Gymnasium に渡す</span>
+    mujoco.mj_resetData(self.model, self.data)  <span class="cmt"># MuJoCo を初期状態に戻す</span>
+    self.data.qpos[0] = self.np_random.uniform(-0.1, 0.1)
+    self.data.qvel[0] = self.np_random.uniform(-0.1, 0.1)
+    mujoco.mj_forward(self.model, self.data)    <span class="cmt"># 派生量を埋める</span>
+    return self._obs(), {}
+</pre></div>
+    <p class="why"><b><code>super().reset(seed=seed)</code> を必ず呼ぶ</b>
+      これが <code>self.np_random</code> を用意します。
+      呼ばないと<strong>同じ種を渡しても結果が再現しません</strong>。
+      Step 7 で実験を再現するとき、ここが効いてきます。</p>
+    <p class="why"><b>なぜ初期状態をランダムにするのか</b>
+      毎回まったく同じ位置から始めると、方策が<strong>その 1 通りの手順だけを丸暗記</strong>できてしまいます。
+      少し揺らしておくと、<strong>「状況に応じて対処する」方策</strong>が育ちます。
+      <strong>これは Step 11 のドメインランダマイゼーションの最も素朴な形</strong>です。</p>
+    <p class="why"><b><code>mj_forward</code> を忘れると</b>
+      <code>qpos</code> を書き換えただけでは <code>xpos</code> などの派生量が古いままです。
+      観測に <code>qpos</code> しか使わない今回は実害が出ませんが、
+      <strong>センサ値を観測に入れた途端に前回の値が混ざります</strong>。</p>
+  </div>
+
+  <div class="task">
+    <span class="tno">段階 4</span>
+    <h3>step を書く</h3>
+    <p class="why"><b>この段階ですること</b> 1 歩進める関数です。
+      <strong>報酬は仮置き</strong>にして、まず動かすことを優先します。</p>
+    <div class="code"><pre>  def step(self, action):
+    torque = float(np.clip(action[0], -1.0, 1.0)) * TAU_MAX
+    self.data.ctrl[0] = torque
+    for _ in range(self.frame_skip):            <span class="cmt"># Step 4 の decimation と同じ</span>
+      mujoco.mj_step(self.model, self.data)
+
+    reward = 0.0                                <span class="cmt"># 仮置き。6-d で設計する</span>
+    terminated = False                          <span class="cmt"># 6-c で扱う</span>
+    truncated = False
+    return self._obs(), reward, terminated, truncated, {}
+</pre></div>
+    <p class="why"><b><code>action</code> は <code>[-1, 1]</code> で来ます</b>
+      <code>TAU_MAX</code> を掛けて実際のトルクに直しています。
+      <strong>なぜ方策に直接 N&middot;m を出させないのか</strong>は 6-b の主題です。
+      いまは「そういう約束」とだけ思ってください。</p>
+    <p class="why"><b><code>float()</code> で包む理由</b>
+      <code>action[0]</code> は NumPy のスカラーです。
+      <code>data.ctrl[0]</code> への代入は通りますが、
+      <strong>型を明示しておくと後で型エラーに悩まされません</strong>
+      （<code>np.argmax</code> を <code>int()</code> で包んだのと同じ話です）。</p>
+    <p><b>確認方法</b> 全部つないで動かします。</p>
+    <div class="code"><pre>import numpy as np
+from envs.pendulum_env import PendulumEnv
+
+env = PendulumEnv()
+obs, info = env.reset(seed=0)
+print("初期観測:", obs, obs.dtype)
+
+obs, reward, terminated, truncated, info = env.step(np.array([1.0], dtype=np.float32))
+print("1 歩後  :", obs)
+</pre></div>
+    <p>次のような出力になれば成功です。</p>
+    <div class="code"><pre>初期観測: [ 0.99962485  0.02738891 -0.04604266] float32
+1 歩後  : [0.9996254  0.02737042 0.03426785]
+</pre></div>
+    <p class="why"><b>数字を読んでみてください</b>
+      <code>cos&theta; &asymp; 1.0</code>、<code>sin&theta; &asymp; 0.027</code> なので、
+      <strong>ほぼ真下（&theta; &asymp; 0）</strong>にいます。
+      1 歩（0.01 秒）でトルク最大を入れても、<strong>ほとんど動いていません</strong>——
+      <code>&omega;</code> が <code>&minus;0.046</code> から <code>+0.034</code> に変わった程度。
+      <strong>Step 4 で「この振り子は力ずくでは持ち上がらない」と確かめたとおり</strong>です。</p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">今回で分かったこと</span>
+    <ol>
+      <li><strong>角度をそのまま渡してはいけない。</strong>
+          上端の手前と奥で数字が 6.26 も離れる。<code>cos</code> と <code>sin</code> に直すと 0.023</li>
+      <li><b>観測</b>は状態そのものではなく、<strong>状態を見せる形に加工したもの</strong></li>
+      <li><b>Gymnasium</b> は環境の書き方の規格。
+          5-a の <code>step(s,a)</code> との最大の違いは<strong>環境が状態を自分で持つ</strong>こと</li>
+      <li><code>reset()</code> は <strong>2 つ</strong>、<code>step()</code> は <strong>5 つ</strong>返す。
+          古い <code>gym</code> は 4 つだったので、ネットのコードは大抵合わない</li>
+      <li><code>frame_skip</code> は Step 4 の <code>decimation</code> と同じもの。今回は <strong>10</strong></li>
+    </ol>
+  </div>
+
+  <div class="check">
+    <label><input type="checkbox" data-ck="g1"><span><code>uv add gymnasium</code> を実行した</span></label>
+    <label><input type="checkbox" data-ck="g2"><span><code>envs/pendulum_env.py</code> が読み込めて <code>frame_skip = 10</code> が出た</span></label>
+    <label><input type="checkbox" data-ck="g3"><span>観測を <code>[cos, sin, &omega;]</code> にした理由を説明できる</span></label>
+    <label><input type="checkbox" data-ck="g4"><span><code>reset()</code> と <code>step()</code> が動き、観測が <code>float32</code> で返ることを確認した</span></label>
+    <label><input type="checkbox" data-ck="g5"><span><code>terminated</code> と <code>truncated</code> が別物だと知っている（使い分けは 6-c）</span></label>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">次回（6-b）でやること</span>
+    <p><code>observation_space</code> と <code>action_space</code> をきちんと扱います。
+       今回さらっと書いた <strong><code>action</code> は <code>[-1, 1]</code> で来る</strong>という約束が主題です。</p>
+    <p>先に考えておいてください——
+       <strong>方策に直接「トルク 0.3 N&middot;m」を出させず、わざわざ <code>[-1, 1]</code> を経由するのはなぜでしょうか。</strong>
+       ヒント: もし関節が 12 個あって、それぞれトルクの上限がバラバラだったら？</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase B / Step 6-a</span>
+  <span>gymnasium 1.3.0 / mujoco 3.12.0 で検証</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step06a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

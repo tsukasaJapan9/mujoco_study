@@ -1,0 +1,966 @@
+<title>MJX で振り子を並列に回す</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">MJX と MuJoCo の対応</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">答えが合うか確かめる</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">N 体に増やす</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">どれだけ速くなるか</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">MJX で使えないもの</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase C · Step 10-c</span>
+  <h1>MJX で振り子を並列に回す</h1>
+  <p>MuJoCo を JAX で書き直したものが MJX。
+     <strong>1 体だと CPU より遅い</strong>——そこから話が始まります。</p>
+  <div class="meta">
+    <span class="chip">60 分</span>
+    <span class="chip">Step 10 の 3/4</span>
+    <span class="chip">前提: 10-b</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">10-b で分かったこと</span>
+    <ol>
+      <li>JAX は<strong>関数を試し実行して記録し、GPU 用に翻訳する</strong></li>
+      <li><strong>配列は書き換えない</strong>。<code>.at[i].set(v)</code></li>
+      <li><strong><code>vmap</code> で 1 体ぶんの関数を N 体に</strong>。中身は変えない</li>
+      <li><code>if</code> と可変長 <code>for</code> は書けない</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> MJX は普通の MuJoCo と<strong>同じ答えを出すのか</strong>？</p>
+    <p><b>2.</b> <strong>何体から</strong> GPU が速くなるのか？</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>MJX と MuJoCo の対応</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>書き換えは機械的です。</strong>対応表を 1 つ覚えれば済みます。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th>MuJoCo（CPU）</th><th>MJX（GPU）</th></tr></thead>
+    <tbody>
+      <tr><td>入れる</td><td><code>pip install mujoco</code></td><td><code>uv add mujoco-mjx</code></td></tr>
+      <tr><td>読み込み</td><td><code>import mujoco</code></td><td><code>from mujoco import mjx</code></td></tr>
+      <tr><td>モデル</td><td><code>m = MjModel.from_xml_path(...)</code></td>
+          <td><code>mx = mjx.put_model(m)</code><br><span class="muted">CPU 版を作ってから GPU へ送る</span></td></tr>
+      <tr><td>データ</td><td><code>d = MjData(m)</code></td><td><code>dx = mjx.make_data(mx)</code></td></tr>
+      <tr><td>1 歩進める</td><td><code>mujoco.mj_step(m, d)</code><br><span class="muted">d を書き換える</span></td>
+          <td><code>dx = mjx.step(mx, dx)</code><br><span class="muted bad">新しい dx が返る</span></td></tr>
+      <tr><td>指令</td><td><code>d.ctrl[0] = 0.5</code></td>
+          <td><code>dx = dx.replace(ctrl=jp.array([0.5]))</code></td></tr>
+      <tr><td>状態を読む</td><td><code>d.qpos[0]</code></td><td><code>dx.qpos[0]</code><span class="muted">（同じ）</span></td></tr>
+      <tr><td>初期化</td><td><code>mujoco.mj_resetData(m, d)</code></td>
+          <td><code>dx = mjx.make_data(mx)</code><span class="muted">（作り直す）</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">違いは 1 点だけです</span>
+    <p><strong>MuJoCo は <code>d</code> を書き換える。MJX は新しい <code>dx</code> を返す。</strong></p>
+    <p>10-b &sect;02 の「配列は書き換えない」がそのまま出ています。
+       <strong><code>mjx.step(mx, dx)</code> の戻り値を捨てると、何も起きません。</strong>
+       <strong>MJX でいちばん多いミスです。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">XML はそのまま使えます</span>
+    <p><code>models/pendulum_torque.xml</code> を<strong>1 文字も変えずに</strong> MJX で読めます。
+       <code>mjx.put_model()</code> が<strong>CPU 用のモデルを GPU 用に変換</strong>してくれます。</p>
+    <p>ただし<strong>使えない機能があります</strong>（&sect;05）。
+       変換できないものがあると<strong>その時点でエラー</strong>になります。</p>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>答えが合うか確かめる</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>速度を測る前に、正しさを確かめます。</strong>
+       別の実装なので、<strong>まず一致を見るのが先</strong>です。</p>
+  </div>
+
+  <div class="code"><pre>import numpy as np, jax, jax.numpy as jp, mujoco
+from mujoco import mjx
+
+m = mujoco.MjModel.from_xml_path("models/pendulum_torque.xml")
+d = mujoco.MjData(m)
+
+# --- CPU 版 ---
+mujoco.mj_resetData(m, d)
+d.qpos[0] = 0.3
+d.ctrl[0] = 0.1
+mujoco.mj_forward(m, d)
+for _ in range(100):
+  mujoco.mj_step(m, d)
+print(f"CPU: theta={d.qpos[0]:.6f} omega={d.qvel[0]:.6f}")
+
+# --- MJX ---
+mx = mjx.put_model(m)
+dx = mjx.make_data(mx)
+dx = dx.replace(qpos=dx.qpos.at[0].set(0.3),
+                ctrl=dx.ctrl.at[0].set(0.1))
+
+@jax.jit
+def roll(dx, n=100):
+  return jax.lax.fori_loop(0, n, lambda i, s: mjx.step(mx, s), dx)
+
+out = roll(dx)
+print(f"MJX: theta={float(out.qpos[0]):.6f} omega={float(out.qvel[0]):.6f}")
+</pre></div>
+
+  <div class="code"><pre>CPU: theta=0.267372 omega=-0.627730
+MJX: theta=0.267372 omega=-0.627730
+差: 4.14e-08
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k">小数点以下 6 桁まで一致しました</span>
+    <p>差は <strong>4.14e-08</strong>。<strong>float32 の精度の範囲</strong>です。</p>
+    <p><strong>MJX は MuJoCo の別実装ではなく、同じ計算を GPU 向けに書き直したもの</strong>
+       だと確かめられました。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">ただし完全一致は保証されません</span>
+    <p><strong>接触が多い課題では、もっと大きくずれます。</strong>
+       MJX は<strong>接触の解き方が CPU 版と違う</strong>ためです（&sect;05）。</p>
+    <p><strong>だから自分のモデルでは必ずこの照合をやってください。</strong>
+       <strong>振り子のように接触が無ければ、ほぼ一致します。</strong></p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>N 体に増やす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>10-b 課題 3 とまったく同じこと</strong>を、MJX でやります。</p>
+  </div>
+
+  <div class="code"><pre>B = 5
+init = jp.linspace(-0.5, 0.5, B)          # 5 体、別々の初期角度
+
+def make(theta):
+  dx = mjx.make_data(mx)
+  return dx.replace(qpos=dx.qpos.at[0].set(theta),
+                    ctrl=dx.ctrl.at[0].set(0.1))
+
+dxs = jax.vmap(make)(init)                # (5,) -> 5 体ぶんの dx
+outs = jax.jit(jax.vmap(roll))(dxs)       # roll は 1 体ぶんのまま
+
+print(np.asarray(outs.qpos[:, 0]).round(5))
+# -> [-0.4244  -0.20691  0.00859  0.22409  0.44161]
+</pre></div>
+
+  <div class="callout tip">
+    <span class="k"><code>roll</code> は 1 文字も変えていません</span>
+    <p>&sect;02 で書いた<strong>1 体ぶんの関数</strong>を、
+       <code>jax.vmap</code> で包んだだけです。</p>
+    <p><strong><code>mjx.make_data</code> も <code>vmap</code> で包む</strong>のがポイント。
+       これで<strong>N 体ぶんの dx</strong>が一度にできます。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">MJX の書き方の型</span><span class="ct">3 行で終わる</span></div>
+    <dl>
+      <dt>1. 1 体ぶんを書く</dt>
+      <dd><code>mjx.step</code> を使って、<strong>普通に 1 体ぶんの処理</strong>を書く。</dd>
+      <dt>2. vmap で包む</dt>
+      <dd><code>jax.vmap(f)</code>。<strong>モデル <code>mx</code> は共通</strong>なので、
+        関数の外で参照するか <code>in_axes=None</code> にする。</dd>
+      <dt>3. jit で包む</dt>
+      <dd><code>jax.jit(jax.vmap(f))</code>。<strong>この順番</strong>です。</dd>
+    </dl>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">frame_skip はどう書くか</span>
+    <p>あなたの環境は <code>frame_skip = 10</code> でした
+       （<code>timestep=0.001</code>、制御 100 Hz）。</p>
+    <p>MJX でも同じです。<strong><code>fori_loop</code> で 10 回まわします。</strong></p>
+    <div class="code"><pre>def env_step(dx, action):
+  dx = dx.replace(ctrl=action * 0.5)                    # [-1,1] -> トルク
+  dx = jax.lax.fori_loop(0, 10, lambda i, s: mjx.step(mx, s), dx)
+  return dx
+</pre></div>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>どれだけ速くなるか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>並列数を変えて測ります。</strong>
+       <strong>1 体では CPU に完敗します。</strong>そこが出発点です。</p>
+  </div>
+
+  <h3>実測（RTX 4050 Laptop 6GB、CPU 側は無負荷）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">並列数</th><th class="num">physics-steps/s</th>
+      <th class="num">CPU 1 体との比</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><strong>CPU 1 体</strong></td><td class="num">704,073</td><td class="num">1.0x</td>
+          <td class="muted">比較の基準</td></tr>
+      <tr><td class="num">1</td><td class="num bad"><strong>4,862</strong></td><td class="num bad"><strong>0.007x</strong></td>
+          <td class="ng"><strong>CPU の 145 分の 1</strong></td></tr>
+      <tr><td class="num">64</td><td class="num">299,232</td><td class="num">0.4x</td><td class="ng">まだ負け</td></tr>
+      <tr><td class="num">128</td><td class="num">540,610</td><td class="num">0.8x</td><td class="ng">まだ負け</td></tr>
+      <tr><td class="num">192</td><td class="num">950,752</td><td class="num ok">1.4x</td><td class="ok"><strong>ここで逆転</strong></td></tr>
+      <tr><td class="num">256</td><td class="num">1,321,885</td><td class="num">1.9x</td><td></td></tr>
+      <tr><td class="num">1,024</td><td class="num">4,677,327</td><td class="num">6.6x</td><td></td></tr>
+      <tr><td class="num">4,096</td><td class="num">15,664,251</td><td class="num">22.2x</td><td></td></tr>
+      <tr><td class="num">8,192</td><td class="num">20,890,867</td><td class="num">29.7x</td><td class="muted">伸びが鈍る</td></tr>
+      <tr><td class="num">16,384</td><td class="num ok"><strong>22,716,708</strong></td><td class="num ok"><strong>32.3x</strong></td>
+          <td class="muted">ほぼ頭打ち</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">1 体だと CPU の 145 分の 1 です</span>
+    <p><strong>これが MJX でいちばん誤解されるところです。</strong>
+       「GPU に載せたのに遅くなった」は<strong>正常な結果</strong>です。</p>
+    <p>GPU は<strong>1 個の計算を速くする装置ではありません</strong>。
+       <strong>1 体ぶんの物理（<code>nq=1</code> の振り子）は、GPU にとって小さすぎます。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">覚えておく数字</span><span class="ct">損益分岐点</span></div>
+    <dl>
+      <dt>この環境では</dt>
+      <dd><strong>128 体と 192 体の間</strong>。だいたい <strong>150 体</strong>です。</dd>
+      <dt>それより少ないと</dt>
+      <dd><strong>CPU で回したほうが速い。</strong>
+        MJX を使う意味がありません。</dd>
+      <dt>何で決まるか</dt>
+      <dd><strong>GPU の並列度とモデルの重さ</strong>です。
+        <strong>モデルが重いほど、少ない並列数で逆転します</strong>
+        （1 体あたりの計算量が増えて GPU が埋まりやすくなるため）。
+        <strong>あなたの GPU とモデルで測ってください。</strong></dd>
+      <dt>頭打ちになる理由</dt>
+      <dd>8,192 を超えると伸びが鈍ります。
+        <strong>GPU の演算器が埋まりきった</strong>からです。
+        <strong>これ以上並列数を増やしても、メモリを食うだけ</strong>です。</dd>
+    </dl>
+  </div>
+
+  <h3>学習全体ではもっと差がつきます</h3>
+  <p>上の表は<strong>物理だけ</strong>の比較です。
+     10-a で見たとおり、<strong>実際の学習では Python の事務処理が 9 割を食います</strong>。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th></th><th class="num">physics-steps/s</th><th>内訳</th></tr></thead>
+    <tbody>
+      <tr><td>CPU 物理だけ</td><td class="num">704,073</td><td>純粋な <code>mj_step</code></td></tr>
+      <tr><td><strong>CPU で実際に学習</strong></td><td class="num bad"><strong>55,650</strong></td>
+          <td>10-a の最速 5,565 env-steps/s &times; 10</td></tr>
+      <tr><td><strong>MJX 16,384 体</strong></td><td class="num ok"><strong>22,716,708</strong></td>
+          <td>方策も GPU に置けば、事務処理が消える</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>学習同士で比べると 408 倍です</b>
+     <strong>22,716,708 &divide; 55,650 = 408</strong>。
+     物理だけの比較（32.3 倍）より<strong>ずっと大きい</strong>。
+     <strong>GPU の並列度そのものより、「Python の往復が消える」効果のほうが大きい</strong>のです。</p>
+
+  <div class="callout tip">
+    <span class="k">ただし、そのためには方策も GPU に置く必要があります</span>
+    <p><strong>物理だけ MJX にして、方策が PyTorch のままだと、
+       毎ステップ GPU と CPU を往復します。</strong>意味がありません。</p>
+    <p><strong>MJX を使うなら、方策も学習ループも JAX で書きます。</strong>
+       自分で書くのは大変なので、
+       <strong>実務では Brax の PPO をそのまま使います</strong>（10-d）。</p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">9-c の「43 時間」はどうなるか</span>
+    <p>4 条件 &times; 50 シード &times; 40 万ステップ。
+       CPU では <strong>約 43 時間</strong>でした。</p>
+    <p><strong>ただし単純に 739 で割ることはできません。</strong>
+       MJX では<strong>「50 シードを別々に走らせる」のではなく
+       「1 回の学習の中で環境を数千体並べる」</strong>形になります。
+       <strong>速くなる代わりに、実験のやり方そのものが変わります。</strong></p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>MJX で使えないもの</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>MJX は MuJoCo の全機能を持っていません。</strong>
+       <strong>Phase D で自分のロボットを載せるとき、ここで詰まります。</strong></p>
+  </div>
+
+  <h3>衝突は 27 通りしか計算できません</h3>
+  <div class="tw"><table>
+    <thead><tr><th>形状</th><th>相手にできる形状</th></tr></thead>
+    <tbody>
+      <tr><td><code>PLANE</code></td><td>BOX, CAPSULE, CYLINDER, ELLIPSOID, MESH, SPHERE</td></tr>
+      <tr><td><code>SPHERE</code></td><td>BOX, CAPSULE, CYLINDER, ELLIPSOID, MESH, SPHERE</td></tr>
+      <tr><td><code>CAPSULE</code></td><td>BOX, CAPSULE, CYLINDER, ELLIPSOID, MESH</td></tr>
+      <tr><td><code>HFIELD</code></td><td>BOX, CAPSULE, MESH, SPHERE</td></tr>
+      <tr><td><code>BOX</code></td><td>BOX, MESH</td></tr>
+      <tr><td><code>ELLIPSOID</code></td><td>CYLINDER, ELLIPSOID</td></tr>
+      <tr><td><code>CYLINDER</code></td><td>CYLINDER</td></tr>
+      <tr><td><code>MESH</code></td><td>MESH</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">表に無い組み合わせはエラーになります</span>
+    <p>たとえば <strong>BOX &times; CYLINDER</strong>、<strong>MESH &times; ELLIPSOID</strong> は
+       <strong>計算できません</strong>。</p>
+    <div class="code"><pre>NotImplementedError: (mjGEOM_BOX, mjGEOM_CYLINDER) collisions not implemented.
+</pre></div>
+    <p><strong><code>mjx.put_model()</code> の時点で止まります。</strong>
+       実行してから気づくのではないので、その点は親切です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">実務での回避</span>
+    <p><strong>接触する部分だけ、対応している形状に置き換えます。</strong>
+       四足ロボットの足先なら<strong><code>SPHERE</code> か <code>CAPSULE</code></strong>
+       にするのが定番です。</p>
+    <p><strong>見た目用の geom と、衝突用の geom を分けます。</strong>
+       MJCF では <code>contype="0" conaffinity="0"</code> にすると
+       <strong>見た目だけで衝突しない geom</strong>になります。</p>
+  </div>
+
+  <h3>その他の制限</h3>
+  <div class="tw"><table>
+    <thead><tr><th>項目</th><th>MJX で使えるもの</th></tr></thead>
+    <tbody>
+      <tr><td>積分器（<code>integrator</code>）</td>
+          <td><code>euler</code> / <code>rk4</code> / <code>implicitfast</code> / <code>discrete</code>
+              <span class="muted">（いまの <code>implicitfast</code> はそのまま使えます）</span></td></tr>
+      <tr><td>ソルバ（<code>solver</code>）</td>
+          <td><code>CG</code> / <code>Newton</code>
+              <span class="muted bad">（<code>PGS</code> は不可）</span></td></tr>
+      <tr><td>摩擦コーン</td><td><code>pyramidal</code> / <code>elliptic</code></td></tr>
+      <tr><td>Flex（柔らかい物体）</td><td class="bad"><strong>使えません</strong></td></tr>
+      <tr><td>接触センサの一部</td><td class="bad">site / body / subtree 指定は使えません</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="k">振り子は全部通ります</span>
+    <p><code>models/pendulum_torque.xml</code> は
+       <strong><code>implicitfast</code>、衝突なし</strong>なので、何の問題もありません。</p>
+    <p><strong>Phase D で四足を載せるときに、この節に戻ってきてください。</strong></p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>自分の振り子を MJX に載せ、CPU と一致することを確かめ、速度を測ります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">入れる</span>
+    <div class="code"><pre>uv add mujoco-mjx
+</pre></div>
+    <p><code>jax[cuda12]</code> が入っていれば<strong>そのまま GPU で動きます</strong>。
+       10-b でやっていない場合は先にそちらを。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; CPU と一致することを確かめる</span>
+    <p><strong>速度を測る前に必ずやります。</strong>&sect;02 のコードをそのまま書いてください。</p>
+    <div class="code"><pre>mx = mjx.put_model(m)
+dx = mjx.make_data(mx)
+dx = dx.replace(qpos=dx.qpos.at[0].set(0.3),
+                ctrl=dx.ctrl.at[0].set(0.1))
+
+@jax.jit
+def roll(dx, n=100):
+  return jax.lax.fori_loop(0, n, ???, dx)      <span class="cmt"># ← ここだけ考える</span>
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>  return jax.lax.fori_loop(0, n, lambda i, s: mjx.step(mx, s), dx)</pre></div>
+      <p class="why"><b>10-b 課題 2 とまったく同じ形です</b>
+        違うのは <code>step_one</code> が <code>mjx.step</code> になっただけ。<strong>自作の運動方程式が MuJoCo の物理エンジンに変わりました。</strong></p>
+      <p class="why"><b><code>mx</code> は外から参照します</b>
+        モデルは<strong>全ステップで共通</strong>なので、ループに渡す必要はありません。<strong>N 体に <code>vmap</code> するときも <code>mx</code> は共有</strong>です。</p>
+      <p class="why"><b>戻り値を受け取ってください</b>
+        <code>mjx.step(mx, s)</code> は<strong>新しい状態を返します</strong>。<code>mjx.step(mx, s)</code> と書いて捨てると、<strong>何も進みません</strong>（&sect;01）。</p>
+    </div></details>
+    <p class="why"><b>合格の目安</b>
+       CPU 版との差が <strong>1e-6 より小さい</strong>こと。
+       <strong>これが合わないまま速度を測っても意味がありません。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 並列数を変えて速度を測る</span>
+    <div class="code"><pre>import time
+
+STEPS = 100
+vroll = jax.jit(jax.vmap(roll))
+
+for B in (1, 64, 128, 256, 1024, 4096, 16384):
+  dxs = jax.vmap(lambda _: mjx.make_data(mx))(jp.arange(B))
+  out = vroll(dxs)
+  jax.block_until_ready(out)                    # <- JIT のウォームアップ
+
+  t0 = time.perf_counter()
+  for _ in range(5):
+    out = vroll(out)
+  jax.block_until_ready(out)                    # <- 忘れると嘘の速度が出る
+  dt = time.perf_counter() - t0
+  print(f"{B:>6} {B * STEPS * 5 / dt:>15,.0f} physics-steps/s")
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>     1           4,862 physics-steps/s
+    64         299,232
+   128         540,610
+   256       1,321,885
+  1024       4,677,327
+  4096      15,664,251
+ 16384      22,716,708</pre></div>
+      <p class="why"><b>並列数 1 の値に注目してください</b>
+        <strong>4,862</strong>。CPU 1 体の <strong>704,073</strong> と比べて<strong>145 分の 1</strong>です。<strong>「GPU に載せたら遅くなった」は正常な結果</strong>です。</p>
+      <p class="why"><b>16,384 で頭打ちになります</b>
+        8,192（20,890,867）から 16,384（22,716,708）で<strong>8.7% しか伸びません</strong>。<strong>GPU の演算器が埋まりきった</strong>ので、これ以上増やしてもメモリを食うだけです。</p>
+      <p class="why"><b>メモリに注意</b>
+        RTX 4050 は <strong>6GB</strong>。振り子（<code>nq=1</code>）だから 16,384 体が載ります。<strong>四足なら 4,096 体でも厳しくなります</strong>。</p>
+    </div></details>
+    <p class="why"><b>2 つの <code>block_until_ready</code> を忘れないでください</b>
+       1 つ目は<strong>コンパイルを測定に含めない</strong>ため。
+       2 つ目は<strong>計算の完了を待つ</strong>ため。
+       <strong>どちらが無くても数字が壊れます</strong>（10-b &sect;03）。</p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 損益分岐点を自分の GPU で見つける</span>
+    <p>CPU 1 体（<code>mujoco.mj_step</code> をループで回す）の速度を測り、
+       <strong>それを超える並列数</strong>を探してください。</p>
+    <div class="code"><pre>mujoco.mj_resetData(m, d)
+N = 100000
+t0 = time.perf_counter()
+for _ in range(N):
+  mujoco.mj_step(m, d)
+cpu = N / (time.perf_counter() - t0)
+print(f"CPU 1 体: {cpu:,.0f} physics-steps/s")
+</pre></div>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>CPU 1 体: 704,073 physics-steps/s
+
+     1           4,862   0.007x   <- CPU の 145 分の 1
+   128         540,610   0.8x     <- まだ負け
+   192         950,752   1.4x     <- ここで逆転
+ 16384      22,716,708  32.3x</pre></div>
+      <p class="why"><b>損益分岐点は 128〜192 体でした</b>
+        <strong>これより少ない並列数なら、CPU で回したほうが速い</strong>。<strong>MJX を使う意味がありません。</strong></p>
+      <p class="why"><b>あなたの環境では違う値になります</b>
+        <strong>GPU の並列度とモデルの重さ</strong>で決まります。<strong>モデルが重いほど、少ない並列数で逆転します</strong>（1 体あたりの計算量が増え、GPU が埋まりやすくなるため）。</p>
+      <p class="why"><b>CPU 側は他を止めてから測ってください</b>
+        学習を裏で回したまま測ったときは <strong>335,590</strong> でした。無負荷の <strong>704,073</strong> の<strong>半分以下</strong>です。<strong>この数字がずれると、損益分岐点もずれます。</strong></p>
+    </div></details>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>「GPU だから速い」は嘘</strong>だと自分の手で確かめます。
+       <strong>この数字は GPU とモデルによって変わります。</strong>
+       <strong>自分の環境の値を知っていることが大事です。</strong></p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">CPU に負荷がかかっていると正しく測れません</span>
+    <p>9-c の ablation のような<strong>学習を裏で回したまま測ると、
+       CPU 側の数字が半分近くまで落ちます</strong>。</p>
+    <p><strong>速度を測るときは、他を全部止めてください。</strong></p>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>書き換えは機械的</strong>。違いは<strong>「dx を書き換える」ではなく
+          「新しい dx が返る」</strong>の 1 点だけ（&sect;01）</li>
+      <li><strong>CPU 版と 4.14e-08 まで一致した</strong>。
+          速度を測る前に必ず照合する（&sect;02）</li>
+      <li><strong>1 体ぶんを書いて <code>vmap</code> で包む</strong>。
+          <code>mjx.make_data</code> も包む（&sect;03）</li>
+      <li><strong>1 体だと CPU より桁違いに遅い</strong>。
+          数百体で逆転する（&sect;04）</li>
+      <li><strong>衝突は 27 通りしか計算できない</strong>。
+          接触する geom は SPHERE / CAPSULE に寄せる（&sect;05）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい一文</span>
+    <p><strong>GPU は「速い装置」ではなく「たくさん同時にやる装置」です。</strong></p>
+    <p>1 体だけ速く回したいなら<strong>CPU のほうが速い</strong>。
+       数千体を同時に回すときだけ、GPU が勝ちます。
+       <strong>この性質が、次の Step の学習アルゴリズムの形まで変えます。</strong></p>
+  </div>
+
+  <div class="callout">
+    <span class="k">速くなると、やることが変わります</span>
+    <p>9-c で「まともな ablation には 50 シード = 43 時間」と計算しました。</p>
+    <p><strong>1 本が数十秒で終わるなら、50 シードは現実的な選択肢になります。</strong>
+       <strong>速度は、単に待ち時間が減るだけではありません。
+       「measure できることの範囲」が変わります。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="m1"> <code>mjx.step</code> の戻り値を受け取る理由を説明できる</label>
+    <label><input type="checkbox" data-ck="m2"> CPU 版と MJX の答えを照合した</label>
+    <label><input type="checkbox" data-ck="m3"> 1000 体以上を並列に回した</label>
+    <label><input type="checkbox" data-ck="m4"> 自分の GPU での損益分岐点を知っている</label>
+    <label><input type="checkbox" data-ck="m5"> MJX で使えない衝突の組み合わせがあることを知っている</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 10-d</span>
+    <p>自分で環境を書くのはここまでです。
+       <strong>次は既製の四足歩行環境（MuJoCo Playground）を読みます。</strong></p>
+    <p><strong>Step 9 で自分が導いた報酬設計の原則が、
+       そのまま書いてあることを確かめます。</strong></p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase C / Step 10-c</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step10c-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

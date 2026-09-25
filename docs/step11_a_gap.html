@@ -1,0 +1,1099 @@
+<title>Sim2Real ギャップを測る</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+  :root {
+    --ground:#F3F6F5; --surface:#FFFFFF; --surface-2:#E9EFED;
+    --ink:#111A1B; --ink-2:#37464A; --muted:#697876;
+    --rule:#D6DFDC; --rule-strong:#B9C7C3;
+    --sim:#0D6C61; --sim-soft:#D6E9E5;
+    --real:#A9530F; --real-soft:#F5E4D2;
+    --bad:#A32C1E;
+    --code-bg:#F7FAF9; --grid:#E3EAE8;
+    --shadow:0 1px 2px rgba(17,26,27,.05), 0 8px 24px -16px rgba(17,26,27,.28);
+    --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    --f-body:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+      --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+      --rule:#283437; --rule-strong:#3A494C;
+      --sim:#4FC6B5; --sim-soft:#0F312D;
+      --real:#E0A163; --real-soft:#33230F;
+      --bad:#E4796A;
+      --code-bg:#10181A; --grid:#212C2F;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0D1214; --surface:#141B1D; --surface-2:#1A2325;
+    --ink:#E7EEEC; --ink-2:#B6C4C1; --muted:#879694;
+    --rule:#283437; --rule-strong:#3A494C;
+    --sim:#4FC6B5; --sim-soft:#0F312D;
+    --real:#E0A163; --real-soft:#33230F;
+    --bad:#E4796A;
+    --code-bg:#10181A; --grid:#212C2F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--f-body);
+         font-size:15px; line-height:1.8; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 110px; }
+  h1,h2,h3,h4 { font-family:var(--f-display); text-wrap:balance; line-height:1.45; margin:0; }
+  p { margin:0; max-width:66ch; }
+  a { color:var(--sim); text-underline-offset:3px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible {
+    outline:2px solid var(--sim); outline-offset:3px; }
+  .eyebrow { font-family:var(--f-mono); font-size:11px; font-weight:600;
+             letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+  header.top { padding:60px 0 34px; border-bottom:1px solid var(--rule);
+               display:flex; flex-direction:column; gap:14px; }
+  header.top h1 { font-size:clamp(28px,4.6vw,42px); font-weight:700; letter-spacing:-.01em; }
+  header.top p { font-size:17px; color:var(--ink-2); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .chip { font-family:var(--f-mono); font-size:11.5px; border:1px solid var(--rule-strong);
+          border-radius:2px; padding:4px 9px; color:var(--ink-2); background:var(--surface); }
+
+  section { padding-top:54px; display:flex; flex-direction:column; gap:18px; }
+  section > h2 { font-size:22px; font-weight:700; }
+  section h3 { font-size:16.5px; font-weight:700; margin-top:10px; }
+  .sec-head { display:flex; flex-direction:column; gap:6px; }
+
+  .code { position:relative; }
+  .code pre { font-family:var(--f-mono); font-size:12.5px; line-height:1.75;
+              background:var(--code-bg); border:1px solid var(--rule); border-radius:4px;
+              padding:16px 92px 16px 18px; overflow-x:auto; margin:0; color:var(--ink); }
+  .copy { position:absolute; top:9px; right:9px; font-family:var(--f-body); font-size:11.5px;
+          background:var(--surface); color:var(--muted); border:1px solid var(--rule-strong);
+          border-radius:3px; padding:3px 10px; cursor:pointer; line-height:1.6;
+          transition:color .12s, border-color .12s, background .12s; }
+  .copy:hover { color:var(--sim); border-color:var(--sim); }
+  .copy.done { color:var(--sim); border-color:var(--sim); background:var(--sim-soft); }
+  .cmt { color:var(--muted); }
+  .muted { color:var(--muted); }
+  code { font-family:var(--f-mono); font-size:.88em; background:var(--surface-2);
+         padding:1px 5px; border-radius:3px; }
+
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; min-width:540px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  thead th { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.1em;
+             text-transform:uppercase; color:var(--muted); background:var(--surface-2);
+             border-bottom:1px solid var(--rule-strong); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ok { color:var(--sim); font-weight:600; }
+  .ng { color:var(--bad); font-weight:600; }
+
+  .callout { border:1px solid var(--rule); border-left:3px solid var(--real);
+             background:var(--surface); border-radius:3px; padding:15px 20px;
+             display:flex; flex-direction:column; gap:6px; }
+  .callout .k { font-family:var(--f-mono); font-size:11px; letter-spacing:.12em;
+                text-transform:uppercase; color:var(--real); font-weight:600; }
+  .callout p { font-size:14px; color:var(--ink-2); }
+  .callout.tip { border-left-color:var(--sim); }
+  .callout.tip .k { color:var(--sim); }
+
+  ul,ol { margin:0; padding-left:22px; color:var(--ink-2); font-size:14.5px; }
+  li { margin:5px 0; }
+
+  .task { background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--sim);
+          border-radius:3px; padding:20px 22px; display:flex; flex-direction:column; gap:12px; }
+  .task h3 { margin:0; font-size:17px; }
+  .task .tno { font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:.12em;
+               text-transform:uppercase; color:var(--sim); }
+  .stage { border-top:1px solid var(--rule); padding-top:14px; display:flex; flex-direction:column; gap:10px; }
+  .stage .sh { display:flex; align-items:baseline; gap:10px; }
+  .stage .sn { font-family:var(--f-mono); font-size:11px; font-weight:600; color:var(--sim);
+               letter-spacing:.1em; flex:none; }
+  .stage h4 { font-family:var(--f-display); font-size:15px; font-weight:700; margin:0; }
+  .stage p { font-size:14px; color:var(--ink-2); }
+  .why { border-left:2px solid var(--rule-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2); }
+  .why b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+  details { border:1px solid var(--rule); border-radius:3px; background:var(--surface-2); }
+  summary { cursor:pointer; padding:9px 14px; font-size:13px; font-weight:500;
+            font-family:var(--f-display); color:var(--sim); list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::before { content:"\25B8  "; }
+  details[open] summary::before { content:"\25BE  "; }
+  .dbody { padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .lab { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+         box-shadow:var(--shadow); display:grid; grid-template-columns:290px 1fr; overflow:hidden; }
+  .lab-controls { padding:20px 18px; border-right:1px solid var(--rule); background:var(--surface-2);
+                  display:flex; flex-direction:column; gap:16px; }
+  .lab-stage { padding:20px; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .ctrl { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrl label { font-size:13px; font-weight:500; font-family:var(--f-display); }
+  .ctrl .val { font-family:var(--f-mono); font-size:12.5px; color:var(--sim); font-weight:600;
+               font-variant-numeric:tabular-nums; }
+  .ctrl .hint { font-size:11.5px; color:var(--muted); line-height:1.5; }
+  input[type=range] { width:100%; accent-color:var(--sim); }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button.preset { font-family:var(--f-body); font-size:12px; background:var(--surface);
+                  color:var(--ink-2); border:1px solid var(--rule-strong); border-radius:3px;
+                  padding:5px 11px; cursor:pointer; }
+  button.preset:hover { color:var(--sim); border-color:var(--sim); }
+  .readout { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+             background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+  .readout div { background:var(--surface); padding:9px 12px; display:flex; flex-direction:column; }
+  .readout .rk { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+                 text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .readout .rv { font-family:var(--f-mono); font-size:16px; font-variant-numeric:tabular-nums;
+                 color:var(--ink); font-weight:600; }
+  .readout .rv small { font-size:11px; color:var(--muted); font-weight:400; }
+  canvas { display:block; width:100%; height:auto; border-radius:3px; }
+
+  .check { background:var(--surface); border:1px solid var(--rule); border-radius:4px; padding:8px 4px; }
+  .check label { display:flex; gap:12px; align-items:flex-start; padding:9px 16px;
+                 font-size:14.5px; color:var(--ink-2); cursor:pointer; border-radius:3px; }
+  .check label:hover { background:var(--surface-2); }
+  .check input { margin-top:5px; accent-color:var(--sim); flex:none; width:15px; height:15px; }
+  .check input:checked + span { color:var(--muted); text-decoration:line-through; }
+
+  footer { margin-top:70px; padding-top:22px; border-top:1px solid var(--rule);
+           font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; gap:10px;
+           justify-content:space-between; }
+  a { color:var(--sim); text-underline-offset:3px; }
+
+  /* ---- ねらい・新概念・課題の狙い ---- */
+  .aim { background:var(--sim-soft); border-radius:4px; padding:15px 19px;
+         display:flex; flex-direction:column; gap:6px; }
+  .aim .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+            text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .aim p { font-size:14px; color:var(--ink-2); }
+  .aim strong, .aim b { color:var(--ink); font-weight:600; }
+
+  .concept { border:1px solid var(--rule-strong); border-radius:4px;
+             background:var(--surface); overflow:hidden; }
+  .concept .ch { background:var(--surface-2); padding:11px 19px;
+                 border-bottom:1px solid var(--rule); display:flex;
+                 align-items:baseline; gap:11px; flex-wrap:wrap; }
+  .concept .cn { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+                 text-transform:uppercase; color:var(--real); font-weight:600; }
+  .concept .ct { font-family:var(--f-display); font-size:15.5px; font-weight:700; }
+  .concept dl { margin:0; padding:15px 19px; display:grid;
+                grid-template-columns:118px 1fr; gap:10px 18px; }
+  .concept dt { font-family:var(--f-display); font-size:12.5px; font-weight:700;
+                color:var(--sim); }
+  .concept dd { margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.75; }
+  .concept dd strong { color:var(--ink); font-weight:600; }
+  @media (max-width:640px) {
+    .concept dl { grid-template-columns:1fr; gap:3px; }
+    .concept dd { margin-bottom:10px; }
+  }
+
+  .goal { background:var(--surface-2); border-radius:3px; padding:13px 17px;
+          display:flex; flex-direction:column; gap:5px; }
+  .goal .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+             text-transform:uppercase; color:var(--sim); font-weight:600; }
+  .goal p { font-size:13.5px; color:var(--ink-2); }
+  .goal strong { color:var(--ink); font-weight:600; }
+  .goal b { color:var(--ink); font-weight:500; font-family:var(--f-display); }
+
+  @media (max-width:820px) { .lab { grid-template-columns:1fr; }
+    .lab-controls { border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ================= 追従目次 ================= */
+  :root { --toc-w:212px; }
+  section[id] { scroll-margin-top:24px; }
+
+  .toc { position:fixed; top:0; right:0; width:var(--toc-w); height:100vh;
+         padding:26px 18px 26px 0; display:flex; flex-direction:column; gap:10px;
+         overflow-y:auto; overscroll-behavior:contain; z-index:40; }
+  .toc-t { font-family:var(--f-mono); font-size:10px; font-weight:600;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+           padding-left:13px; flex:none; }
+  .toc ol { list-style:none; margin:0; padding:0; display:flex;
+            flex-direction:column; gap:1px; }
+  .toc a { display:flex; gap:9px; align-items:baseline; text-decoration:none;
+           padding:6px 10px 6px 12px; border-left:2px solid var(--rule);
+           color:var(--muted); font-size:12.5px; line-height:1.5;
+           transition:color .12s, border-color .12s, background .12s; }
+  .toc a:hover { color:var(--ink); background:var(--surface-2); }
+  .toc a .n { font-family:var(--f-mono); font-size:10px; font-weight:600;
+              flex:none; opacity:.75; padding-top:1px; }
+  .toc a .t { font-family:var(--f-display); }
+  .toc a.on { color:var(--sim); border-left-color:var(--sim); font-weight:500; }
+  .toc a.on .n { opacity:1; }
+
+  .toc-btn { position:fixed; right:18px; bottom:18px; z-index:41; display:none;
+             width:46px; height:46px; border-radius:50%; cursor:pointer;
+             align-items:center; justify-content:center; padding:0;
+             background:var(--surface); border:1px solid var(--rule-strong);
+             box-shadow:var(--shadow); color:var(--ink); }
+  .toc-btn:hover { border-color:var(--sim); color:var(--sim); }
+  .toc-btn svg { width:20px; height:20px; }
+  .toc-bd { position:fixed; inset:0; z-index:39; display:none;
+            background:rgba(0,0,0,.32); }
+
+  /* 目次を置ける余白があるときだけ常時表示する */
+  @media (max-width:1379px) {
+    .toc { display:none; background:var(--surface); border-left:1px solid var(--rule);
+           box-shadow:var(--shadow); width:264px; padding:26px 14px; }
+    .toc.open { display:flex; }
+    .toc-bd.open { display:block; }
+    .toc-btn { display:flex; }
+  }
+  @media print { .toc, .toc-btn, .toc-bd { display:none !important; } }
+  /* 合成用: θ̈ / q̈ は結合文字が字形と合成されず豆腐になるため CSS で二重ドットを重ねる */
+  .dd { position:relative; display:inline-block; line-height:1; vertical-align:baseline; }
+  .dd::after { content:"\00A8"; position:absolute; left:50%; bottom:.74em;
+               transform:translateX(-50%); font-size:.85em; line-height:1; }
+
+  /* ---- 5-a で追加: 前回までのおさらい ---- */
+  .recap { border:1px solid var(--rule-strong); border-radius:4px; background:var(--surface);
+           padding:15px 19px; display:flex; flex-direction:column; gap:8px; }
+  .recap .k { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--real); font-weight:600; }
+  .recap ol { margin:0; padding-left:20px; font-size:14px; }
+  .recap li { margin:4px 0; }
+  .recap strong { color:var(--ink); font-weight:600; }
+
+  /* ---- 4x4 のマス目 ---- */
+  .gwrap { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .grid4 { display:grid; grid-template-columns:repeat(4, 58px); grid-auto-rows:58px;
+           gap:3px; background:var(--rule); padding:3px; border-radius:4px; flex:none; }
+  .cell { background:var(--surface); border-radius:2px; display:flex;
+          align-items:center; justify-content:center;
+          font-family:var(--f-display); font-weight:700; font-size:16px; color:var(--ink); }
+  .cell.wall { background:var(--rule-strong); }
+  .cell.start { background:var(--sim-soft); color:var(--sim); }
+  .cell.goal { background:var(--real-soft); color:var(--real); }
+  .legend { list-style:none; padding:0; margin:0; display:flex; flex-direction:column;
+            gap:9px; font-size:13.5px; }
+  .legend li { display:flex; align-items:center; gap:9px; margin:0; }
+  .legend .sw { width:17px; height:17px; border-radius:2px; flex:none;
+                border:1px solid var(--rule-strong); background:var(--surface); }
+  .legend .sw.start { background:var(--sim-soft); }
+  .legend .sw.goal { background:var(--real-soft); }
+  .legend .sw.wall { background:var(--rule-strong); }
+
+  /* ---- 5-c で追加: 値を入れたマス目 ---- */
+  .grid4.vals .cell { font-family:var(--f-mono); font-size:12.5px; font-weight:600;
+                      font-variant-numeric:tabular-nums; }
+  .grid4.small { grid-template-columns:repeat(4, 50px); grid-auto-rows:50px; }
+  .grid4.small .cell { font-size:11px; }
+  .two-up { display:flex; gap:28px; flex-wrap:wrap; }
+  .vbox { display:flex; flex-direction:column; gap:9px; }
+  .vt { font-size:12.5px; color:var(--ink-2); font-family:var(--f-display); font-weight:500; }
+
+  /* ---- 5-d で追加: 注目マスと未確定マス ---- */
+  .grid4 .cell.hi { background:var(--real-soft); color:var(--real); }
+  .grid4 .cell.hi2 { background:var(--sim-soft); color:var(--sim); }
+  .grid4 .cell.z { color:var(--muted); opacity:.55; }
+  .legend .sw.hi { background:var(--real-soft); }
+  .legend .sw.hi2 { background:var(--sim-soft); }
+
+  /* ---- 5-f で追加: 崖のマス目 ---- */
+  .grid4.cliff { grid-template-columns:repeat(6, 52px); grid-auto-rows:52px; }
+  .grid4.cliff.small { grid-template-columns:repeat(6, 42px); grid-auto-rows:42px; }
+  .grid4 .cell.bad { background:var(--bad); color:#fff; }
+  .grid4 .cell.pa { background:var(--sim-soft); color:var(--sim); font-size:17px; }
+  .legend .sw.bad { background:var(--bad); }
+</style>
+<button class="toc-btn" type="button" id="tocBtn" aria-label="目次を開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 6h16M4 12h16M4 18h10"/>
+  </svg>
+</button>
+<div class="toc-bd" id="tocBd"></div>
+<nav class="toc" id="toc" aria-label="目次">
+  <span class="toc-t">目次</span>
+  <ol>
+    <li><a href="#s01"><span class="n">00</span><span class="t">前回までと、今回の問い</span></a></li>
+    <li><a href="#s02"><span class="n">01</span><span class="t">ギャップの 6 分類</span></a></li>
+    <li><a href="#s03"><span class="n">02</span><span class="t">測る土台を作る</span></a></li>
+    <li><a href="#s04"><span class="n">03</span><span class="t">どこで壊れるか測る</span></a></li>
+    <li><a href="#s05"><span class="n">04</span><span class="t">崖の位置を詰める</span></a></li>
+    <li><a href="#s06"><span class="n">05</span><span class="t">実機のズレはどれくらいか</span></a></li>
+    <li><a href="#s07"><span class="n">06</span><span class="t">手を動かす</span></a></li>
+    <li><a href="#s08"><span class="n">07</span><span class="t">まとめ</span></a></li>
+  </ol>
+</nav>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Phase D · Step 11-a</span>
+  <h1>Sim2Real ギャップを測る</h1>
+  <p>「シミュでは完璧、実機で転ぶ」。
+     <strong>対策の前に、自分の方策が<strong>どこで</strong>壊れるかを測ります。</strong></p>
+  <div class="meta">
+    <span class="chip">50 分</span>
+    <span class="chip">Step 11 の 1/5</span>
+    <span class="chip">Phase D 開始</span>
+    <span class="chip">前提: Step 9</span>
+  </div>
+</header>
+
+<section id="s01">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>前回までと、今回の問い</h2>
+  </div>
+  <div class="recap">
+    <span class="k">Phase C で分かっていること</span>
+    <ol>
+      <li><strong>方策は書いた報酬を最大化する</strong>。望んだことではない（9-a）</li>
+      <li><strong>実機で困る量は、実機で困る量として別に測る</strong>（9-d）</li>
+      <li><strong>特権情報を Actor に見せてはいけない</strong>（9-e）</li>
+      <li><strong>差を主張する前にばらつきを測る</strong>（9-c）</li>
+    </ol>
+  </div>
+
+  <div class="aim">
+    <span class="k">この教材が答える問い</span>
+    <p><b>1.</b> 「シミュと実機が違う」とは、<strong>具体的に何が違う</strong>のか？</p>
+    <p><b>2.</b> 自分の方策は、<strong>どれくらいのズレまで耐える</strong>のか？</p>
+  </div>
+
+  <p><b>Phase D が始まります。</b>
+     ここまでは<strong>シミュレータの中だけ</strong>の話でした。
+     Phase D の主題は<strong>「シミュで作った方策を、現実の機体で動かす」</strong>です。</p>
+
+  <div class="callout warn">
+    <span class="k">Phase D でいちばん多い失敗の順番</span>
+    <p><strong>(1) シミュで良い方策ができる &rarr; (2) 実機に載せる &rarr; (3) 全然動かない
+       &rarr; (4) どこが悪いのか分からない</strong></p>
+    <p><strong>(4) が本当の問題です。</strong>
+       実機で動かなかったとき、原因の候補が<strong>何十個もある</strong>と手が出せません。</p>
+    <p>だから Step 11 は<strong>まず原因を分類し、次にシミュの中で再現する</strong>順で進みます。
+       <strong>実機を触る前にやることが、これだけあります。</strong></p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">Step 11 全体の流れ</span>
+    <div class="tw"><table>
+      <tbody>
+        <tr><td><b>11-a</b>（今回）</td><td>ギャップを分類し、<strong>壊れる場所を測る土台</strong>を作る</td></tr>
+        <tr><td><b>11-b</b></td><td>ドメインランダム化。<strong>わざとズラして学習</strong>させる</td></tr>
+        <tr><td><b>11-c</b></td><td>遅延と観測履歴</td></tr>
+        <tr><td><b>11-d</b></td><td>システム同定。<strong>実機のログからシミュを合わせる</strong></td></tr>
+        <tr><td><b>11-e</b></td><td>実機に載せる前のチェックリスト</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>今回いちばん大事なのは「測る土台」です。</strong>
+       11-b 以降の対策が効いたかどうか、<strong>これが無いと判定できません</strong>。
+       9-a &sect;05 の「ものさしを固定する」と同じ話です。</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="sec-head">
+    <span class="eyebrow">01</span>
+    <h2>ギャップの 6 分類</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Phase D の背骨になる分類</strong>です。
+       実機で動かないとき、<strong>この 6 つのどれかを疑う</strong>ところから始めます。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>分類</th><th>具体例</th><th>主な対策</th><th>扱う教材</th></tr></thead>
+    <tbody>
+      <tr><td><b>1. 物理パラメータ</b></td>
+          <td>質量・慣性・重心・摩擦係数の誤差</td>
+          <td>ドメインランダム化、システム同定</td><td>11-b, 11-d</td></tr>
+      <tr><td><b>2. アクチュエータ</b></td>
+          <td>サーボの応答遅れ、トルク上限、バックラッシュ、減速比の損失</td>
+          <td>アクチュエータモデル、実測同定</td><td>11-d</td></tr>
+      <tr><td><b>3. 遅延</b></td>
+          <td>センサ読み取り &rarr; 推論 &rarr; 指令送出（実機で 5〜30 ms）</td>
+          <td>シミュに人工遅延、観測履歴</td><td>11-c</td></tr>
+      <tr><td><b>4. 観測</b></td>
+          <td>センサノイズ、バイアス、ドリフト、量子化</td>
+          <td>ノイズ注入、非対称 Actor-Critic</td><td>11-b, 9-e</td></tr>
+      <tr><td><b>5. 接触</b></td>
+          <td>地面の弾性、滑り、足裏形状</td>
+          <td>接触パラメータのランダム化</td><td>11-b</td></tr>
+      <tr><td><b>6. 未モデル化</b></td>
+          <td>ケーブルの張力、たわみ、発熱によるトルク低下</td>
+          <td>頑健化（DR）、オンライン適応</td><td>11-b, 11-e</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">あなたの振り子では 5 番が出ません</span>
+    <p>1 自由度の振り子は<strong>床に触れません</strong>。
+       接触は Step 12 で機体を作ってから扱います。</p>
+    <p>残り 5 つは<strong>全部この振り子で再現できます。</strong>
+       <strong>1 自由度だからこそ、原因が 1 つずつ切り分けられます。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">Phase D の考え方</span><span class="ct">ギャップは「消す」ものではない</span></div>
+    <dl>
+      <dt>よくある誤解</dt>
+      <dd><strong>シミュを現実そっくりにすれば解決する。</strong></dd>
+      <dt>なぜ無理か</dt>
+      <dd><strong>完全に合わせることは原理的にできません。</strong>
+        質量は測れても、グリスの粘性は温度で変わります。
+        ケーブルの張力もモータの発熱も、<strong>毎回違います</strong>。</dd>
+      <dt>実際にやること</dt>
+      <dd><strong>(a) 合わせられるところは合わせる</strong>（システム同定・11-d）<br>
+        <strong>(b) 合わせられないところは、ばらけさせて耐えさせる</strong>（DR・11-b）</dd>
+      <dt>そのために最初に要るもの</dt>
+      <dd><strong>「どれくらいズレたら壊れるか」を測る道具。</strong>
+        これが無いと、<strong>(a) をどこまで頑張るべきかも、(b) をどの範囲で振るべきかも決まりません。</strong>
+        &sect;02 で作ります。</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="sec-head">
+    <span class="eyebrow">02</span>
+    <h2>測る土台を作る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>実機を触らずに Sim2Real を練習する方法</strong>を作ります。
+       <strong>「わざとズラした別のシミュ」で採点する</strong>のがそれです。</p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">今回の新しい語</span><span class="ct">sim-to-sim テスト</span></div>
+    <dl>
+      <dt>何をするか</dt>
+      <dd><strong>学習に使ったのとは違うパラメータのシミュで、方策を採点する。</strong>
+        質量を 10% 増やす、ダンピングを 2 倍にする、観測にノイズを載せる——といった具合です。</dd>
+      <dt>なぜこれが実機の代わりになるか</dt>
+      <dd>実機との違いは、結局<strong>「パラメータがズレている」</strong>ことです。
+        <strong>ズレの向きと大きさを自分で決められる</strong>ぶん、実機より<strong>ずっと調べやすい</strong>。</dd>
+      <dt>実機と違うところ</dt>
+      <dd><strong>未モデル化の要素（分類 6）は再現できません。</strong>
+        sim-to-sim を通ったからといって実機で動く保証はありません。
+        <strong>ただし sim-to-sim で落ちるなら、実機では確実に落ちます。</strong></dd>
+      <dt>だから何のために使うか</dt>
+      <dd><strong>実機に載せる前に落とすための関門</strong>です。
+        <strong>通過は保証ではなく、最低条件</strong>。</dd>
+    </dl>
+  </div>
+
+  <h3>ズラせるもの</h3>
+  <div class="tw"><table>
+    <thead><tr><th>ズラすもの</th><th>書き換える場所</th><th>公称値</th><th>分類</th></tr></thead>
+    <tbody>
+      <tr><td>質量・慣性</td><td><code>model.body_mass</code> / <code>model.body_inertia</code></td>
+          <td class="num">0.6618 kg</td><td>1</td></tr>
+      <tr><td>ダンピング</td><td><code>model.dof_damping[0]</code></td><td class="num">0.02</td><td>1</td></tr>
+      <tr><td>トルク上限</td><td>行動をトルクに直す倍率</td><td class="num">0.5 N&middot;m</td><td>2</td></tr>
+      <tr><td>観測ノイズ</td><td>観測に正規乱数を足す</td><td class="num">0</td><td>4</td></tr>
+      <tr><td>遅延</td><td>古い観測を返す</td><td class="num">0 ステップ</td><td>3</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">質量だけを変えてはいけません</span>
+    <p><code>body_mass</code> だけ 1.15 倍にすると、<strong>慣性がそのまま</strong>になります。
+       <strong>「重いのに回しやすい」という、現実にあり得ない物体</strong>ができます。</p>
+    <p>密度が変わった状況を作るには、<strong><code>body_inertia</code> も同じ倍率で</strong>掛けます。</p>
+    <div class="code"><pre>model.body_mass[bid] *= f
+model.body_inertia[bid] *= f      <span class="cmt"># これを忘れない</span>
+</pre></div>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">採点は必ず公称の報酬で</span>
+    <p>物理をズラしても、<strong>報酬の式と <code>evaluate()</code> は一切変えません。</strong>
+       9-a &sect;05、9-c &sect;01 と同じ鉄則です。</p>
+    <p><strong>ズラした側で採点すると、何と比べているのか分からなくなります。</strong></p>
+  </div>
+
+  <h3>まず公称値で一致を確かめる</h3>
+  <p><strong>ズラす前に、ズレ 0 のときに元の点と一致することを確認します。</strong>
+     ここがずれていたら、以降の測定はすべて無意味です。</p>
+
+  <div class="code"><pre>test(policy)                       <span class="cmt"># 何もズラさない</span>
+# -> 報酬 +47.36  上端 223.5/500   evaluate() と完全一致
+</pre></div>
+
+  <p class="why"><b>10-c &sect;02 と同じ手順です</b>
+     MJX のときも<strong>速度を測る前に CPU 版との一致を確かめました</strong>。
+     <strong>新しい測定器を作ったら、まず既知の答えで校正する。</strong></p>
+</section>
+
+<section id="s04">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>どこで壊れるか測る</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Step 8 で自分が作った方策</strong>を、5 種類のズレにかけます。
+       <strong>どれに弱いかは、測るまで分かりません。</strong></p>
+  </div>
+
+  <p>使うのは <code>algos/ppo_min_pendulum.pt</code>
+     （公称で<strong>報酬 +47.36、上端 223.5/500</strong>）。<strong>10 エピソードずつ</strong>、
+     すべて同じ乱数の種で測っています。</p>
+
+  <h3>質量（公称の何倍か）</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">倍率</th><th class="num">報酬</th><th class="num">上端にいた歩数</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.70</td><td class="num ok">+165.97</td><td class="num ok"><strong>289.6</strong></td><td class="ok">公称より良い</td></tr>
+      <tr><td class="num">0.85</td><td class="num ok">+105.37</td><td class="num">226.4</td><td></td></tr>
+      <tr><td class="num"><strong>1.00</strong></td><td class="num">+47.36</td><td class="num">223.5</td><td class="muted">公称</td></tr>
+      <tr><td class="num">1.15</td><td class="num bad">&minus;167.60</td><td class="num bad"><strong>25.2</strong></td><td class="ng"><strong>崩壊</strong></td></tr>
+      <tr><td class="num">1.30</td><td class="num bad">&minus;197.79</td><td class="num bad">56.1</td><td class="ng">崩壊</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">15% 重くしただけで、223.5 &rarr; 25.2 です</span>
+    <p><strong>9 割失いました。</strong>
+       実機では<strong>ケーブルやコネクタの重さだけで 10% 動く</strong>ことがあります。</p>
+  </div>
+
+  <h3>ダンピング</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">値</th><th class="num">報酬</th><th class="num">上端にいた歩数</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.00</td><td class="num ok">+130.98</td><td class="num ok">263.8</td><td class="ok">公称より良い</td></tr>
+      <tr><td class="num"><strong>0.02</strong></td><td class="num">+47.36</td><td class="num">223.5</td><td class="muted">公称</td></tr>
+      <tr><td class="num">0.05</td><td class="num bad">&minus;307.47</td><td class="num bad"><strong>0.0</strong></td><td class="ng"><strong>一度も立たない</strong></td></tr>
+      <tr><td class="num">0.10</td><td class="num bad">&minus;437.82</td><td class="num bad">0.0</td><td class="ng">一度も立たない</td></tr>
+      <tr><td class="num">0.20</td><td class="num bad">&minus;486.49</td><td class="num bad">0.0</td><td class="ng">一度も立たない</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">これがいちばん危ない</span>
+    <p><strong>ダンピングを 2.5 倍にしただけで、500 歩中 1 歩も上端に届きません。</strong></p>
+    <p>そして<strong>ダンピングは実機でいちばん当てにならない値</strong>です。
+       グリスの粘性、ベアリングの当たり、温度、使い込み具合で<strong>簡単に 2〜3 倍動きます</strong>。</p>
+    <p><strong>いちばん脆いところが、いちばん分からないところと一致しています。</strong></p>
+  </div>
+
+  <h3>トルク上限</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">N&middot;m</th><th class="num">報酬</th><th class="num">上端にいた歩数</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.40</td><td class="num bad">&minus;198.07</td><td class="num bad">59.5</td><td class="ng">崩壊</td></tr>
+      <tr><td class="num">0.45</td><td class="num bad">&minus;126.80</td><td class="num bad">66.0</td><td class="ng">崩壊</td></tr>
+      <tr><td class="num"><strong>0.50</strong></td><td class="num">+47.36</td><td class="num">223.5</td><td class="muted">公称</td></tr>
+      <tr><td class="num">0.55</td><td class="num">+47.36</td><td class="num">223.8</td><td></td></tr>
+      <tr><td class="num">0.60</td><td class="num">+47.30</td><td class="num">223.9</td><td></td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>片側だけ危ない</b>
+     <strong>強くする分にはまったく影響がありません</strong>（0.60 でも 223.9）。
+     <strong>弱くなると即座に落ちます</strong>（0.45 で 66.0）。
+     <strong>方策はトルクを使い切って振り上げている</strong>ので、余力が無いのです。</p>
+
+  <h3>観測ノイズ</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">&sigma;</th><th class="num">報酬</th><th class="num">上端にいた歩数</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.00</td><td class="num">+47.36</td><td class="num">223.5</td></tr>
+      <tr><td class="num">0.03</td><td class="num">+47.53</td><td class="num">223.5</td></tr>
+      <tr><td class="num">0.10</td><td class="num">+45.46</td><td class="num">221.7</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <span class="k">ほとんど効きません</span>
+    <p><strong>&sigma;=0.10 でも 221.7。</strong>1.8 歩しか減っていません。</p>
+    <p><strong>ただし 9-d を思い出してください。</strong>
+       同じノイズで<strong>符号反転は 11.9 &rarr; 174.6 に増えていました</strong>。
+       <strong>点数に出ないだけで、モータは鳴いています。</strong>
+       <strong>ここでも「見る指標を変えると結論が変わる」</strong>のです。</p>
+  </div>
+
+  <h3>遅延</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">ステップ</th><th class="num">実時間</th><th class="num">報酬</th><th class="num">上端にいた歩数</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td class="num">0 ms</td><td class="num">+47.36</td><td class="num">223.5</td></tr>
+      <tr><td class="num">1</td><td class="num">10 ms</td><td class="num">+43.75</td><td class="num">220.6</td></tr>
+      <tr><td class="num">3</td><td class="num">30 ms</td><td class="num">+37.38</td><td class="num">215.7</td></tr>
+      <tr><td class="num">5</td><td class="num">50 ms</td><td class="num">+31.44</td><td class="num">210.3</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>意外に耐えます</b>
+     <strong>50 ms 遅らせても 13 歩しか減りません。</strong>
+     この振り子の<strong>固有周期が 1.17 秒</strong>だからです。
+     <strong>50 ms は周期の 4%</strong>——遅れのうちに入りません。</p>
+
+  <p class="why"><b>これは系の速さとの比で決まります</b>
+     四足歩行の脚は<strong>1 歩が 0.3 秒</strong>ほど。
+     同じ 50 ms でも<strong>17%</strong>になり、<strong>致命的</strong>です。
+     <strong>「何 ms なら大丈夫」という絶対値は存在しません。</strong></p>
+</section>
+
+<section id="s05">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>崖の位置を詰める</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;03 は刻みが粗すぎました。
+       <strong>「どこから落ち始めるか」を細かく測ります。</strong>
+       11-b で<strong>ランダム化の範囲を決めるとき</strong>、この数字が根拠になります。</p>
+  </div>
+
+  <h3>質量</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">倍率</th><th class="num">上端にいた歩数</th><th class="num">公称比</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">1.00</td><td class="num">223.5</td><td class="num">100%</td><td class="muted">公称</td></tr>
+      <tr><td class="num">1.05</td><td class="num ok">226.4</td><td class="num ok">101%</td><td class="ok">影響なし</td></tr>
+      <tr><td class="num">1.08</td><td class="num">202.3</td><td class="num">91%</td><td>ここから落ち始める</td></tr>
+      <tr><td class="num">1.10</td><td class="num">157.1</td><td class="num">70%</td><td></td></tr>
+      <tr><td class="num">1.12</td><td class="num bad">67.0</td><td class="num bad">30%</td><td class="ng"><strong>崖</strong></td></tr>
+      <tr><td class="num">1.15</td><td class="num bad">25.2</td><td class="num bad">11%</td><td class="ng">崩壊</td></tr>
+      <tr><td class="num">1.20</td><td class="num bad">21.0</td><td class="num bad">9%</td><td class="ng">底</td></tr>
+      <tr><td class="num">1.30</td><td class="num">56.1</td><td class="num">25%</td><td class="muted">少し戻る</td></tr>
+      <tr><td class="num">1.40</td><td class="num">75.0</td><td class="num">34%</td><td class="muted">さらに戻る</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">余裕は 8% しかありません</span>
+    <p><strong>1.05 倍までは無傷。1.10 倍で 7 割。1.15 倍で崩壊。</strong>
+       <strong>崖の幅はわずか 7 ポイント</strong>です。</p>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">1.20 を底に、少し戻るのはなぜか</span>
+    <p><strong>単調に悪くなっていません。</strong>これは<strong>よくあることで、重要です。</strong></p>
+    <p>質量を増やしても、<strong>固有周期は変わりません</strong>（<code>mgl</code> も <code>I</code> も
+       同じ倍率で動くため、<code>sqrt(mgl/I) = 5.3484</code> は一定）。
+       変わるのは<strong>振り上げの加速度 <code>&tau;/I</code> だけ</strong>です。</p>
+    <div class="tw"><table>
+      <thead><tr><th class="num">倍率</th><th class="num">固有角振動数</th><th class="num"><code>&tau;/I</code></th></tr></thead>
+      <tbody>
+        <tr><td class="num">0.70</td><td class="num">5.3484</td><td class="num">12.588</td></tr>
+        <tr><td class="num">1.00</td><td class="num">5.3484</td><td class="num">8.812</td></tr>
+        <tr><td class="num">1.40</td><td class="num">5.3484</td><td class="num">6.294</td></tr>
+      </tbody>
+    </table></div>
+    <p>力が弱くなると<strong>振り上げに必要な往復の回数が増えます</strong>。
+       回数は<strong>整数</strong>なので、<strong>「5 回で届く / 6 回かかる」の境目で結果が飛びます</strong>。
+       <strong>500 歩に間に合うかどうかも、そこで切り替わります。</strong></p>
+    <p><strong>だから「少しズラして大丈夫だったから、もっとズラしても大丈夫」とは言えません。</strong>
+       <strong>刻んで測るしかありません。</strong></p>
+  </div>
+
+  <h3>ダンピング</h3>
+  <div class="tw"><table>
+    <thead><tr><th class="num">値</th><th class="num">公称の何倍</th><th class="num">上端にいた歩数</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.020</td><td class="num">1.00</td><td class="num">223.5</td><td class="muted">公称</td></tr>
+      <tr><td class="num">0.025</td><td class="num">1.25</td><td class="num ok">224.5</td><td class="ok">影響なし</td></tr>
+      <tr><td class="num">0.030</td><td class="num">1.50</td><td class="num bad">107.2</td><td class="ng"><strong>半減</strong></td></tr>
+      <tr><td class="num">0.035</td><td class="num">1.75</td><td class="num bad">21.8</td><td class="ng">崩壊</td></tr>
+      <tr><td class="num">0.045</td><td class="num">2.25</td><td class="num bad">0.0</td><td class="ng">一度も立たない</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="why"><b>こちらは余裕が 25% です</b>
+     <strong>1.25 倍まで無傷、1.5 倍で半減、1.75 倍で崩壊。</strong>
+     質量（8%）より広いように見えますが、<strong>ダンピングのほうが実機では大きく外れます</strong>。
+     <strong>次の節で並べて比べます。</strong></p>
+
+  <div class="callout">
+    <span class="k">この数字を 11-b で使います</span>
+    <p>ドメインランダム化では<strong>「どの範囲で振るか」</strong>を決める必要があります。</p>
+    <p>いま分かったのは<strong>「公称の周り 8% / 25% しか耐えない」</strong>ということ。
+       <strong>それより広く振って学習させれば、耐えられるようになるはず</strong>——
+       <strong>これが 11-b の作戦です。</strong></p>
+  </div>
+</section>
+
+<section id="s06">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>実機のズレはどれくらいか</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p>&sect;04 で<strong>耐えられる幅</strong>が分かりました。
+       <strong>実機で実際に生じるズレ</strong>と並べて、<strong>足りているかを見ます。</strong></p>
+  </div>
+
+  <div class="callout warn">
+    <span class="k">この節の数字は実測ではありません</span>
+    <p>右の列は<strong>工学的な目安</strong>で、<strong>この教材で測ったものではありません。</strong>
+       機体・部品・組み方で大きく変わります。</p>
+    <p><strong>自分の機体の本当の値は、11-d のシステム同定で測ります。</strong>
+       ここでは<strong>桁の感覚</strong>だけ掴んでください。</p>
+  </div>
+
+  <div class="tw"><table>
+    <thead><tr><th>パラメータ</th><th class="num">方策が耐える幅<br>（実測）</th>
+      <th class="num">実機でありうるズレ<br>（目安）</th><th>判定</th></tr></thead>
+    <tbody>
+      <tr><td>質量</td><td class="num">&plusmn;8%</td><td class="num">5〜15%</td>
+          <td class="ng"><strong>足りない</strong></td></tr>
+      <tr><td>ダンピング・摩擦</td><td class="num">&plusmn;25%</td><td class="num bad">2〜5 倍</td>
+          <td class="ng"><strong>まったく足りない</strong></td></tr>
+      <tr><td>トルク上限</td><td class="num">&minus;0%／+∞</td><td class="num">&minus;10〜20%<br>（発熱・電圧降下）</td>
+          <td class="ng"><strong>足りない</strong></td></tr>
+      <tr><td>観測ノイズ</td><td class="num ok">&sigma;=0.1 でも無傷</td><td class="num">&sigma; 0.01〜0.05</td>
+          <td class="ok">足りている</td></tr>
+      <tr><td>遅延</td><td class="num ok">50 ms でも &minus;6%</td><td class="num">5〜30 ms</td>
+          <td class="ok">足りている</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <span class="k">3 つが足りていません</span>
+    <p><strong>質量・ダンピング・トルク上限。</strong>
+       この方策を今の機体に載せたら、<strong>ほぼ確実に立ちません。</strong></p>
+    <p>とくに<strong>ダンピング</strong>は、耐えられる幅が <strong>&plusmn;25%</strong> なのに、
+       実機では<strong>2〜5 倍</strong>ずれます。<strong>桁が違います。</strong></p>
+  </div>
+
+  <div class="concept">
+    <div class="ch"><span class="cn">この節でいちばん大事なこと</span><span class="ct">どこに力を使うか、が決まる</span></div>
+    <dl>
+      <dt>観測ノイズと遅延には</dt>
+      <dd><strong>何もしなくてよい。</strong>この課題では足りています。
+        <strong>ここに時間を使うのは無駄です。</strong></dd>
+      <dt>質量には</dt>
+      <dd><strong>測れば合わせられます。</strong>はかりに載せるだけ。
+        <strong>同定（11-d）で潰すべき項目</strong>です。</dd>
+      <dt>ダンピングには</dt>
+      <dd><strong>測っても合わせきれません。</strong>温度でも使用時間でも変わります。
+        <strong>ランダム化（11-b）で耐えさせるしかない項目</strong>です。</dd>
+      <dt>この切り分けが Phase D の中心です</dt>
+      <dd><strong>「測って合わせる」か「ばらけさせて耐える」か。</strong>
+        <strong>どちらを選ぶかは、パラメータごとに違います。</strong></dd>
+    </dl>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">9-d の符号反転を思い出してください</span>
+    <p>上の表で観測ノイズは「足りている」判定ですが、<strong>それは点数で見た場合</strong>です。</p>
+    <p>9-d では<strong>同じノイズで符号反転が 8 倍</strong>になっていました。
+       <strong>点数は無事でも、実機のモータは傷みます。</strong>
+       <strong>頑健性テストには、点数以外の指標も並べてください。</strong></p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>手を動かす</h2>
+  </div>
+  <div class="aim">
+    <span class="k">この節のねらい</span>
+    <p><strong>Step 11 でずっと使う測定器を作ります。</strong>
+       11-b 以降、対策が効いたかどうかは<strong>全部これで判定します。</strong></p>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 1 &mdash; ズラせる環境を作る</span>
+    <p><code>envs/perturbed.py</code> を新しく作ります。
+       <strong><code>envs/pendulum_env.py</code> は触りません</strong>——公称の環境は残しておきます。</p>
+    <div class="code"><pre>import numpy as np
+import mujoco
+import gymnasium as gym
+from gymnasium import spaces
+
+MODEL_PATH = "models/pendulum_torque.xml"
+TAU_MAX = 0.5
+CTRL_HZ = 100
+
+
+class PerturbedPendulum(gym.Env):
+  """公称モデルを読んでから、その場でパラメータを書き換える"""
+
+  def __init__(self, mass=1.0, damping=None, tau=TAU_MAX, obs_noise=0.0, delay=0, noise_seed=0):
+    self.model = mujoco.MjModel.from_xml_path(MODEL_PATH)
+    bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "pole")
+    ???                                  <span class="cmt"># ← ここだけ考える（質量の倍率を反映する 2 行）</span>
+    if damping is not None:
+      self.model.dof_damping[0] = damping
+
+    self.data = mujoco.MjData(self.model)
+    self.frame_skip = round((1 / self.model.opt.timestep) / CTRL_HZ)
+    self.tau = tau
+    self.obs_noise = obs_noise
+    self.delay = delay
+    self.rng = np.random.default_rng(noise_seed)
+    self.observation_space = spaces.Box(
+      low=np.array([-1.0, -1.0, -20.0], dtype=np.float32),
+      high=np.array([1.0, 1.0, 20.0], dtype=np.float32), dtype=np.float32)
+    self.action_space = spaces.Box(-1.0, 1.0, shape=(1,), dtype=np.float32)
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>「1 つのつまみで、物理的に筋の通ったズレを作る」</strong>ことを覚えます。
+       <strong>質量だけ動かすと、現実に存在しない物体ができます</strong>（&sect;02）。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    self.model.body_mass[bid] *= mass
+    self.model.body_inertia[bid] *= mass
+</pre></div>
+      <p class="why"><b>密度を変えたのと同じ状況になります</b>
+        形は変えずに中身の詰まり方だけ変える、ということです。
+        <strong>質量も慣性も同じ倍率</strong>で動きます。</p>
+      <p class="why"><b><code>body_inertia</code> は 3 要素の配列です</b>
+        <code>*=</code> で<strong>3 つとも掛かります</strong>。
+        <code>[0.01537822, 0.01537822, 0.00013103]</code> がこの振り子の値です。</p>
+      <p class="why"><b>確かめ方</b>
+        <code>mass=1.0</code> にしたとき、<strong>公称モデルと 1 ビットも変わらない</strong>はずです。
+        &sect;02 の校正がこれを見ています。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 2 &mdash; 観測のノイズと遅延</span>
+    <p><code>_sensed()</code> を書きます。<strong>遅延は「古い観測を返す」だけ</strong>で作れます。</p>
+    <div class="code"><pre>  def _true_obs(self):
+    theta = self.data.qpos[0]
+    omega = self.data.qvel[0]
+    return np.array([np.cos(theta), np.sin(theta), omega], dtype=np.float32)
+
+  def _sensed(self):
+    obs = self._true_obs()
+    if self.obs_noise > 0:
+      obs = (obs + self.rng.normal(0, self.obs_noise, 3)).astype(np.float32)
+    self.buf.append(obs)
+    return ???                           <span class="cmt"># ← ここだけ考える（delay ステップ前の観測）</span>
+</pre></div>
+    <p class="why"><b>ヒント</b>
+       <code>self.buf</code> は<strong>いままでの観測を順に貯めた配列</strong>です。
+       <strong>最後の要素がいまの観測</strong>。
+       <strong>エピソードの最初は貯まっていない</strong>ので、そこをどうするかも考えてください。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>    return self.buf[max(0, len(self.buf) - 1 - self.delay)]
+</pre></div>
+      <p class="why"><b><code>len(self.buf) - 1</code> がいまの観測</b>
+        そこから <code>delay</code> 個さかのぼります。
+        <code>delay=0</code> なら<strong>いまの観測がそのまま</strong>返り、
+        <strong>遅延なしと完全に同じ</strong>になります。</p>
+      <p class="why"><b><code>max(0, ...)</code> が要る理由</b>
+        エピソードの最初は <code>buf</code> が 1 個しかありません。
+        <code>max</code> が無いと<strong>負のインデックス</strong>になり、
+        <strong>Python は末尾から数え始めてしまいます</strong>——
+        <strong>「最新の観測」を返すという、遅延と正反対の動き</strong>です。
+        <strong>エラーにならないので気づけません。</strong></p>
+      <p class="why"><b><code>reset</code> で <code>self.buf = []</code> を忘れずに</b>
+        消さないと<strong>前のエピソードの観測が残ります</strong>。</p>
+    </div></details>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 3 &mdash; 頑健性テストを回す</span>
+    <p><code>train/eval.py</code> に追加します。
+       <strong>採点の中身は <code>evaluate()</code> と同じ</strong>で、環境だけ差し替えます。</p>
+    <div class="code"><pre>from envs.perturbed import PerturbedPendulum
+
+
+def test_robust(policy, n_ep=10, steps=500, **kw):
+  """kw をそのまま PerturbedPendulum に渡す"""
+  totals, ups = [], []
+  for ep in range(n_ep):
+    env = TimeLimit(PerturbedPendulum(noise_seed=ep, **kw), max_episode_steps=steps)
+    obs, info = env.reset(seed=ep)
+    env.action_space.seed(ep)
+    total, up = 0.0, 0
+    for t in range(steps):
+      obs, reward, terminated, truncated, info = env.step(policy(env, obs))
+      total += float(reward)
+      if -np.cos(env.unwrapped.data.qpos[0]) > 0.95:
+        up += 1
+      if terminated or truncated:
+        break
+    totals.append(total)
+    ups.append(up)
+  return np.mean(totals), np.mean(ups)
+</pre></div>
+    <div class="callout warn">
+      <span class="k">まず校正してください</span>
+      <p><strong>何もズラさずに呼んで、<code>evaluate()</code> と一致することを確かめます。</strong></p>
+      <div class="code"><pre>test_robust(my_policy)
+# -> (47.36, 223.5)    evaluate(my_policy) と完全一致
+</pre></div>
+      <p><strong>ここが合わないまま掃引しても、出てくる数字に意味はありません。</strong></p>
+    </div>
+  </div>
+
+  <div class="task">
+    <span class="k">課題 4 &mdash; 自分の方策の崖を探す</span>
+    <p>&sect;04 の表を自分で作ります。<strong>粗く振って、落ちた区間を細かく刻む</strong>のが手順です。</p>
+    <div class="code"><pre>for f in (0.7, 0.85, 1.0, 1.15, 1.3):        # まず粗く
+  total, up = test_robust(my_policy, mass=f)
+  print(f"mass={f:.2f}  報酬 {total:+8.2f}  上端 {up:6.1f}")
+
+for f in (1.05, 1.08, 1.10, 1.12, 1.15):     # 落ちた区間を細かく
+  ...
+</pre></div>
+    <p class="why"><b>この課題のねらい</b>
+       <strong>11-b でランダム化の範囲を決めるとき、この数字が根拠になります。</strong>
+       <strong>「なんとなく &plusmn;20%」ではなく「耐えられるのが 8% だから 20% 振る」</strong>と言えるようにします。</p>
+    <details><summary>答えと解説を見る</summary><div class="dbody">
+      <div class="code"><pre>mass=1.00  上端 223.5      damping=0.020  上端 223.5
+mass=1.05  上端 226.4      damping=0.025  上端 224.5
+mass=1.08  上端 202.3      damping=0.030  上端 107.2
+mass=1.10  上端 157.1      damping=0.035  上端  21.8
+mass=1.12  上端  67.0      damping=0.045  上端   0.0
+mass=1.15  上端  25.2
+</pre></div>
+      <p class="why"><b>あなたの方策では違う値が出ます</b>
+        学習のシードが違えば<strong>崖の位置も変わります</strong>。
+        <strong>見てほしいのは「崖が急である」ことと「余裕が 1 割前後しかない」こと</strong>です。</p>
+      <p class="why"><b>単調に悪くならないことにも注意</b>
+        質量は <strong>1.20 が底で、1.30 / 1.40 は少し戻ります</strong>。
+        <strong>広い範囲を飛ばして測ると、崖を見落とします。</strong></p>
+    </div></details>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>まとめ</h2>
+  </div>
+
+  <div class="recap">
+    <span class="k">この教材で分かったこと</span>
+    <ol>
+      <li><strong>ギャップは 6 分類</strong>——物理パラメータ / アクチュエータ / 遅延 / 観測 / 接触 / 未モデル化（&sect;01）</li>
+      <li><strong>ギャップは消せない。</strong>合わせるか、ばらけさせて耐えるかの 2 択（&sect;01）</li>
+      <li><strong>sim-to-sim テスト</strong>——ズラした別のシミュで採点する。
+          <strong>通過は保証ではなく最低条件</strong>（&sect;02）</li>
+      <li><strong>質量は 1.05 倍まで無傷、1.15 倍で崩壊</strong>（223.5 &rarr; 25.2）（&sect;03, &sect;04）</li>
+      <li><strong>ダンピングは 1.25 倍まで無傷、2.25 倍で 1 歩も立たない</strong>（&sect;03, &sect;04）</li>
+      <li><strong>観測ノイズと遅延はほぼ無害</strong>——この振り子では（&sect;03）</li>
+      <li><strong>単調に悪くなるとは限らない。</strong>質量は 1.20 が底で、その先は少し戻る（&sect;04）</li>
+      <li><strong>耐えられる幅と、実機のズレを並べる。</strong>
+          質量・ダンピング・トルク上限が足りていない（&sect;05）</li>
+    </ol>
+  </div>
+
+  <div class="callout tip">
+    <span class="k">いちばん持ち帰ってほしい一文</span>
+    <p><strong>対策を打つ前に、どこが弱いかを測る。</strong></p>
+    <p>測る前は<strong>「遅延が怖い」</strong>と思っていました。実際は<strong>50 ms でも 6% しか落ちません</strong>。
+       本当に危なかったのは<strong>ダンピング</strong>——<strong>2.5 倍で 1 歩も立たなくなります</strong>。
+       <strong>10-a で「速くする前にどこが遅いか測る」と言ったのと、同じ形です。</strong></p>
+  </div>
+
+  <div class="check">
+    <span class="k">チェック</span>
+    <label><input type="checkbox" data-ck="a1"> ギャップの 6 分類を言える</label>
+    <label><input type="checkbox" data-ck="a2"> sim-to-sim テストが「保証ではなく最低条件」な理由を言える</label>
+    <label><input type="checkbox" data-ck="a3"> 質量を変えるとき慣性も変える理由を説明できる</label>
+    <label><input type="checkbox" data-ck="a4"> <code>test_robust</code> を書き、公称で <code>evaluate()</code> と一致させた</label>
+    <label><input type="checkbox" data-ck="a5"> 自分の方策の崖の位置を測った</label>
+    <label><input type="checkbox" data-ck="a6"> 「測って合わせる」と「ばらけさせて耐える」の使い分けを言える</label>
+  </div>
+
+  <div class="aim">
+    <span class="k">次回 11-b</span>
+    <p>弱いところが分かりました。<strong>次は耐えさせます。</strong></p>
+    <p><strong>ドメインランダム化</strong>——学習中に<strong>毎エピソード、パラメータをばらけさせる</strong>。
+       9-e で初期状態にやったことを、<strong>物理パラメータに広げます</strong>。</p>
+    <p><strong>ただし振りすぎると別の問題が起きます。</strong>そこも測ります。</p>
+  </div>
+</section>
+
+<footer>
+  <span>MuJoCo &times; 強化学習 &times; Sim2Real — Phase D / Step 11-a</span>
+  <span>数値はすべて実測</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? resolve() : reject(new Error("failed")); }
+      catch (e) { reject(e); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".code"), function (box) {
+    var pre = box.querySelector("pre"); if (!pre) return;
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "コピー";
+    btn.addEventListener("click", function () {
+      copyText(pre.innerText)
+        .then(function () { btn.textContent = "コピーしました"; btn.classList.add("done"); })
+        .catch(function () { btn.textContent = "コピーできません"; })
+        .then(function () {
+          setTimeout(function () { btn.textContent = "コピー"; btn.classList.remove("done"); }, 1500);
+        });
+    });
+    box.appendChild(btn);
+  });
+
+  var KEY = "mujoco-step11a-check", state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ck]"), function (cb) {
+    var id = cb.getAttribute("data-ck");
+    if (state[id]) cb.checked = true;
+    cb.addEventListener("change", function () {
+      state[id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var toc = document.getElementById("toc");
+  if (!toc) return;
+  var links = Array.prototype.slice.call(toc.querySelectorAll("a"));
+  var btn = document.getElementById("tocBtn");
+  var bd = document.getElementById("tocBd");
+
+  function close() {
+    toc.classList.remove("open"); bd.classList.remove("open");
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", function () {
+    var open = toc.classList.toggle("open");
+    bd.classList.toggle("open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  bd.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  links.forEach(function (a) { a.addEventListener("click", close); });
+
+  // いま画面にある節を強調する
+  var secs = links.map(function (a) {
+    return document.getElementById(a.getAttribute("href").slice(1));
+  }).filter(Boolean);
+  if (!secs.length || !("IntersectionObserver" in window)) return;
+
+  var seen = new Map();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { seen.set(e.target, e.intersectionRatio); });
+    var best = null, bestRatio = 0;
+    secs.forEach(function (s) {
+      var r = seen.get(s) || 0;
+      if (r > bestRatio) { bestRatio = r; best = s; }
+    });
+    if (!best) {                       // どれも交差していなければ直近を上に探す
+      for (var i = secs.length - 1; i >= 0; i--) {
+        if (secs[i].getBoundingClientRect().top < window.innerHeight / 2) { best = secs[i]; break; }
+      }
+    }
+    links.forEach(function (a) {
+      a.classList.toggle("on", !!best && a.getAttribute("href") === "#" + best.id);
+    });
+  }, { rootMargin: "-10% 0px -55% 0px", threshold: [0, .1, .25, .5, .75, 1] });
+  secs.forEach(function (s) { io.observe(s); });
+})();
+</script>

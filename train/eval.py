@@ -23,3 +23,23 @@ def evaluate(policy, n_ep=10, steps=500):
     totals.append(total)
     ups.append(up)
   return np.mean(totals), np.mean(ups)
+
+
+def breakdown(policy, n_ep=10, steps=500):
+  """報酬を項ごとに分けて、1 エピソードあたりの平均を返す"""
+  keys = ("r_angle", "r_omega", "r_torque")
+  acc = {k: [] for k in keys}
+  for ep in range(n_ep):
+    env = TimeLimit(PendulumEnv(), max_episode_steps=steps)
+    obs, info = env.reset(seed=ep)
+    env.action_space.seed(ep)
+    sums = {k: 0.0 for k in keys}
+    for t in range(steps):
+      obs, reward, terminated, truncated, info = env.step(policy(env, obs))
+      for k in keys:
+        sums[k] += info[k]
+      if terminated or truncated:
+        break
+    for k in keys:
+      acc[k].append(sums[k])
+  return {k: float(np.mean(v)) for k, v in acc.items()}

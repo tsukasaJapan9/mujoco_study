@@ -7,7 +7,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from envs.pendulum_env import PendulumEnv
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--steps", type=int, default=300_000)
+parser.add_argument("--steps", type=int, default=1_000_000)
 parser.add_argument("--lr", type=float, default=3e-4)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--tag", default="ppo")
@@ -19,6 +19,7 @@ def make_env():
 
 
 venv = make_vec_env(make_env, n_envs=4, seed=args.seed)
+# venv = make_vec_env(make_env, n_envs=1, seed=args.seed)
 
 
 model = PPO(

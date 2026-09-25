@@ -1,7 +1,7 @@
 import numpy as np
 from stable_baselines3 import PPO
 
-from train.eval import evaluate
+from train.eval import breakdown
 
 model = PPO.load("train/ppo_semi_long_s0")
 
@@ -41,5 +41,8 @@ def expert(env, obs):
 # total, up = evaluate(expert)
 # print(f"古典制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
 
-total, up = evaluate(trained_policy)
-print(f"PPO制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
+# total, up = evaluate(trained_policy)
+# print(f"PPO制御    : 合計報酬 {total:.2f}   上端にいたステップ {up:.1f}/500")
+
+metrics = breakdown(trained_policy)
+print(metrics)

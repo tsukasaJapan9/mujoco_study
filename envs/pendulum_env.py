@@ -53,8 +53,18 @@ class PendulumEnv(gym.Env):
 
     theta = self.data.qpos[0]
     omega = self.data.qvel[0]
-    reward = float(-np.cos(theta) - 0.01 * omega**2 - 0.001 * torque**2)
+
+    r_angle = -np.cos(theta)
+    r_omega = -0.01 * omega**2
+    r_torque = -0.001 * torque**2
+    reward = float(r_angle + r_omega + r_torque)
     upright = float(-np.cos(theta) > 0.95)
     terminated = False  # 6-c で扱う
     truncated = False
-    return self._obs(), reward, terminated, truncated, {"upright": upright}
+    info = {
+      "upright": upright,
+      "r_angle": r_angle,
+      "r_omega": r_omega,
+      "r_torque": r_torque,
+    }
+    return self._obs(), reward, terminated, truncated, info

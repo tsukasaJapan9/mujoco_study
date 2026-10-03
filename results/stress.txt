@@ -1,0 +1,11 @@
+L[mm] r[mm] tip[g] identified  success  hold_torque_rms_median[Nm]
+   40    50      8      False      8%  0.071
+   40    50      8       True     62%  0.043
+   50    50      8      False     21%  0.069
+   50    50      8       True     92%  0.042
+   60    50      4      False     25%  0.081
+   60    50      4       True     96%  0.045
+   60    50      8      False     33%  0.071
+   60    50      8       True     96%  0.044
+   80    50      4      False     46%  0.068
+   80    50      4       True    100%  0.048

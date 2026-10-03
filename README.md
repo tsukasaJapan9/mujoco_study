@@ -37,6 +37,12 @@ sim2real の核心が、そのまま数字に出ている。
 
 ### 想定したハードウェア
 
+![hardware](results/hardware_overview.png)
+![sequence](results/hardware_sequence.png)
+
+（MuJoCo のレンダリング。台・基板・ばね・センサーは見た目だけの部品で、物理には影響しない。
+`MUJOCO_GL=osmesa uv run python -m furuta.render` で再生成できる）
+
 ```
         ┌─ 振子：φ3 mm カーボン棒 60 mm + 先端おもり 4〜8 g
         │

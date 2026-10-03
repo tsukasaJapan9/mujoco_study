@@ -125,11 +125,15 @@ stable-baselines3 の PPO でスイングアップと倒立を 1 つの方策と
 - PPO はトルクが小さい（発熱に有利）。一方で、倒立に入ってからアームがゆっくり ±数十度さまようことがある（`results/ppo_demo_timeseries.png`）。
 - 厳しめの条件の LQR（公称値）の成功率は、200 Hz 制御だった `furuta.stress` の結果（25%）と制御周期や乱数が違うので、そのままは比べられない。
 
+動画（左: PPO、右: LQR。同じ仮想実機で 8 秒 + スイングアップ部分の 1/4 スロー）: [`results/ppo_vs_lqr.mp4`](results/ppo_vs_lqr.mp4)
+
 ```sh
 uv sync --extra rl
 uv run --extra rl python -m furuta.train_ppo --steps 10000000 --out runs/ppo   # 学習（約 25 分）
 uv run --extra rl python -m furuta.rl_eval results/ppo_policy.zip              # LQR と比較
 uv run --extra rl tensorboard --logdir runs/                                   # 学習曲線
+uv run --extra rl python -m furuta.export_policy results/ppo_policy.zip results/ppo_policy.npz  # 重みを numpy へ
+MUJOCO_GL=osmesa uv run python -m furuta.video                                 # 動画（画面のない環境）
 ```
 
 | ファイル | 内容 |
@@ -138,7 +142,9 @@ uv run --extra rl tensorboard --logdir runs/                                   #
 | `furuta/train_ppo.py` | PPO の学習 |
 | `furuta/vec.py` | 1 プロセスに複数環境を載せる VecEnv（学習を速くするため） |
 | `furuta/rl_eval.py` | PPO と LQR の比較 |
-| `results/ppo_policy.zip` | 学習済み方策 |
+| `furuta/export_policy.py` | 方策の重みを numpy 形式に書き出す（推論は行列積 2 回 + tanh、PyTorch 不要） |
+| `furuta/video.py` | PPO と LQR を並べた動画を作る |
+| `results/ppo_policy.zip` / `.npz` | 学習済み方策（SB3 形式 / numpy の重み） |
 
 ### 次のステップ
 

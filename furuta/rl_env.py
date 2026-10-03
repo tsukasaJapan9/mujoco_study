@@ -135,3 +135,17 @@ class PolicyController:
         a = float(np.clip(a[0], -1, 1))
         self.feat.push_action(a)
         return W_MAX * a
+
+
+class NumpyPolicy:
+    """export_policy.py で書き出した重みで推論する（PyTorch 不要）. predict() は SB3 と同じ形で返す."""
+
+    def __init__(self, npz_path):
+        d = np.load(npz_path)
+        self.p = {k: d[k] for k in d.files}
+
+    def predict(self, x, deterministic=True):
+        p = self.p
+        h = np.tanh(p["W1"] @ x + p["b1"])
+        h = np.tanh(p["W2"] @ h + p["b2"])
+        return np.clip(p["W3"] @ h + p["b3"], -1, 1), None
